@@ -1,6 +1,7 @@
 import { ReactNode } from "react"
 import {
   TextInput as ReactNativeTextInput,
+  TextInputProps as ReactNativeTextInputProps,
   StyleProp,
   StyleSheet,
   TextStyle,
@@ -8,28 +9,27 @@ import {
   Text
 } from "react-native"
 
-export interface TextInputProps {
+export interface TextInputProps extends Omit<ReactNativeTextInputProps, 'style'> {
   label?: ReactNode
-  placeholder?: string
   style?: StyleProp<TextStyle>
 }
 
-export function TextInput(props: TextInputProps) {
+export function TextInput({ label, style, ...rest }: TextInputProps) {
   const renderLabel = () => {
-    const type = typeof props.label
+    const type = typeof label
     if (type === 'string' || type === 'number') {
-      return <Text>{props.label}</Text>
+      return <Text>{label}</Text>
     }
-    return props.label
+    return label
   }
 
   return (
     <View>
       {renderLabel()}
       <ReactNativeTextInput
-        style={styles.input}
-          {...props}
-        />
+        style={[styles.input, style]}
+        {...rest}
+      />
     </View>
   )
 }

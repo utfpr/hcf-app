@@ -1,18 +1,18 @@
 import { View, Text } from "react-native";
-import { TextInput } from "./TextInput";
+import { TextInput, TextInputProps } from "./TextInput";
 
-
-export interface TextInputFieldProps {
+export interface TextInputFieldProps extends TextInputProps {
   label: string
 }
 
 export function TextInputField({
-  label
+  label,
+  ...rest
 }: TextInputFieldProps) {
   return (
     <View>
       <Text>{label}</Text>
-      <TextInput />
+      <TextInput {...rest} />
     </View>
   )
 }
