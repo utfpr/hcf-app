@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -8,10 +10,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '../../hook/query/useQuery';
 import { useContainer } from '../../context/container/useContainer';
+import { ExpeditionCard } from './components/HistoryExpeditionCard';
+import { MOCK_HISTORY_EXPEDITIONS } from './expeditions-mock';
 
 export function Home() {
   const { httpClient } = useContainer();
   const insets = useSafeAreaInsets();
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   const { data, error, loading, validating } = useQuery(
     async () => {
@@ -61,8 +66,11 @@ export function Home() {
           CONTEÚDO
       ========================== */}
 
-      <View style={styles.content}>
-
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.sectionTitle}>
           Expedições Ativas
         </Text>
@@ -75,17 +83,36 @@ export function Home() {
 
         {/* Histórico de Expedições */}
 
-        <Pressable style={styles.historyButton}>
-          <Text style={styles.historyText}>
-            Histórico de Expedições
-          </Text>
+        <View style={styles.historyContainer}>
+          <Pressable
+            style={styles.historyButton}
+            onPress={() => setIsHistoryOpen(prev => !prev)}
+          >
+            <Text style={styles.historyText}>
+              Histórico de Expedições
+            </Text>
 
-          <Text style={styles.chevron}>
-            ⌄
-          </Text>
-        </Pressable>
+            <View style={styles.chevronWrapper}>
+              <Image
+                source={require('../../assets/icons/chevron-down.png')}
+                style={[
+                  styles.chevronIcon,
+                  !isHistoryOpen && styles.chevronClosed,
+                ]}
+                resizeMode="contain"
+              />
+            </View>
+          </Pressable>
 
-      </View>
+          {isHistoryOpen && (
+            <View style={styles.historyList}>
+              {MOCK_HISTORY_EXPEDITIONS.map(item => (
+                <ExpeditionCard key={item.id} expedition={item} />
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
 
       {/* =========================
           BOTÃO +
@@ -158,13 +185,16 @@ const styles = StyleSheet.create({
 
   content: {
     flex: 1,
+  },
 
-    paddingHorizontal: 24,
+  scrollContent: {
+    paddingHorizontal: 16,
     paddingTop: 24,
+    paddingBottom: 96,
   },
 
   sectionTitle: {
-    color: '#E8EFEA',
+    color: '#E9EDE9',
 
     fontSize: 20,
     fontWeight: '700',
@@ -182,33 +212,49 @@ const styles = StyleSheet.create({
      HISTÓRICO
   ========================== */
 
+  historyContainer: {
+    borderRadius: 10,
+    backgroundColor: '#183927',
+    borderWidth: 1,
+    borderColor: '#274936',
+    overflow: 'hidden',
+  },
   historyButton: {
-    height: 49,
-
-    borderRadius: 8,
-
-    backgroundColor: '#153D29',
-
+    height: 48,
     paddingHorizontal: 16,
-
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
 
   historyText: {
-    color: '#E8EFEA',
+    color: '#E9EDE9',
 
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
 
-  chevron: {
-    color: '#E8EFEA',
+  chevronWrapper: {
+    width: 16,
+    height: 16,
+  },
 
-    fontSize: 24,
+  chevronIcon: {
+    tintColor: '#E9EDE9',
+    width: 16,
+    height: 16,
+    transform: [{ rotate: '0deg' }],
+  },
 
-    marginTop: -6,
+  chevronClosed: {
+    transform: [{ rotate: '-90deg' }],
+  },
+
+  historyList: {
+    padding: 12,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#274936',
   },
 
   /* =========================
@@ -221,12 +267,12 @@ const styles = StyleSheet.create({
     right: 20,
     bottom: 87,
 
-    width: 57,
-    height: 57,
+    width: 56,
+    height: 56,
 
     borderRadius: 29,
 
-    backgroundColor: '#19B85A',
+    backgroundColor: '#1FAD5A',
 
     alignItems: 'center',
     justifyContent: 'center',
