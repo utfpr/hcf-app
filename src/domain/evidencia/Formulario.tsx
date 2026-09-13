@@ -73,8 +73,8 @@ export function Formulario({ latitude, longitude }: FormularioProps) {
 
       <View style={styles.content}>
         <View style={styles.formCard}>
+          <Text style={styles.labelFirst}>Observações</Text>
           <TextInputField
-            label="Observações"
             style={styles.textArea}
             placeholder="Detalhes adicionais da coleta..."
             placeholderTextColor={colors.placeholder}
