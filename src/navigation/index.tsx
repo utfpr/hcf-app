@@ -1,26 +1,26 @@
-import { NavigationContainer } from '@react-navigation/native';
-import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native'
+import React from 'react'
+import { ActivityIndicator, View } from 'react-native'
 
-import { useAuthStore } from '@/features/auth/store/useAuthStore';
+import { useAuth } from '@/contexts/Auth/useAuth'
 
-import { AppNavigator } from './AppNavigator';
-import { AuthNavigator } from './AuthNavigator';
+import { AppNavigator } from './AppNavigator'
+import { AuthNavigator } from './AuthNavigator'
 
 export function Navigation() {
-  const { isAuthenticated, _hydrated } = useAuthStore();
+  const { loggedIn, ready } = useAuth()
 
-  if (!_hydrated) {
+  if (!ready) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#082113' }}>
         <ActivityIndicator color="#00B14F" size="large" />
       </View>
-    );
+    )
   }
 
   return (
     <NavigationContainer>
-      {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+      {loggedIn ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
-  );
+  )
 }
