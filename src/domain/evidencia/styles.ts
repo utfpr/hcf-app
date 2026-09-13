@@ -60,10 +60,14 @@ metaRow: {
     marginBottom: 8,
     marginTop: 16,
   },
+  labelFirst: {
+      color: colors.textSecondary,
+      fontSize: 13,
+  },
   textArea: {
     backgroundColor: colors.inputBackground,
     borderRadius: 10,
-    padding: 14,
+    padding: 12,
     minHeight: 110,
     fontSize: 14,
     color: colors.inputText,
