@@ -1,18 +1,21 @@
-import { StatusBar } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ContainerProvider } from './context/container/ContainerProvider';
-import { Home } from './domain/home/Home';
-import { Formulario } from './domain/evidencia/Formulario';
+import { API_BASE_URL } from '@env'
+import React from 'react'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
+
+import { AuthProvider } from '@/contexts/Auth/AuthProvider'
+import { ContainerProvider } from '@/contexts/Container/ContainerProvider'
+import { Navigation } from '@/navigation'
 
 function App() {
   return (
     <SafeAreaProvider>
-      <ContainerProvider baseUrl="https://jsonplaceholder.typicode.com">
-        <StatusBar barStyle={'light-content'} />
-        <Formulario latitude={-20.2508} longitude={-46.4167} />
+      <ContainerProvider baseUrl={API_BASE_URL}>
+        <AuthProvider>
+          <Navigation />
+        </AuthProvider>
       </ContainerProvider>
     </SafeAreaProvider>
-  );
+  )
 }
 
-export default App;
+export default App
