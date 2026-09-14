@@ -1,4 +1,6 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft } from 'lucide-react-native';
 import { useState } from 'react';
 
 interface Member {
@@ -45,8 +47,7 @@ const mockData: Expedition = {
     },
     {
       type: 'diary',
-      text:
-        'Área de transição entre cerrado e campo rupestre. Solo predominantemente arenoso com afloramentos rochosos.',
+      text: 'Área de transição entre cerrado e campo rupestre. Solo predominantemente arenoso com afloramentos rochosos.',
       date: '15/02 13:15',
       location: '-20.2510, -46.41...',
     },
@@ -58,7 +59,18 @@ export function ExpeditionDetail() {
   const data = mockData; // will be replaced with useQuery later
 
   return (
-    <View style={styles.wrapper}>
+    <SafeAreaView style={styles.wrapper}>
+      <StatusBar barStyle="light-content" backgroundColor="#082113" />
+
+      {/* header */}
+      <View style={styles.header}>
+        <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <ArrowLeft color="#FFFFFF" size={22} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Detalhes da Expedição</Text>
+        <View style={{ width: 22 }} />
+      </View>
+
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.expeditionName}>{data.name}</Text>
         <View style={styles.infoRow}>
@@ -106,14 +118,38 @@ export function ExpeditionDetail() {
       >
         <Text style={styles.floatingButtonText}>+</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: '#082113' },
-  container: { padding: 16, paddingBottom: 100 },
-  expeditionName: { color: '#fff', fontSize: 22, fontWeight: 'bold', marginTop: 8 },
+  wrapper: {
+    flex: 1,
+    backgroundColor: '#082113',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E3327',
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  container: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  expeditionName: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
   infoRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   info: { color: '#9aa89f', marginRight: 12 },
   status: { color: '#5fd97a' },
