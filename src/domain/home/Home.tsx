@@ -8,28 +8,17 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery } from '../../hook/query/useQuery';
-import { useContainer } from '../../context/container/useContainer';
 import { ExpeditionCard } from './components/HistoryExpeditionCard';
+import { ActiveExpeditionsList } from './components/ActiveExpeditionsList';
+import { useActiveExpeditions } from './hooks/useActiveExpeditions';
 import { MOCK_HISTORY_EXPEDITIONS } from './expeditions-mock';
+import { Expedition } from './types';
 
 export function Home() {
-  const { httpClient } = useContainer();
   const insets = useSafeAreaInsets();
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-
-  const { data, error, loading, validating } = useQuery(
-    async () => {
-      const response = await httpClient.get<object[]>({
-        url: '/posts',
-      });
-
-      return response.json();
-    },
-    ['/posts'],
-  );
-
-  console.log(data?.length, error, loading, validating);
+  const { expeditions: activeExpeditions, loading: loadingActive } =
+    useActiveExpeditions();
 
   function handleMenuPress() {
     // TODO: navegar para a página do menu
@@ -37,6 +26,10 @@ export function Home() {
 
   function handleAddPress() {
     // TODO: navegar para a página de nova expedição
+  }
+
+  function handleExpeditionPress(_expedition: Expedition) {
+    // TODO: navegar para os detalhes da expedição
   }
 
   return (
@@ -75,11 +68,11 @@ export function Home() {
           Expedições Ativas
         </Text>
 
-        {/* 
-          ESPAÇO RESERVADO PARA OS CARDS.
-          
-        */}
-        <View style={styles.cardsPlaceholder} />
+        <ActiveExpeditionsList
+          expeditions={activeExpeditions}
+          loading={loadingActive}
+          onPressExpedition={handleExpeditionPress}
+        />
 
         {/* Histórico de Expedições */}
 
@@ -198,14 +191,6 @@ const styles = StyleSheet.create({
 
     fontSize: 20,
     fontWeight: '700',
-  },
-
-  /*
-   * Espaço para os cards
-   * de Expedições Ativas.
-   */
-  cardsPlaceholder: {
-    height: 285,
   },
 
   /* =========================
