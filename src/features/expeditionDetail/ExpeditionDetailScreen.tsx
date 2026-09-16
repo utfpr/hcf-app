@@ -54,7 +54,7 @@ const mockData: Expedition = {
   ],
 };
 
-export function ExpeditionDetail() {
+export function ExpeditionDetailScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const data = mockData; // will be replaced with useQuery later
 
