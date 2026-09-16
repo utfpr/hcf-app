@@ -56,7 +56,7 @@ const mockData: Expedition = {
 
 export function ExpeditionDetailScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const data = mockData; // will be replaced with useQuery later
+  const data = mockData; 
 
   return (
     <SafeAreaView style={styles.wrapper}>
