@@ -21,14 +21,14 @@ export const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
   },
-metaRow: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  paddingHorizontal: 16,
-  paddingTop: 12,
-  paddingBottom: 8,
-  gap: 10,
-},
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 10,
+  },
   metaChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -45,7 +45,8 @@ metaRow: {
   content: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    flex: 1,
+    paddingBottom: 20,
+    flexGrow: 1,
   },
   formCard: {
     backgroundColor: '#101F16',
@@ -61,8 +62,50 @@ metaRow: {
     marginTop: 16,
   },
   labelFirst: {
-      color: colors.textSecondary,
-      fontSize: 13,
+    color: colors.textSecondary,
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: colors.inputBackground,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    minHeight: 48,
+    fontSize: 14,
+    color: colors.inputText,
+  },
+  selectInput: {
+    backgroundColor: colors.inputBackground,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectPlaceholder: {
+    color: colors.placeholder,
+    fontSize: 14,
+  },
+  selectValue: {
+    color: colors.inputText,
+    fontSize: 14,
+  },
+  optionsList: {
+    backgroundColor: '#16281C',
+    borderRadius: 10,
+    marginTop: 6,
+    overflow: 'hidden',
+  },
+  option: {
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E3327',
+  },
+  optionText: {
+    color: colors.textPrimary,
+    fontSize: 14,
   },
   textArea: {
     backgroundColor: colors.inputBackground,
@@ -95,6 +138,11 @@ metaRow: {
     fontSize: 13,
     fontWeight: '400',
   },
+  mediaError: {
+    color: "#FCA5A5",
+    fontSize: 12,
+    marginBottom: 12,
+  },
   previewRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -111,6 +159,11 @@ metaRow: {
     backgroundColor: '#2A4A36',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  previewImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
   },
   previewInfo: {
     flex: 1,
