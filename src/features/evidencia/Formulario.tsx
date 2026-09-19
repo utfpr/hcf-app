@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Image, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { ArrowLeft, Check, ChevronDown, Clock, Image as ImageIcon, MapPin, Mic, Play, X } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme/colors';
 import { styles } from './styles';
 export interface FormularioProps { latitude: number; longitude: number }
@@ -10,6 +11,7 @@ interface AudioAsset { uri: string; durationLabel: string }
 const FAMILY_OPTIONS = ['Acanthaceae','Asteraceae','Bromeliaceae','Fabaceae','Myrtaceae','Orchidaceae','Rubiaceae'];
 function formatFileSize(size?: number) { if (!size) return 'Tamanho não disponível'; return size < 1024 ? String(size) + ' B' : (size / (1024 * 1024)).toFixed(1) + ' MB'; }
 export function Formulario({ latitude, longitude }: FormularioProps) {
+  const navigation = useNavigation();
   const agora = new Date();
   const dataHora = `${agora.toLocaleDateString('pt-BR')} ${agora.toLocaleTimeString('pt-BR')}`;
   const [family, setFamily] = useState<string | null>(null);
@@ -29,7 +31,7 @@ export function Formulario({ latitude, longitude }: FormularioProps) {
   function handleRecordAudio() { setAudio({ uri: '', durationLabel: '0:14' }); }
   return <View style={styles.container}>
     <StatusBar barStyle="light-content" backgroundColor={colors.background} />
-    <View style={styles.header}><TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}><ArrowLeft color={colors.textPrimary} size={22} /></TouchableOpacity><Text style={styles.headerTitle}>Registro de Coleta</Text><View style={{ width: 22 }} /></View>
+    <View style={styles.header}><TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => navigation.goBack()}><ArrowLeft color={colors.textPrimary} size={22} /></TouchableOpacity><Text style={styles.headerTitle}>Registro de Coleta</Text><View style={{ width: 22 }} /></View>
     <View style={styles.metaRow}><View style={styles.metaChip}><MapPin size={14} color={colors.textSecondary} /><Text style={styles.metaText}>{latitude.toFixed(4)}, {longitude.toFixed(4)}</Text></View><View style={styles.metaChip}><Clock size={14} color={colors.textSecondary} /><Text style={styles.metaText}>{dataHora}</Text></View></View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"><View style={styles.formCard}>
       <Text style={styles.labelFirst}>Família</Text>
