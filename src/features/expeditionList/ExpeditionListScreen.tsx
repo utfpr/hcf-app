@@ -133,9 +133,6 @@ export function ExpeditionListScreen() {
         }}
       />
 
-      <TouchableOpacity style={styles.fab} activeOpacity={0.85}>
-        <Plus size={28} color="#FFFFFF" />
-      </TouchableOpacity>
     </SafeAreaView>
   )
 }
