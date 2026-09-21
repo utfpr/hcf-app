@@ -20,7 +20,7 @@
     "react-hook-form": "7.79.0",
     "react-native": "0.84.1",
     "react-native-image-picker": "^8.2.1",
-    "react-native-safe-area-context": "5.5.2",
+    "react-native-safe-area-context": "5.10.0",
     "react-native-screens": "4.25.2",
     "react-native-svg": "^15.15.5",
     "swr": "2.4.1",
