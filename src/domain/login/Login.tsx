@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Image,
   StyleSheet,
@@ -8,6 +9,8 @@ import {
 } from 'react-native';
 
 export function Login() {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
@@ -32,12 +35,29 @@ export function Login() {
 
         <Text style={styles.label}>Senha</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Digite sua senha"
-          placeholderTextColor="#7A7A7A"
-          secureTextEntry
-        />
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={[styles.input, styles.passwordInput]}
+            placeholder="Digite sua senha"
+            placeholderTextColor="#7A7A7A"
+            secureTextEntry={!isPasswordVisible}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <TouchableOpacity
+            style={styles.passwordToggle}
+            onPress={() => setIsPasswordVisible(visible => !visible)}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isPasswordVisible ? 'Ocultar senha' : 'Mostrar senha'
+            }
+            activeOpacity={0.7}>
+            <Text style={styles.passwordToggleText}>
+              {isPasswordVisible ? 'Ocultar' : 'Mostrar'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity style={styles.button}>
           <Text style={styles.buttonText}>Entrar</Text>
@@ -103,6 +123,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     fontSize: 15,
     color: '#222222',
+  },
+
+  passwordContainer: {
+    width: '100%',
+  },
+
+  passwordInput: {
+    paddingRight: 86,
+  },
+
+  passwordToggle: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+
+  passwordToggleText: {
+    color: '#0F7A3D',
+    fontSize: 13,
+    fontWeight: '600',
   },
 
   button: {
