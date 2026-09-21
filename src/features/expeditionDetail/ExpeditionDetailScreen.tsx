@@ -1,70 +1,110 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
-import { useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, StatusBar } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { ArrowLeft } from 'lucide-react-native'
+import { useState } from 'react'
+
+import { RootStackParamList } from '@/navigation/types'
+
+type ExpeditionDetailRouteProp = RouteProp<RootStackParamList, 'ExpeditionDetail'>
+type ExpeditionDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionDetail'>
 
 interface Member {
-  name: string;
+  name: string
 }
 
 interface Record {
-  type: 'collection' | 'diary';
-  title?: string;
-  habit?: string;
-  environment?: string;
-  text?: string;
-  date: string;
-  location: string;
+  type: 'collection' | 'diary'
+  title?: string
+  habit?: string
+  environment?: string
+  text?: string
+  date: string
+  location: string
 }
 
 interface Expedition {
-  name: string;
-  status: string;
-  date: string;
-  leader: string;
-  team: Member[];
-  records: Record[];
+  id: string
+  name: string
+  status: string
+  date: string
+  leader: string
+  team: Member[]
+  records: Record[]
 }
 
-const mockData: Expedition = {
-  name: 'Serra da Canastra',
-  status: 'Em andamento',
-  date: '15/02/2026',
-  leader: 'Dr. Ana Souza',
-  team: [
-    { name: 'Dr. Ana Souza' },
-    { name: 'MSc. Carlos Lima' },
-    { name: 'Grad. Juliana Santos' },
-  ],
-  records: [
-    {
-      type: 'collection',
-      title: 'Vellozia squamata',
-      habit: 'Herbácea',
-      environment: 'Campo rupestre, solo arenoso',
-      date: '15/02 14:32',
-      location: '-20.2508, -46.4167',
-    },
-    {
-      type: 'diary',
-      text: 'Área de transição entre cerrado e campo rupestre. Solo predominantemente arenoso com afloramentos rochosos.',
-      date: '15/02 13:15',
-      location: '-20.2510, -46.41...',
-    },
-  ],
-};
+// mock indexado por id — substituir pela query ao backend
+const mockDataById: Record<string, Expedition> = {
+  '1': {
+    id: '1',
+    name: 'Serra da Canastra',
+    status: 'Em andamento',
+    date: '15/02/2026',
+    leader: 'Dr. Ana Souza',
+    team: [
+      { name: 'Dr. Ana Souza' },
+      { name: 'MSc. Carlos Lima' },
+      { name: 'Grad. Juliana Santos' },
+    ],
+    records: [
+      {
+        type: 'collection',
+        title: 'Vellozia squamata',
+        habit: 'Herbácea',
+        environment: 'Campo rupestre, solo arenoso',
+        date: '15/02 14:32',
+        location: '-20.2508, -46.4167',
+      },
+      {
+        type: 'diary',
+        text: 'Área de transição entre cerrado e campo rupestre. Solo predominantemente arenoso com afloramentos rochosos.',
+        date: '15/02 13:15',
+        location: '-20.2510, -46.4170',
+      },
+    ],
+  },
+}
 
 export function ExpeditionDetailScreen() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const data = mockData; 
+  const navigation = useNavigation<ExpeditionDetailNavigationProp>()
+  const route = useRoute<ExpeditionDetailRouteProp>()
+  const { expeditionId } = route.params
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  // TODO: substituir por useQuery quando o backend estiver pronto
+  const data = mockDataById[expeditionId]
+
+  if (!data) {
+    return (
+      <SafeAreaView style={styles.wrapper}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            onPress={() => navigation.goBack()}
+          >
+            <ArrowLeft color="#FFFFFF" size={22} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Detalhes da Expedição</Text>
+          <View style={{ width: 22 }} />
+        </View>
+        <View style={styles.notFound}>
+          <Text style={styles.notFoundText}>Expedição não encontrada.</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView style={styles.wrapper}>
       <StatusBar barStyle="light-content" backgroundColor="#082113" />
 
-      {/* header */}
       <View style={styles.header}>
-        <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <TouchableOpacity
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          onPress={() => navigation.goBack()}
+        >
           <ArrowLeft color="#FFFFFF" size={22} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalhes da Expedição</Text>
@@ -119,7 +159,7 @@ export function ExpeditionDetailScreen() {
         <Text style={styles.floatingButtonText}>+</Text>
       </TouchableOpacity>
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -191,4 +231,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   menuOptionText: { color: '#fff', fontSize: 13 },
-});
+  notFound: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notFoundText: {
+    color: '#9aa89f',
+    fontSize: 15,
+  },
+})
