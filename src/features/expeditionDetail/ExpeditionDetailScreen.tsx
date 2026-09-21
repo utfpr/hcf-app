@@ -5,7 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { ArrowLeft } from 'lucide-react-native'
 import { useState } from 'react'
 
-import { RootStackParamList } from '@/navigation/types'
+import { EvidenceMode, RootStackParamList } from '@/navigation/types'
 
 type ExpeditionDetailRouteProp = RouteProp<RootStackParamList, 'ExpeditionDetail'>
 type ExpeditionDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionDetail'>
@@ -14,8 +14,9 @@ interface Member {
   name: string
 }
 
-interface Record {
-  type: 'collection' | 'diary'
+// renomeado de `Record` — o nome antigo sombreava o utilitário global Record<K, V>
+interface ExpeditionRecord {
+  type: EvidenceMode
   title?: string
   habit?: string
   environment?: string
@@ -31,8 +32,11 @@ interface Expedition {
   date: string
   leader: string
   team: Member[]
-  records: Record[]
+  records: ExpeditionRecord[]
 }
+
+// TODO: substituir pela localização real do dispositivo (geolocalização)
+const MOCK_COORDS = { latitude: -20.2508, longitude: -46.4167 }
 
 // mock indexado por id — substituir pela query ao backend
 const mockDataById: Record<string, Expedition> = {
@@ -75,6 +79,11 @@ export function ExpeditionDetailScreen() {
 
   // TODO: substituir por useQuery quando o backend estiver pronto
   const data = mockDataById[expeditionId]
+
+  function handleOpenForm(mode: EvidenceMode) {
+    setIsMenuOpen(false)
+    navigation.navigate('Formulario', { expeditionId, mode, ...MOCK_COORDS })
+  }
 
   if (!data) {
     return (
@@ -144,10 +153,10 @@ export function ExpeditionDetailScreen() {
 
       {isMenuOpen && (
         <View style={styles.floatingMenu}>
-          <TouchableOpacity style={styles.menuOption}>
+          <TouchableOpacity style={styles.menuOption} onPress={() => handleOpenForm('diary')}>
             <Text style={styles.menuOptionText}>📘 Novo diário</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuOption}>
+          <TouchableOpacity style={styles.menuOption} onPress={() => handleOpenForm('collection')}>
             <Text style={styles.menuOptionText}>🌿 Nova coleta</Text>
           </TouchableOpacity>
         </View>
