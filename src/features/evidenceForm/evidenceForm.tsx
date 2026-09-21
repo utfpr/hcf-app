@@ -3,7 +3,7 @@ import { Image, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View }
 import { launchImageLibrary } from 'react-native-image-picker';
 import { ArrowLeft, Check, ChevronDown, Clock, Image as ImageIcon, MapPin, Mic, Play, X } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { EvidenceMode } from '@/navigation/types';
 import { colors } from '../../theme/colors';
 import { styles } from './styles';
@@ -84,6 +84,7 @@ export function Formulario({ mode, latitude, longitude }: FormularioProps) {
   }
 
   return (
+      <SafeAreaView style={styles.container}>
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
@@ -215,5 +216,6 @@ export function Formulario({ mode, latitude, longitude }: FormularioProps) {
         <Text style={styles.saveButtonText}>{config.saveLabel}</Text>
       </TouchableOpacity>
     </View>
+    </SafeAreaView>
   );
 }
