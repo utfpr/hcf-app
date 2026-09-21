@@ -7,7 +7,13 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useNavigation } from '@react-navigation/native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Calendar, ChevronDown, Menu, MapPin, Plus } from 'lucide-react-native'
+
+import { RootStackParamList } from '@/navigation/types'
+
+type ExpeditionListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionList'>
 
 type ExpeditionStatus = 'Em andamento' | 'Planejada' | 'Concluída'
 
@@ -49,6 +55,7 @@ function chunkIntoRows(expeditions: Expedition[], prefix: string): ListEntry[] {
 }
 
 export function ExpeditionListScreen() {
+  const navigation = useNavigation<ExpeditionListNavigationProp>()
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
 
   const listData = useMemo<ListEntry[]>(() => {
@@ -64,6 +71,10 @@ export function ExpeditionListScreen() {
 
     return entries
   }, [isHistoryOpen])
+
+  function handleCardPress(expeditionId: string) {
+    navigation.navigate('ExpeditionDetail', { expeditionId })
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -105,9 +116,15 @@ export function ExpeditionListScreen() {
 
           return (
             <View style={styles.row}>
-              <ExpeditionCard expedition={item.cards[0]} />
+              <ExpeditionCard
+                expedition={item.cards[0]}
+                onPress={handleCardPress}
+              />
               {item.cards[1] ? (
-                <ExpeditionCard expedition={item.cards[1]} />
+                <ExpeditionCard
+                  expedition={item.cards[1]}
+                  onPress={handleCardPress}
+                />
               ) : (
                 <View style={styles.cardPlaceholder} />
               )}
@@ -125,11 +142,16 @@ export function ExpeditionListScreen() {
 
 interface ExpeditionCardProps {
   expedition: Expedition
+  onPress: (expeditionId: string) => void
 }
 
-function ExpeditionCard({ expedition }: ExpeditionCardProps) {
+function ExpeditionCard({ expedition, onPress }: ExpeditionCardProps) {
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={styles.card}
+      activeOpacity={0.8}
+      onPress={() => onPress(expedition.id)}
+    >
       <Text style={styles.cardName}>{expedition.name}</Text>
 
       <View style={styles.cardRow}>
