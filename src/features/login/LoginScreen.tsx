@@ -15,6 +15,7 @@ import { PasswordInput } from '@/components/forms/PasswordInput'
 import { TextInput } from '@/components/forms/TextInput'
 import { useAuth } from '@/contexts/Auth/useAuth'
 import { TipoUsuario } from '@/types/usuario'
+import { colors } from '@/theme/colors'
 
 import logo from '@/assets/images/logo-hcf.png'
 import { LoginFormValues, useLoginScreen } from './hooks/useLoginScreen'
@@ -27,7 +28,7 @@ export function LoginScreen() {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <StatusBar barStyle="light-content" backgroundColor="#082113" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
@@ -116,7 +117,7 @@ function LoginSubmitButton({ loading }: { loading: boolean }) {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: '#082113',
+    backgroundColor: colors.background,
   },
   container: {
     flexGrow: 1,
@@ -132,10 +133,10 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.onAccent,
   },
   title: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '400',
     marginTop: 14,
@@ -148,13 +149,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   requestError: {
-    color: '#FCA5A5',
+    color: colors.danger,
     fontSize: 13,
     textAlign: 'center',
     marginBottom: 12,
   },
   offlineNote: {
-    color: 'rgba(255, 255, 255, 0.55)',
+    color: colors.textSecondary,
     fontSize: 12,
     textAlign: 'center',
     marginTop: 32,
