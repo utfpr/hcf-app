@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 
 import { RootStackParamList } from '@/navigation/types'
+import { colors } from '@/theme/colors'
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>
 
@@ -27,22 +28,22 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#082113',
+    backgroundColor: colors.background,
   },
   text: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 32,
     fontWeight: 'bold',
   },
   button: {
     marginTop: 24,
-    backgroundColor: '#00B14F',
+    backgroundColor: colors.accent,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontWeight: 'bold',
   },
 })
