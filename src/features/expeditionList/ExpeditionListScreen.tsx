@@ -12,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Calendar, ChevronDown, Menu, MapPin, Plus } from 'lucide-react-native'
 
 import { RootStackParamList } from '@/navigation/types'
+import { colors } from '@/theme/colors'
 
 type ExpeditionListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionList'>
 
@@ -80,7 +81,7 @@ export function ExpeditionListScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <TouchableOpacity hitSlop={12}>
-          <Menu size={24} color="#FFFFFF" />
+          <Menu size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.userName}>Dr. Silva</Text>
       </View>
@@ -107,7 +108,7 @@ export function ExpeditionListScreen() {
                 <Text style={styles.historyTitle}>Histórico de Expedições</Text>
                 <ChevronDown
                   size={20}
-                  color="#FFFFFF"
+                  color={colors.textPrimary}
                   style={isHistoryOpen ? styles.chevronOpen : undefined}
                 />
               </TouchableOpacity>
@@ -152,12 +153,12 @@ function ExpeditionCard({ expedition, onPress }: ExpeditionCardProps) {
       <Text style={styles.cardName}>{expedition.name}</Text>
 
       <View style={styles.cardRow}>
-        <Calendar size={13} color="#8FA896" />
+        <Calendar size={13} color={colors.textSecondary} />
         <Text style={styles.cardRowText}>{expedition.date}</Text>
       </View>
 
       <View style={styles.cardRow}>
-        <MapPin size={13} color="#8FA896" />
+        <MapPin size={13} color={colors.textSecondary} />
         <Text style={styles.cardRowText}>{expedition.location}</Text>
       </View>
 
@@ -171,7 +172,7 @@ function ExpeditionCard({ expedition, onPress }: ExpeditionCardProps) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#082113',
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   userName: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 14,
   },
   content: {
@@ -189,7 +190,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   title: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 20,
     fontWeight: 'bold',
     marginTop: 8,
@@ -201,10 +202,10 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '48%',
-    backgroundColor: '#0E2E1B',
+    backgroundColor: colors.cardBackground,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#1C4029',
+    borderColor: colors.borderAlt,
     padding: 12,
     marginBottom: 12,
   },
@@ -212,7 +213,7 @@ const styles = StyleSheet.create({
     width: '48%',
   },
   cardName: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 8,
@@ -224,36 +225,36 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   cardRowText: {
-    color: '#8FA896',
+    color: colors.textSecondary,
     fontSize: 12,
   },
   badge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#14472A',
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 4,
     paddingVertical: 3,
     paddingHorizontal: 7,
     marginTop: 6,
   },
   badgeText: {
-    color: '#4ED97B',
+    color: colors.accent,
     fontSize: 10,
   },
   historyToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0E2E1B',
+    backgroundColor: colors.cardBackground,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#1C4029',
+    borderColor: colors.borderAlt,
     paddingVertical: 16,
     paddingHorizontal: 14,
     marginTop: 4,
     marginBottom: 12,
   },
   historyTitle: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -267,7 +268,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#22A455',
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
