@@ -168,11 +168,11 @@ export function Formulario({ mode, latitude, longitude }: FormularioProps) {
           <Text style={styles.label}>Multimídia</Text>
           <View style={styles.mediaRow}>
             <TouchableOpacity style={styles.mediaButton} onPress={handleAddImage}>
-              <ImageIcon size={16} color="#FFFFFF" />
+              <ImageIcon size={16} color={colors.onAccent} />
               <Text style={styles.mediaButtonText}>Imagem</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.mediaButton} onPress={handleRecordAudio}>
-              <Mic size={16} color="#FFFFFF" />
+              <Mic size={16} color={colors.onAccent} />
               <Text style={styles.mediaButtonText}>Áudio</Text>
             </TouchableOpacity>
           </View>
@@ -212,7 +212,7 @@ export function Formulario({ mode, latitude, longitude }: FormularioProps) {
       </ScrollView>
 
       <TouchableOpacity style={styles.saveButton}>
-        <Check size={18} color="#FFFFFF" />
+        <Check size={18} color={colors.onAccent} />
         <Text style={styles.saveButtonText}>{config.saveLabel}</Text>
       </TouchableOpacity>
     </View>

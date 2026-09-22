@@ -1,6 +1,9 @@
 import { StyleSheet } from 'react-native';
 import { colors } from '../../theme/colors';
 
+// cor específica deste componente — não se repete em nenhuma outra tela do app
+const waveformBar = '#3E6A4F';
+
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -33,7 +36,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#16281C',
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -49,9 +52,9 @@ export const styles = StyleSheet.create({
     flexGrow: 1,
   },
   formCard: {
-    backgroundColor: '#101F16',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#1E3327',
+    borderColor: colors.borderAlt,
     borderRadius: 14,
     padding: 14,
   },
@@ -92,7 +95,7 @@ export const styles = StyleSheet.create({
     fontSize: 14,
   },
   optionsList: {
-    backgroundColor: '#16281C',
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 10,
     marginTop: 6,
     overflow: 'hidden',
@@ -101,7 +104,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 11,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E3327',
+    borderBottomColor: colors.borderAlt,
   },
   optionText: {
     color: colors.textPrimary,
@@ -123,9 +126,9 @@ export const styles = StyleSheet.create({
   },
   mediaButton: {
     flex: 1,
-    backgroundColor: '#0B1C13',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#1A3324',
+    borderColor: colors.borderAlt,
     borderRadius: 10,
     paddingVertical: 10,
     flexDirection: 'row',
@@ -134,12 +137,12 @@ export const styles = StyleSheet.create({
     gap: 6,
   },
   mediaButtonText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontSize: 13,
     fontWeight: '400',
   },
   mediaError: {
-    color: "#FCA5A5",
+    color: colors.danger,
     fontSize: 12,
     marginBottom: 12,
   },
@@ -147,7 +150,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#16281C',
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 10,
     padding: 8,
     marginBottom: 8,
@@ -156,7 +159,7 @@ export const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 8,
-    backgroundColor: '#2A4A36',
+    backgroundColor: colors.borderAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -169,11 +172,11 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   previewName: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontSize: 12,
   },
   previewMeta: {
-    color: '#7C8880',
+    color: colors.textSecondary,
     fontSize: 11,
     marginTop: 2,
   },
@@ -181,7 +184,7 @@ export const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#2A4A36',
+    backgroundColor: colors.borderAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -194,7 +197,7 @@ export const styles = StyleSheet.create({
   },
   waveformBar: {
     width: 2,
-    backgroundColor: '#3E6A4F',
+    backgroundColor: waveformBar,
     borderRadius: 1,
   },
   saveButton: {
@@ -209,7 +212,7 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontSize: 15,
     fontWeight: '500',
   },
