@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react-native'
 import { useState } from 'react'
 
 import { EvidenceMode, RootStackParamList } from '@/navigation/types'
+import { colors } from '@/theme/colors'
 
 type ExpeditionDetailRouteProp = RouteProp<RootStackParamList, 'ExpeditionDetail'>
 type ExpeditionDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionDetail'>
@@ -14,7 +15,6 @@ interface Member {
   name: string
 }
 
-// renomeado de `Record` — o nome antigo sombreava o utilitário global Record<K, V>
 interface ExpeditionRecord {
   type: EvidenceMode
   title?: string
@@ -35,10 +35,8 @@ interface Expedition {
   records: ExpeditionRecord[]
 }
 
-// TODO: substituir pela localização real do dispositivo (geolocalização)
 const MOCK_COORDS = { latitude: -20.2508, longitude: -46.4167 }
 
-// mock indexado por id — substituir pela query ao backend
 const mockDataById: Record<string, Expedition> = {
   '1': {
     id: '1',
@@ -77,7 +75,6 @@ export function ExpeditionDetailScreen() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-  // TODO: substituir por useQuery quando o backend estiver pronto
   const data = mockDataById[expeditionId]
 
   function handleOpenForm(mode: EvidenceMode) {
@@ -93,7 +90,7 @@ export function ExpeditionDetailScreen() {
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             onPress={() => navigation.goBack()}
           >
-            <ArrowLeft color="#FFFFFF" size={22} />
+            <ArrowLeft color={colors.textPrimary} size={22} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Detalhes da Expedição</Text>
           <View style={{ width: 22 }} />
@@ -107,14 +104,14 @@ export function ExpeditionDetailScreen() {
 
   return (
     <SafeAreaView style={styles.wrapper}>
-      <StatusBar barStyle="light-content" backgroundColor="#082113" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
       <View style={styles.header}>
         <TouchableOpacity
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           onPress={() => navigation.goBack()}
         >
-          <ArrowLeft color="#FFFFFF" size={22} />
+          <ArrowLeft color={colors.textPrimary} size={22} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalhes da Expedição</Text>
         <View style={{ width: 22 }} />
@@ -174,7 +171,7 @@ export function ExpeditionDetailScreen() {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: '#082113',
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -183,10 +180,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E3327',
+    borderBottomColor: colors.borderAlt,
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 17,
     fontWeight: '600',
   },
@@ -195,30 +192,30 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   expeditionName: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 22,
     fontWeight: 'bold',
   },
   infoRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  info: { color: '#9aa89f', marginRight: 12 },
-  status: { color: '#5fd97a' },
-  leader: { color: '#9aa89f', marginTop: 2 },
-  sectionTitle: { color: '#9aa89f', fontSize: 12, marginTop: 20, marginBottom: 8 },
+  info: { color: colors.textSecondary, marginRight: 12 },
+  status: { color: colors.accent },
+  leader: { color: colors.textSecondary, marginTop: 2 },
+  sectionTitle: { color: colors.textSecondary, fontSize: 12, marginTop: 20, marginBottom: 8 },
   teamRow: { flexDirection: 'row', flexWrap: 'wrap' },
   memberTag: {
-    backgroundColor: '#1c3327',
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 16,
     paddingVertical: 6,
     paddingHorizontal: 12,
     marginRight: 8,
     marginBottom: 8,
   },
-  memberTagText: { color: '#cfe8d6', fontSize: 12 },
-  card: { backgroundColor: '#132a1e', borderRadius: 12, padding: 14, marginBottom: 12 },
-  cardType: { color: '#5fd97a', fontSize: 12, marginBottom: 6 },
-  cardTitle: { color: '#fff', fontSize: 16, fontStyle: 'italic', marginBottom: 4 },
-  cardText: { color: '#c3d6c9', fontSize: 13, marginBottom: 2 },
-  cardDate: { color: '#7f9186', fontSize: 11, marginTop: 6 },
+  memberTagText: { color: colors.textPrimary, fontSize: 12 },
+  card: { backgroundColor: colors.cardBackground, borderRadius: 12, padding: 14, marginBottom: 12 },
+  cardType: { color: colors.accent, fontSize: 12, marginBottom: 6 },
+  cardTitle: { color: colors.textPrimary, fontSize: 16, fontStyle: 'italic', marginBottom: 4 },
+  cardText: { color: colors.textSecondary, fontSize: 13, marginBottom: 2 },
+  cardDate: { color: colors.textSecondary, fontSize: 11, marginTop: 6 },
   floatingButton: {
     position: 'absolute',
     bottom: 24,
@@ -226,27 +223,27 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#2fae55',
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  floatingButtonText: { color: '#fff', fontSize: 28, lineHeight: 30 },
+  floatingButtonText: { color: colors.onAccent, fontSize: 28, lineHeight: 30 },
   floatingMenu: { position: 'absolute', bottom: 90, right: 24 },
   menuOption: {
-    backgroundColor: '#1c3327',
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 16,
     marginBottom: 8,
   },
-  menuOptionText: { color: '#fff', fontSize: 13 },
+  menuOptionText: { color: colors.textPrimary, fontSize: 13 },
   notFound: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   notFoundText: {
-    color: '#9aa89f',
+    color: colors.textSecondary,
     fontSize: 15,
   },
 })
