@@ -4,6 +4,7 @@ import type {
   AtualizarExpedicaoPayload,
   CriarExpedicaoPayload,
   Expedicao,
+  ExpedicaoDetalhe,
   ExpedicaoListItem,
   FiltrosExpedicao,
   Paginacao,
@@ -20,8 +21,8 @@ export class ExpedicaoService {
     return response.data
   }
 
-  async buscarPorId(expedicaoId: number): Promise<Expedicao> {
-    const response = await this.httpClient.get<Expedicao>(`/v2/expedicoes/${expedicaoId}`)
+  async buscarPorId(expedicaoId: number): Promise<ExpedicaoDetalhe> {
+    const response = await this.httpClient.get<ExpedicaoDetalhe>(`/v2/expedicoes/${expedicaoId}`)
     return response.data
   }
 

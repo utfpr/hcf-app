@@ -77,3 +77,8 @@ export interface CriarEvidenciaPayload {
   nome: string
   capturado_em: string
 }
+
+// Evento já acompanhado das evidências dele, pronto para exibir na tela
+export interface RegistroExpedicao extends Evento {
+  evidencias: Evidencia[]
+}

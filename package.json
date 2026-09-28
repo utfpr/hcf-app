@@ -8,7 +8,7 @@
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
-    "postinstall": "node -e \"const fs=require('fs');const p='node_modules/@react-native/gradle-plugin/settings.gradle.kts';if(fs.existsSync(p)){let c=fs.readFileSync(p,'utf8');if(c.includes('0.5.0')){fs.writeFileSync(p,c.replace('0.5.0','1.0.0'));console.log('[postinstall] Patched foojay-resolver-convention to 1.0.0');}}\""
+    "postinstall": "patch-package && node -e\"const fs=require('fs');const p='node_modules/@react-native/gradle-plugin/settings.gradle.kts';if(fs.existsSync(p)){let c=fs.readFileSync(p,'utf8');if(c.includes('0.5.0')){fs.writeFileSync(p,c.replace('0.5.0','1.0.0'));console.log('[postinstall] Patched foojay-resolver-convention to 1.0.0');}}\""
   },
   "dependencies": {
     "@hookform/resolvers": "5.4.0",

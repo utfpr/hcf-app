@@ -1,5 +1,6 @@
 import {
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -16,8 +17,11 @@ import { useState } from 'react'
 import { EvidenceMode, RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
 
+import { useRegistrosExpedicao } from '../evento/hooks/useRegistrosExpedicao'
 import { useExpedition } from '../expedition/hooks/useExpedition'
 import { formatDate, getStatus } from '../expedition/utils'
+
+import { RegistroCard } from './components/RegistroCard'
 
 type ExpeditionDetailRouteProp = RouteProp<RootStackParamList, 'ExpeditionDetail'>
 type ExpeditionDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionDetail'>
@@ -32,6 +36,13 @@ export function ExpeditionDetailScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const { data, error, loading, refresh } = useExpedition(Number(expeditionId))
+  const registros = useRegistrosExpedicao(Number(expeditionId))
+
+  function handleRefresh() {
+    refresh()
+    registros.refresh()
+  }
+
   function handleOpenForm(mode: EvidenceMode) {
     setIsMenuOpen(false)
     navigation.navigate('Formulario', { expeditionId, mode, ...MOCK_COORDS })
@@ -98,7 +109,17 @@ export function ExpeditionDetailScreen() {
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       {renderHeader()}
 
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        refreshControl={(
+          <RefreshControl
+            refreshing={registros.validating && !registros.loading}
+            onRefresh={handleRefresh}
+            colors={[colors.accent]}
+            tintColor={colors.accent}
+          />
+        )}
+      >
         <Text style={styles.expeditionName}>
           {data.descricao ?? `Expedição #${data.id}`}
         </Text>
@@ -109,8 +130,36 @@ export function ExpeditionDetailScreen() {
           <Text style={styles.status}>{status}</Text>
         </View>
 
-        {/* TODO: seção de registros (diário/coleta) entra aqui quando a
-            integração com a feature de evidências (evidenceForm) estiver pronta */}
+        <Text style={styles.sectionTitle}>EQUIPE</Text>
+        {data.participantes.length > 0 ? (
+          <View style={styles.teamRow}>
+            {data.participantes.map(participante => (
+              <View key={participante.id} style={styles.memberTag}>
+                <Text style={styles.memberTagText}>{participante.nome}</Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.emptyTeamText}>Nenhum participante cadastrado.</Text>
+        )}
+
+        <Text style={styles.sectionTitle}>REGISTROS</Text>
+        {registros.loading && !registros.data ? (
+          <ActivityIndicator color={colors.accent} />
+        ) : registros.error && !registros.data ? (
+          <View>
+            <Text style={styles.emptyTeamText}>Não foi possível carregar os registros.</Text>
+            <TouchableOpacity onPress={() => registros.refresh()}>
+              <Text style={styles.retryLink}>Tentar novamente</Text>
+            </TouchableOpacity>
+          </View>
+        ) : registros.data?.length ? (
+          registros.data.map(registro => <RegistroCard key={registro.id} registro={registro} />)
+        ) : (
+          <Text style={styles.emptyTeamText}>
+            Nenhum registro ainda. Use o botão + para adicionar uma coleta ou diário.
+          </Text>
+        )}
       </ScrollView>
 
       {isMenuOpen && (
@@ -177,6 +226,7 @@ const styles = StyleSheet.create({
   },
   memberTagText: { color: colors.textPrimary, fontSize: 12 },
   emptyTeamText: { color: colors.textSecondary, fontSize: 13 },
+  retryLink: { color: colors.accent, fontSize: 13, marginTop: 6 },
   floatingButton: {
     position: 'absolute',
     bottom: 24,
