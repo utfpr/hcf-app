@@ -1,22 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Image, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View, Platform, PermissionsAndroid } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View, Platform, PermissionsAndroid } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { ArrowLeft, Check, ChevronDown, Clock, Image as ImageIcon, MapPin, Mic, Play, Pause, X } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-import { EvidenceMode } from '@/navigation/types';
+import { useRegistrarEvento } from '@/features/evento/hooks/useRegistrarEvento';
+import type { CriarEventoPayload, CriarEvidenciaPayload } from '@/features/evento/types';
+import { getUserFacingHttpError } from '@/libraries/http/httpError';
+import { EvidenceMode, RootStackParamList } from '@/navigation/types';
 import { colors } from '../../theme/colors';
 import { styles } from './styles';
 
 export interface FormularioProps {
+  // Todo evento pertence a uma expedição na API; sem ela o formulário não salva.
+  expedicaoId?: number;
   mode: EvidenceMode;
   latitude: number;
   longitude: number;
 }
 
-interface ImageAsset { uri: string; name: string; sizeLabel: string }
-interface AudioAsset { uri: string; durationLabel: string }
+interface ImageAsset { uri: string; name: string; type: string; sizeLabel: string; capturadoEm: string }
+interface AudioAsset { uri: string; durationLabel: string; capturadoEm: string }
 
 interface ModeConfig {
   title: string;
@@ -49,13 +55,14 @@ function formatFileSize(size?: number) {
 
 const audioRecorderPlayer = new AudioRecorderPlayer();
 
-export function Formulario({ mode, latitude, longitude }: FormularioProps) {
-  const navigation = useNavigation();
+export function Formulario({ expedicaoId, mode, latitude, longitude }: FormularioProps) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Formulario'>>();
   const config = MODE_CONFIG[mode];
   const isCollection = mode === 'collection';
 
-  const agora = new Date();
-  const dataHora = `${agora.toLocaleDateString('pt-BR')} ${agora.toLocaleTimeString('pt-BR')}`;
+  // Instante da captura: fixado na abertura do formulário para não mudar a cada render.
+  const [capturadoEm] = useState(() => new Date());
+  const dataHora = `${capturadoEm.toLocaleDateString('pt-BR')} ${capturadoEm.toLocaleTimeString('pt-BR')}`;
 
   const [family, setFamily] = useState<string | null>(null);
   const [isFamilyListVisible, setIsFamilyListVisible] = useState(false);
@@ -68,6 +75,9 @@ export function Formulario({ mode, latitude, longitude }: FormularioProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [recordTime, setRecordTime] = useState('00:00');
+
+  const { trigger: registrar, loading: isSaving } = useRegistrarEvento(expedicaoId);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -88,7 +98,9 @@ export function Formulario({ mode, latitude, longitude }: FormularioProps) {
     setImage({
       uri: asset.uri,
       name: asset.fileName ?? 'imagem_coleta.jpg',
+      type: asset.type ?? 'image/jpeg',
       sizeLabel: formatFileSize(asset.fileSize),
+      capturadoEm: new Date().toISOString(),
     });
   }
 
@@ -114,7 +126,7 @@ export function Formulario({ mode, latitude, longitude }: FormularioProps) {
       const resultUri = await audioRecorderPlayer.stopRecorder();
       audioRecorderPlayer.removeRecordBackListener();
       setIsRecording(false);
-      setAudio({ uri: resultUri, durationLabel: recordTime });
+      setAudio({ uri: resultUri, durationLabel: recordTime, capturadoEm: new Date().toISOString() });
     } else {
       const hasPermission = await checkPermissions();
       if (!hasPermission) return;
@@ -156,6 +168,69 @@ export function Formulario({ mode, latitude, longitude }: FormularioProps) {
     }
     setAudio(null);
     setRecordTime('00:00');
+  }
+
+  function buildEventoPayload(): CriarEventoPayload {
+    const observacoes = notes.trim() || null;
+    const base = { capturado_em: capturadoEm.toISOString(), latitude, longitude, observacoes };
+
+    if (!isCollection) return { ...base, tipo: 'DIARIO' };
+
+    return {
+      ...base,
+      tipo: 'COLETA',
+      coleta: { familia: family, nome_cientifico: scientificName.trim() || null },
+    };
+  }
+
+  function buildEvidencias(): CriarEvidenciaPayload[] {
+    const evidencias: CriarEvidenciaPayload[] = [];
+
+    if (image) {
+      evidencias.push({
+        arquivo: { uri: image.uri, name: image.name, type: image.type },
+        nome: image.name,
+        capturado_em: image.capturadoEm,
+      });
+    }
+
+    if (audio) {
+      // O gravador salva AAC em container MP4 (sound.mp4 no Android, sound.m4a no iOS).
+      const extensao = audio.uri.endsWith('.m4a') ? 'm4a' : 'mp4';
+      const nome = `audio_${Date.now()}.${extensao}`;
+      evidencias.push({
+        arquivo: { uri: audio.uri, name: nome, type: 'audio/mp4' },
+        nome,
+        capturado_em: audio.capturadoEm,
+      });
+    }
+
+    return evidencias;
+  }
+
+  async function handleSave() {
+    if (!expedicaoId || isSaving || isRecording) return;
+
+    if (isPlaying) {
+      await audioRecorderPlayer.stopPlayer();
+      audioRecorderPlayer.removePlayBackListener();
+      setIsPlaying(false);
+    }
+
+    setSaveError(null);
+    try {
+      await registrar(buildEventoPayload(), buildEvidencias());
+    } catch (error) {
+      setSaveError(getUserFacingHttpError(error, 'Não foi possível salvar o registro. Tente novamente.'));
+      return;
+    }
+
+    Alert.alert(
+      isCollection ? 'Coleta salva' : 'Diário salvo',
+      'O registro foi salvo na expedição.',
+      [{ text: 'OK', onPress: () => navigation.popTo('ExpeditionDetail', { expeditionId: String(expedicaoId) }) }],
+      { cancelable: false },
+    );
   }
 
   return (
@@ -292,9 +367,23 @@ export function Formulario({ mode, latitude, longitude }: FormularioProps) {
           </View>
         </ScrollView>
 
-        <TouchableOpacity style={styles.saveButton}>
-          <Check size={18} color={colors.onAccent} />
-          <Text style={styles.saveButtonText}>{config.saveLabel}</Text>
+        {!expedicaoId ? (
+          <Text style={styles.saveError}>Abra o formulário a partir de uma expedição para poder salvar.</Text>
+        ) : saveError ? (
+          <Text style={styles.saveError}>{saveError}</Text>
+        ) : null}
+
+        <TouchableOpacity
+          style={[styles.saveButton, (!expedicaoId || isSaving || isRecording) && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={!expedicaoId || isSaving || isRecording}
+        >
+          {isSaving ? (
+            <ActivityIndicator color={colors.onAccent} />
+          ) : (
+            <Check size={18} color={colors.onAccent} />
+          )}
+          <Text style={styles.saveButtonText}>{isSaving ? 'Salvando...' : config.saveLabel}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
