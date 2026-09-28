@@ -12,8 +12,15 @@ const Stack = createNativeStackNavigator<RootStackParamList>()
 
 function FormularioScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Formulario'>>()
-  const { mode, latitude, longitude } = route.params
-  return <Formulario mode={mode ?? 'collection'} latitude={latitude} longitude={longitude} />
+  const { expeditionId, mode, latitude, longitude } = route.params
+  return (
+    <Formulario
+      expedicaoId={expeditionId ? Number(expeditionId) : undefined}
+      mode={mode ?? 'collection'}
+      latitude={latitude}
+      longitude={longitude}
+    />
+  )
 }
 
 export function AppNavigator() {
