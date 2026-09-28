@@ -34,6 +34,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Precisamos da câmera para gravar vídeos das coletas em campo.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Precisamos do microfone para gravar o áudio dos vídeos e das notas de campo.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>UILaunchStoryboardName</key>
