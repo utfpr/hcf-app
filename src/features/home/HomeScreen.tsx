@@ -15,7 +15,7 @@ export function HomeScreen() {
       <Text style={styles.text}>Home</Text>
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('Formulario', { latitude: -25.4284, longitude: -49.2733 })}
+        onPress={() => navigation.navigate('Formulario', { expeditionId: '1', mode: 'collection', latitude: -25.4284, longitude: -49.2733 })}
       >
         <Text style={styles.buttonText}>Registrar coleta</Text>
       </TouchableOpacity>
