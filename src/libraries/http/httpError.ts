@@ -17,6 +17,22 @@ export function getHttpErrorMessage(error: unknown): string | undefined {
     return undefined
   }
 
-  const data = error.response?.data as { mensagem?: string } | undefined
-  return data?.mensagem
+  const data = error.response?.data as {
+    mensagem?: string
+    message?: string
+    error?: { message?: string }
+  } | undefined
+
+  return data?.mensagem ?? data?.message ?? data?.error?.message
+}
+
+export function getUserFacingHttpError(
+  error: unknown,
+  fallback = 'Não foi possível concluir a solicitação. Tente novamente.',
+): string {
+  if (isNetworkError(error)) {
+    return 'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.'
+  }
+
+  return getHttpErrorMessage(error) ?? fallback
 }

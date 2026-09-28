@@ -60,6 +60,20 @@ export class HttpClient {
     }
   }
 
+  // Envio multipart (upload de arquivos). O timeout é maior porque
+  // imagens, áudios e vídeos podem demorar para subir em campo.
+  async postForm<T>(url: string, data: FormData): Promise<HttpClientResponse<T>> {
+    const response = await this.axios.post<T>(url, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    })
+    return {
+      data: response.data,
+      status: response.status,
+      headers: response.headers as HttpHeaders,
+    }
+  }
+
   async put<T>(url: string, data: unknown): Promise<HttpClientResponse<T>> {
     const response = await this.axios.put<T>(url, data)
     return {

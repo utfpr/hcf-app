@@ -9,7 +9,7 @@ import { Navigation } from '@/navigation'
 function App() {
   return (
     <SafeAreaProvider>
-      <ContainerProvider baseUrl={API_BASE_URL}>
+        <ContainerProvider baseUrl={API_BASE_URL}>
         <AuthProvider>
           <Navigation />
         </AuthProvider>
