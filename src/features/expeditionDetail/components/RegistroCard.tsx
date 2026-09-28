@@ -1,5 +1,5 @@
 import { Image, StyleSheet, Text, View } from 'react-native'
-import { BookOpen, Clock, FileText, Leaf, MapPin, Mic } from 'lucide-react-native'
+import { BookOpen, Clock, FileText, Leaf, MapPin, Mic, Video } from 'lucide-react-native'
 
 import { API_BASE_URL } from '@env'
 import type { Evidencia, RegistroExpedicao } from '@/features/evento/types'
@@ -15,6 +15,12 @@ function arquivoUrl(evidencia: Evidencia): string {
 function formatDateTime(iso: string): string {
   const date = new Date(iso)
   return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+}
+
+function EvidenciaIcon({ mimeType }: { mimeType: string }) {
+  if (mimeType.startsWith('audio/')) return <Mic size={14} color={colors.textSecondary} />
+  if (mimeType.startsWith('video/')) return <Video size={14} color={colors.textSecondary} />
+  return <FileText size={14} color={colors.textSecondary} />
 }
 
 interface RegistroCardProps {
@@ -75,9 +81,7 @@ export function RegistroCard({ registro }: RegistroCardProps) {
 
       {outros.map(evidencia => (
         <View key={evidencia.id} style={styles.arquivo}>
-          {evidencia.mime_type.startsWith('audio/')
-            ? <Mic size={14} color={colors.textSecondary} />
-            : <FileText size={14} color={colors.textSecondary} />}
+          <EvidenciaIcon mimeType={evidencia.mime_type} />
           <Text style={styles.arquivoNome} numberOfLines={1}>{evidencia.nome}</Text>
         </View>
       ))}
