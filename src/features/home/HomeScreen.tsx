@@ -1,24 +1,43 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { useAuth } from '@/contexts/Auth/useAuth';
+import { getHttpErrorMessage, isNetworkError } from '@/libraries/http/httpError';
+
 import { ExpeditionCard } from './components/HistoryExpeditionCard';
 import { ActiveExpeditionsList } from './components/ActiveExpeditionsList';
-import { useActiveExpeditions } from './hooks/useActiveExpeditions';
-import { MOCK_HISTORY_EXPEDITIONS } from './expeditions-mock';
+import { useHomeExpeditions } from './hooks/useHomeExpeditions';
 import { Expedition } from './types';
+
+function getLoadErrorMessage(error: unknown): string {
+  if (isNetworkError(error)) {
+    return 'Sem conexão com o servidor. Verifique sua internet.';
+  }
+  return getHttpErrorMessage(error) ?? 'Não foi possível carregar as expedições.';
+}
 
 export function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const { expeditions: activeExpeditions, loading: loadingActive } =
-    useActiveExpeditions();
+  const { user } = useAuth();
+  const {
+    active,
+    history,
+    loading,
+    refreshing,
+    error,
+    refresh,
+  } = useHomeExpeditions();
 
   function handleMenuPress() {
     // TODO: navegar para a página do menu
@@ -50,8 +69,8 @@ export function HomeScreen() {
           <View style={styles.menuLine} />
         </Pressable>
 
-        <Text style={styles.userName}>
-          Dr. Silva
+        <Text style={styles.userName} numberOfLines={1}>
+          {user?.nome}
         </Text>
       </View>
 
@@ -63,14 +82,31 @@ export function HomeScreen() {
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={(
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            colors={['#1FAD5A']}
+            tintColor="#1FAD5A"
+          />
+        )}
       >
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{getLoadErrorMessage(error)}</Text>
+            <Pressable onPress={refresh} hitSlop={8}>
+              <Text style={styles.retryText}>Tentar novamente</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         <Text style={styles.sectionTitle}>
           Expedições Ativas
         </Text>
 
         <ActiveExpeditionsList
-          expeditions={activeExpeditions}
-          loading={loadingActive}
+          expeditions={active}
+          loading={loading}
           onPressExpedition={handleExpeditionPress}
         />
 
@@ -99,7 +135,17 @@ export function HomeScreen() {
 
           {isHistoryOpen && (
             <View style={styles.historyList}>
-              {MOCK_HISTORY_EXPEDITIONS.map(item => (
+              {loading && history.length === 0 ? (
+                <ActivityIndicator size="small" color="#1FAD5A" />
+              ) : null}
+
+              {!loading && history.length === 0 ? (
+                <Text style={styles.historyEmpty}>
+                  Nenhuma expedição finalizada.
+                </Text>
+              ) : null}
+
+              {history.map(item => (
                 <ExpeditionCard key={item.id} expedition={item} />
               ))}
             </View>
@@ -166,6 +212,8 @@ const styles = StyleSheet.create({
   },
 
   userName: {
+    flexShrink: 1,
+    marginLeft: 16,
     color: '#E8EFEA',
 
     fontSize: 16,
@@ -184,6 +232,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 24,
     paddingBottom: 96,
+  },
+
+  errorBox: {
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#7F1D1D',
+    backgroundColor: '#450A0A80',
+    gap: 6,
+  },
+
+  errorText: {
+    color: '#FCA5A5',
+    fontSize: 13,
+  },
+
+  retryText: {
+    color: '#E9EDE9',
+    fontSize: 13,
+    fontWeight: '700',
   },
 
   sectionTitle: {
@@ -240,6 +309,12 @@ const styles = StyleSheet.create({
     gap: 12,
     borderTopWidth: 1,
     borderTopColor: '#274936',
+  },
+
+  historyEmpty: {
+    color: '#819888',
+    fontSize: 14,
+    textAlign: 'center',
   },
 
   /* =========================
