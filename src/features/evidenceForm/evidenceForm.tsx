@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View, Platform, PermissionsAndroid } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
-import { ArrowLeft, Check, ChevronDown, Clock, Image as ImageIcon, MapPin, Mic, Play, Pause, X } from 'lucide-react-native';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { ArrowLeft, Check, ChevronDown, Clock, Image as ImageIcon, MapPin, Mic, Play, Pause, Video as VideoIcon, X } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +23,7 @@ export interface FormularioProps {
 
 interface ImageAsset { uri: string; name: string; type: string; sizeLabel: string; capturadoEm: string }
 interface AudioAsset { uri: string; durationLabel: string; capturadoEm: string }
+interface VideoAsset { uri: string; name: string; type: string; sizeLabel: string; durationLabel?: string; capturadoEm: string }
 
 interface ModeConfig {
   title: string;
@@ -53,6 +54,14 @@ function formatFileSize(size?: number) {
   return size < 1024 ? String(size) + ' B' : (size / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
+function formatDuration(seconds?: number) {
+  if (seconds === undefined) return undefined;
+  const total = Math.round(seconds);
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
 const audioRecorderPlayer = new AudioRecorderPlayer();
 
 export function Formulario({ expedicaoId, mode, latitude, longitude }: FormularioProps) {
@@ -75,6 +84,10 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [recordTime, setRecordTime] = useState('00:00');
+
+  const [video, setVideo] = useState<VideoAsset | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [isCapturingVideo, setIsCapturingVideo] = useState(false);
 
   const { trigger: registrar, loading: isSaving } = useRegistrarEvento(expedicaoId);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -102,6 +115,59 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
       sizeLabel: formatFileSize(asset.fileSize),
       capturadoEm: new Date().toISOString(),
     });
+  }
+
+  async function checkCameraPermission() {
+    if (Platform.OS === 'android') {
+      try {
+        const grants = await PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+        ]);
+        return grants['android.permission.CAMERA'] === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  async function handleAddVideo() {
+    setVideoError(null);
+
+    const hasPermission = await checkCameraPermission();
+    if (!hasPermission) {
+      setVideoError('Permissão de câmera negada. Habilite o acesso à câmera para gravar vídeos.');
+      return;
+    }
+
+    setIsCapturingVideo(true);
+    try {
+      const result = await launchCamera({ mediaType: 'video', videoQuality: 'high', saveToPhotos: false });
+      if (result.didCancel) return;
+
+      const asset = result.assets?.[0];
+      if (result.errorCode || !asset?.uri) {
+        setVideoError('Não foi possível gravar o vídeo. Tente novamente.');
+        return;
+      }
+
+      setVideo({
+        uri: asset.uri,
+        name: asset.fileName ?? `video_${Date.now()}.mp4`,
+        type: asset.type ?? 'video/mp4',
+        sizeLabel: formatFileSize(asset.fileSize),
+        durationLabel: formatDuration(asset.duration),
+        capturadoEm: new Date().toISOString(),
+      });
+    } finally {
+      setIsCapturingVideo(false);
+    }
+  }
+
+  function handleRemoveVideo() {
+    setVideo(null);
   }
 
   async function checkPermissions() {
@@ -205,11 +271,19 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
       });
     }
 
+    if (video) {
+      evidencias.push({
+        arquivo: { uri: video.uri, name: video.name, type: video.type },
+        nome: video.name,
+        capturado_em: video.capturadoEm,
+      });
+    }
+
     return evidencias;
   }
 
   async function handleSave() {
-    if (!expedicaoId || isSaving || isRecording) return;
+    if (!expedicaoId || isSaving || isRecording || isCapturingVideo) return;
 
     if (isPlaying) {
       await audioRecorderPlayer.stopPlayer();
@@ -331,9 +405,23 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
                   {isRecording ? `Gravando... ${recordTime}` : 'Áudio'}
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.mediaButton}
+                onPress={handleAddVideo}
+                disabled={isCapturingVideo}
+              >
+                {isCapturingVideo ? (
+                  <ActivityIndicator color={colors.onAccent} size="small" />
+                ) : (
+                  <VideoIcon size={16} color={colors.onAccent} />
+                )}
+                <Text style={styles.mediaButtonText}>Vídeo</Text>
+              </TouchableOpacity>
             </View>
 
             {imageError ? <Text style={styles.mediaError}>{imageError}</Text> : null}
+            {videoError ? <Text style={styles.mediaError}>{videoError}</Text> : null}
 
             {image && (
               <View style={styles.previewRow}>
@@ -364,6 +452,23 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
                 </TouchableOpacity>
               </View>
             )}
+
+            {video && (
+              <View style={styles.previewRow}>
+                <View style={styles.previewThumb}>
+                  <VideoIcon size={18} color={colors.textSecondary} />
+                </View>
+                <View style={styles.previewInfo}>
+                  <Text style={styles.previewName} numberOfLines={1}>{video.name}</Text>
+                  <Text style={styles.previewMeta}>
+                    {video.durationLabel ? `${video.durationLabel} • ${video.sizeLabel}` : video.sizeLabel}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={handleRemoveVideo} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <X size={16} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </ScrollView>
 
@@ -374,9 +479,9 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
         ) : null}
 
         <TouchableOpacity
-          style={[styles.saveButton, (!expedicaoId || isSaving || isRecording) && styles.saveButtonDisabled]}
+          style={[styles.saveButton, (!expedicaoId || isSaving || isRecording || isCapturingVideo) && styles.saveButtonDisabled]}
           onPress={handleSave}
-          disabled={!expedicaoId || isSaving || isRecording}
+          disabled={!expedicaoId || isSaving || isRecording || isCapturingVideo}
         >
           {isSaving ? (
             <ActivityIndicator color={colors.onAccent} />
