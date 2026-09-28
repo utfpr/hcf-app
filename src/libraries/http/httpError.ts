@@ -12,11 +12,26 @@ export function getHttpStatus(error: unknown): number | undefined {
   return error.response?.status
 }
 
-export function getHttpErrorMessage(error: unknown): string | undefined {
+interface ApiErrorBody {
+  error?: {
+    code?: number
+    message?: string
+  }
+}
+
+function getApiError(error: unknown) {
   if (!axios.isAxiosError(error)) {
     return undefined
   }
 
-  const data = error.response?.data as { mensagem?: string } | undefined
-  return data?.mensagem
+  const data = error.response?.data as ApiErrorBody | undefined
+  return data?.error
+}
+
+export function getHttpErrorCode(error: unknown): number | undefined {
+  return getApiError(error)?.code
+}
+
+export function getHttpErrorMessage(error: unknown): string | undefined {
+  return getApiError(error)?.message
 }
