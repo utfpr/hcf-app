@@ -211,6 +211,16 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveError: {
+    color: colors.danger,
+    fontSize: 12,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
   saveButtonText: {
     color: colors.onAccent,
     fontSize: 15,
