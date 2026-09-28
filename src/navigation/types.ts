@@ -8,8 +8,8 @@ export type RootStackParamList = {
   ExpeditionList: undefined
   ExpeditionDetail: { expeditionId: string }
   Formulario: {
-    expeditionId: string
-    mode: EvidenceMode
+    expeditionId?: string // Opcional (necessário na ExpeditionDetail, mas opcional na Home)
+    mode?: EvidenceMode   // Opcional
     latitude: number
     longitude: number
   }

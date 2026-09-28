@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import {
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
@@ -9,72 +10,86 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { Calendar, ChevronDown, Menu, MapPin, Plus } from 'lucide-react-native'
+import { Calendar, Menu, MapPin, Plus, ChevronLeft, ChevronRight } from 'lucide-react-native'
 
 import { RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
 
+// Importando os hooks e utils reais que o Bruno e o Eduardo fizeram!
+import { useExpeditions } from '../expedition/hooks/useExpeditions'
+import { ExpedicaoListItem } from '../expedition/types'
+import { formatDate, getStatus } from '../expedition/utils'
+
 type ExpeditionListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionList'>
-
-type ExpeditionStatus = 'Em andamento' | 'Planejada' | 'Concluída'
-
-interface Expedition {
-  id: string
-  name: string
-  date: string
-  location: string
-  status: ExpeditionStatus
-}
-
-type ListEntry =
-  | { type: 'title'; id: string; label: string }
-  | { type: 'row'; id: string; cards: [Expedition, Expedition?] }
-  | { type: 'toggle'; id: string }
-
-const activeExpeditions: Expedition[] = [
-  { id: '1', name: 'Serra da Canastra', date: '15/02/2026', location: 'MG – Brasil', status: 'Em andamento' },
-  { id: '2', name: 'Pantanal Norte', date: '03/01/2026', location: 'MT – Brasil', status: 'Em andamento' },
-  { id: '3', name: 'Chapada Diamantina', date: '20/12/2025', location: 'BA – Brasil', status: 'Planejada' },
-  { id: '4', name: 'Ilha do Cardoso', date: '10/11/2025', location: 'SP – Brasil', status: 'Em andamento' },
-]
-
-const historyExpeditions: Expedition[] = [
-  { id: '5', name: 'Mata do Paraíso', date: '05/08/2025', location: 'MG – Brasil', status: 'Concluída' },
-  { id: '6', name: 'Restinga de Jurubatiba', date: '22/03/2025', location: 'RJ – Brasil', status: 'Concluída' },
-]
-
-function chunkIntoRows(expeditions: Expedition[], prefix: string): ListEntry[] {
-  const rows: ListEntry[] = []
-  for (let i = 0; i < expeditions.length; i += 2) {
-    rows.push({
-      type: 'row',
-      id: `${prefix}-row-${i}`,
-      cards: [expeditions[i], expeditions[i + 1]],
-    })
-  }
-  return rows
-}
 
 export function ExpeditionListScreen() {
   const navigation = useNavigation<ExpeditionListNavigationProp>()
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
 
-  const listData = useMemo<ListEntry[]>(() => {
-    const entries: ListEntry[] = [
-      { type: 'title', id: 'title', label: 'Expedições Ativas' },
-      ...chunkIntoRows(activeExpeditions, 'active'),
-      { type: 'toggle', id: 'toggle' },
-    ]
+  // 1. Chamando o hook do backend!
+  const { data, error, loading, refresh, page, hasNextPage, nextPage, previousPage } = useExpeditions()
 
-    if (isHistoryOpen) {
-      entries.push(...chunkIntoRows(historyExpeditions, 'history'))
+  // 2. Componentes de Loading e Erro
+  function renderContent() {
+    if (loading && !data) {
+      return (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={colors.accent} />
+        </View>
+      )
     }
 
-    return entries
-  }, [isHistoryOpen])
+    if (error && !data) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.emptyText}>Não foi possível carregar as expedições.</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => refresh()}>
+            <Text style={styles.retryButtonText}>Tentar Novamente</Text>
+          </TouchableOpacity>
+        </View>
+      )
+    }
 
-  function handleCardPress(expeditionId: string) {
-    navigation.navigate('ExpeditionDetail', { expeditionId })
+    if (data?.itens.length === 0) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.emptyText}>Nenhuma expedição encontrada.</Text>
+        </View>
+      )
+    }
+
+    return (
+      <FlatList
+        data={data?.itens}
+        keyExtractor={item => String(item.id)}
+        contentContainerStyle={styles.content}
+        numColumns={2} // Isso substitui aquela função complexa 'chunkIntoRows' do mock!
+        columnWrapperStyle={styles.row}
+        ListHeaderComponent={<Text style={styles.title}>Expedições</Text>}
+        refreshing={loading}
+        onRefresh={refresh}
+        renderItem={({ item }) => (
+          <ExpeditionCard
+            expedition={item}
+            // 5. Conectando a navegação para a tela de detalhes que você já arrumou!
+            onPress={() => navigation.navigate('ExpeditionDetail', { expeditionId: String(item.id) })}
+          />
+        )}
+        // 4. Controles de paginação no final da lista
+        ListFooterComponent={
+          data && data.total > 0 ? (
+            <View style={styles.paginationContainer}>
+              <TouchableOpacity disabled={page === 1} onPress={previousPage} style={[styles.pageButton, page === 1 && styles.pageButtonDisabled]}>
+                <ChevronLeft color={page === 1 ? colors.textSecondary : colors.onAccent} />
+              </TouchableOpacity>
+              <Text style={styles.pageText}>Página {page}</Text>
+              <TouchableOpacity disabled={!hasNextPage} onPress={nextPage} style={[styles.pageButton, !hasNextPage && styles.pageButtonDisabled]}>
+                <ChevronRight color={!hasNextPage ? colors.textSecondary : colors.onAccent} />
+              </TouchableOpacity>
+            </View>
+          ) : null
+        }
+      />
+    )
   }
 
   return (
@@ -86,84 +101,49 @@ export function ExpeditionListScreen() {
         <Text style={styles.userName}>Dr. Silva</Text>
       </View>
 
-      <FlatList
-        data={listData}
-        keyExtractor={entry => entry.id}
-        contentContainerStyle={styles.content}
-        initialNumToRender={8}
-        maxToRenderPerBatch={8}
-        windowSize={7}
-        removeClippedSubviews
-        renderItem={({ item }) => {
-          if (item.type === 'title') {
-            return <Text style={styles.title}>{item.label}</Text>
-          }
+      {renderContent()}
 
-          if (item.type === 'toggle') {
-            return (
-              <TouchableOpacity
-                style={styles.historyToggle}
-                onPress={() => setIsHistoryOpen(prev => !prev)}
-                activeOpacity={0.8}>
-                <Text style={styles.historyTitle}>Histórico de Expedições</Text>
-                <ChevronDown
-                  size={20}
-                  color={colors.textPrimary}
-                  style={isHistoryOpen ? styles.chevronOpen : undefined}
-                />
-              </TouchableOpacity>
-            )
-          }
-
-          return (
-            <View style={styles.row}>
-              <ExpeditionCard
-                expedition={item.cards[0]}
-                onPress={handleCardPress}
-              />
-              {item.cards[1] ? (
-                <ExpeditionCard
-                  expedition={item.cards[1]}
-                  onPress={handleCardPress}
-                />
-              ) : (
-                <View style={styles.cardPlaceholder} />
-              )}
-            </View>
-          )
-        }}
-      />
-
+      <TouchableOpacity
+        style={styles.fab}
+        activeOpacity={0.85}
+        // Aqui também já leva pro form para criar do zero (passando apenas a coordenada por enquanto)
+        onPress={() => navigation.navigate('Formulario', { latitude: -25.4284, longitude: -49.2733 })}
+      >
+        <Plus size={28} color={colors.onAccent} />
+      </TouchableOpacity>
     </SafeAreaView>
   )
 }
 
 interface ExpeditionCardProps {
-  expedition: Expedition
-  onPress: (expeditionId: string) => void
+  expedition: ExpedicaoListItem
+  onPress: () => void
 }
 
 function ExpeditionCard({ expedition, onPress }: ExpeditionCardProps) {
+  // 3. Tratando os dados reais
+  const status = getStatus(expedition.data_inicio, expedition.data_fim)
+  const title = expedition.descricao ?? `Expedição #${expedition.id}`
+
   return (
-    <TouchableOpacity
-      style={styles.card}
-      activeOpacity={0.8}
-      onPress={() => onPress(expedition.id)}
-    >
-      <Text style={styles.cardName}>{expedition.name}</Text>
+    <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
+      <Text style={styles.cardName} numberOfLines={2}>{title}</Text>
 
       <View style={styles.cardRow}>
         <Calendar size={13} color={colors.textSecondary} />
-        <Text style={styles.cardRowText}>{expedition.date}</Text>
+        <Text style={styles.cardRowText}>{formatDate(expedition.data_inicio)}</Text>
       </View>
 
       <View style={styles.cardRow}>
         <MapPin size={13} color={colors.textSecondary} />
-        <Text style={styles.cardRowText}>{expedition.location}</Text>
+        <Text style={styles.cardRowText} numberOfLines={1}>
+          {/* Como a API só retorna o ID da cidade, deixamos um fallback por enquanto */}
+          Cidade ID: {expedition.cidade_id}
+        </Text>
       </View>
 
       <View style={styles.badge}>
-        <Text style={styles.badgeText}>{expedition.status}</Text>
+        <Text style={styles.badgeText}>{status}</Text>
       </View>
     </TouchableOpacity>
   )
@@ -197,7 +177,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   row: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
   },
   card: {
@@ -208,9 +187,6 @@ const styles = StyleSheet.create({
     borderColor: colors.borderAlt,
     padding: 12,
     marginBottom: 12,
-  },
-  cardPlaceholder: {
-    width: '48%',
   },
   cardName: {
     color: colors.textPrimary,
@@ -240,27 +216,6 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 10,
   },
-  historyToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.cardBackground,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    marginTop: 4,
-    marginBottom: 12,
-  },
-  historyTitle: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  chevronOpen: {
-    transform: [{ rotate: '180deg' }],
-  },
   fab: {
     position: 'absolute',
     bottom: 28,
@@ -271,5 +226,49 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+  },
+  retryButtonText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 40,
+    gap: 16,
+  },
+  pageButton: {
+    backgroundColor: colors.surfaceAlt,
+    padding: 8,
+    borderRadius: 8,
+  },
+  pageButtonDisabled: {
+    opacity: 0.5,
+  },
+  pageText: {
+    color: colors.textPrimary,
+    fontSize: 14,
   },
 })
