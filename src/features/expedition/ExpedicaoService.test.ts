@@ -56,7 +56,7 @@ describe('ExpedicaoService', () => {
 
 describe('getUserFacingHttpError', () => {
   it('uses the API message and gives a useful offline message', () => {
-    expect(getUserFacingHttpError({ isAxiosError: true, response: { data: { message: 'Expedição não encontrada' } } })).toBe('Expedição não encontrada')
+    expect(getUserFacingHttpError({ isAxiosError: true, response: { data: { error: { message: 'Expedição não encontrada' } } } })).toBe('Expedição não encontrada')
     expect(getUserFacingHttpError({ isAxiosError: true })).toBe('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.')
   })
 })

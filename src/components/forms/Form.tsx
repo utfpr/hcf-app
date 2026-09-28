@@ -6,6 +6,7 @@ import {
   FieldPath,
   FieldValues,
   FormProvider,
+  Mode,
   Resolver,
   useForm,
   useFormContext,
@@ -18,6 +19,8 @@ export interface FormProps<TFieldValues extends FieldValues> {
   schema: z.ZodType<TFieldValues>
   defaultValues: DefaultValues<TFieldValues>
   onSubmit: (data: TFieldValues) => void | Promise<void>
+  /** Quando validar os campos. `onTouched`: ao sair do campo e, depois disso, a cada digitação */
+  mode?: Mode
   children: ReactNode
 }
 
@@ -25,11 +28,13 @@ export function Form<TFieldValues extends FieldValues>({
   schema,
   defaultValues,
   onSubmit,
+  mode = 'onSubmit',
   children,
 }: FormProps<TFieldValues>) {
   const methods = useForm<TFieldValues>({
     resolver: zodResolver(schema as never) as Resolver<TFieldValues>,
     defaultValues,
+    mode,
   })
 
   return (

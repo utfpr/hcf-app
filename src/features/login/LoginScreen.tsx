@@ -42,7 +42,8 @@ export function LoginScreen() {
           <Form
             schema={login.schema}
             defaultValues={login.defaultValues}
-            onSubmit={login.submit}>
+            onSubmit={login.submit}
+            mode="onTouched">
             <FormField<LoginFormValues> name="email">
               {({ value, onChange, onBlur, error }) => (
                 <TextInput
@@ -110,7 +111,7 @@ function LoginSubmitButton({ loading }: { loading: boolean }) {
   const submit = useFormSubmit()
 
   return (
-    <Button title="Entrar" loading={loading} onPress={submit} />
+    <Button title="Entrar" icon="login" loading={loading} onPress={submit} />
   )
 }
 
