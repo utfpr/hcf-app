@@ -21,6 +21,9 @@ import { useRegistrosExpedicao } from '../evento/hooks/useRegistrosExpedicao'
 import { useExpedition } from '../expedition/hooks/useExpedition'
 import { formatDate, getStatus } from '../expedition/utils'
 
+import type { Evidencia } from '../evento/types'
+
+import { EvidenciaViewer } from './components/EvidenciaViewer'
 import { RegistroCard } from './components/RegistroCard'
 
 type ExpeditionDetailRouteProp = RouteProp<RootStackParamList, 'ExpeditionDetail'>
@@ -34,6 +37,14 @@ export function ExpeditionDetailScreen() {
   const { expeditionId } = route.params
 
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [evidenciaAberta, setEvidenciaAberta] = useState<Evidencia | null>(null)
+  const [audioAtivoId, setAudioAtivoId] = useState<number | null>(null)
+
+  function handleOpenEvidencia(evidencia: Evidencia) {
+    // Para o áudio que estiver tocando antes de abrir a foto/vídeo
+    setAudioAtivoId(null)
+    setEvidenciaAberta(evidencia)
+  }
 
   const { data, error, loading, refresh } = useExpedition(Number(expeditionId))
   const registros = useRegistrosExpedicao(Number(expeditionId))
@@ -45,6 +56,7 @@ export function ExpeditionDetailScreen() {
 
   function handleOpenForm(mode: EvidenceMode) {
     setIsMenuOpen(false)
+    setAudioAtivoId(null)
     navigation.navigate('Formulario', { expeditionId, mode, ...MOCK_COORDS })
   }
 
@@ -154,7 +166,15 @@ export function ExpeditionDetailScreen() {
             </TouchableOpacity>
           </View>
         ) : registros.data?.length ? (
-          registros.data.map(registro => <RegistroCard key={registro.id} registro={registro} />)
+          registros.data.map(registro => (
+            <RegistroCard
+              key={registro.id}
+              registro={registro}
+              onOpenEvidencia={handleOpenEvidencia}
+              audioAtivoId={audioAtivoId}
+              onActivateAudio={setAudioAtivoId}
+            />
+          ))
         ) : (
           <Text style={styles.emptyTeamText}>
             Nenhum registro ainda. Use o botão + para adicionar uma coleta ou diário.
@@ -178,6 +198,8 @@ export function ExpeditionDetailScreen() {
       >
         <Text style={styles.floatingButtonText}>+</Text>
       </TouchableOpacity>
+
+      <EvidenciaViewer evidencia={evidenciaAberta} onClose={() => setEvidenciaAberta(null)} />
     </SafeAreaView>
   )
 }
