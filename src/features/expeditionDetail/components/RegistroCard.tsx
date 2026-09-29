@@ -1,36 +1,35 @@
-import { Image, StyleSheet, Text, View } from 'react-native'
-import { BookOpen, Clock, FileText, Leaf, MapPin, Mic, Video } from 'lucide-react-native'
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { BookOpen, Clock, FileText, Leaf, MapPin, Play, Video } from 'lucide-react-native'
 
-import { API_BASE_URL } from '@env'
 import type { Evidencia, RegistroExpedicao } from '@/features/evento/types'
+import { arquivoUrl, tipoEvidencia } from '@/features/evento/utils'
 import { colors } from '@/theme/colors'
 
-// A API serve os arquivos em /uploads na raiz do servidor, fora do prefixo da API (ex.: /api)
-const API_ORIGIN = API_BASE_URL.match(/^https?:\/\/[^/]+/)?.[0] ?? ''
-
-function arquivoUrl(evidencia: Evidencia): string {
-  return `${API_ORIGIN}${evidencia.url}`
-}
+import { AudioPlayer } from './AudioPlayer'
 
 function formatDateTime(iso: string): string {
   const date = new Date(iso)
   return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
 }
 
-function EvidenciaIcon({ mimeType }: { mimeType: string }) {
-  if (mimeType.startsWith('audio/')) return <Mic size={14} color={colors.textSecondary} />
-  if (mimeType.startsWith('video/')) return <Video size={14} color={colors.textSecondary} />
+function EvidenciaIcon({ evidencia }: { evidencia: Evidencia }) {
+  const tipo = tipoEvidencia(evidencia)
+  if (tipo === 'video') return <Video size={14} color={colors.textSecondary} />
   return <FileText size={14} color={colors.textSecondary} />
 }
 
 interface RegistroCardProps {
   registro: RegistroExpedicao
+  onOpenEvidencia: (evidencia: Evidencia) => void
+  audioAtivoId: number | null
+  onActivateAudio: (evidenciaId: number) => void
 }
 
-export function RegistroCard({ registro }: RegistroCardProps) {
+export function RegistroCard({ registro, onOpenEvidencia, audioAtivoId, onActivateAudio }: RegistroCardProps) {
   const isColeta = registro.tipo === 'COLETA'
-  const imagens = registro.evidencias.filter(e => e.mime_type.startsWith('image/'))
-  const outros = registro.evidencias.filter(e => !e.mime_type.startsWith('image/'))
+  const imagens = registro.evidencias.filter(e => tipoEvidencia(e) === 'imagem')
+  const audios = registro.evidencias.filter(e => tipoEvidencia(e) === 'audio')
+  const outros = registro.evidencias.filter(e => !['imagem', 'audio'].includes(tipoEvidencia(e)))
 
   return (
     <View style={styles.card}>
@@ -74,16 +73,33 @@ export function RegistroCard({ registro }: RegistroCardProps) {
       {imagens.length > 0 ? (
         <View style={styles.imagens}>
           {imagens.map(imagem => (
-            <Image key={imagem.id} source={{ uri: arquivoUrl(imagem) }} style={styles.imagem} />
+            <TouchableOpacity key={imagem.id} onPress={() => onOpenEvidencia(imagem)} activeOpacity={0.8}>
+              <Image source={{ uri: arquivoUrl(imagem) }} style={styles.imagem} />
+            </TouchableOpacity>
           ))}
         </View>
       ) : null}
 
+      {audios.map(audio => (
+        <AudioPlayer
+          key={audio.id}
+          evidencia={audio}
+          ativo={audioAtivoId === audio.id}
+          onActivate={() => onActivateAudio(audio.id)}
+        />
+      ))}
+
       {outros.map(evidencia => (
-        <View key={evidencia.id} style={styles.arquivo}>
-          <EvidenciaIcon mimeType={evidencia.mime_type} />
+        <TouchableOpacity
+          key={evidencia.id}
+          style={styles.arquivo}
+          onPress={() => onOpenEvidencia(evidencia)}
+          activeOpacity={0.8}
+        >
+          <EvidenciaIcon evidencia={evidencia} />
           <Text style={styles.arquivoNome} numberOfLines={1}>{evidencia.nome}</Text>
-        </View>
+          <Play size={14} color={colors.accent} />
+        </TouchableOpacity>
       ))}
     </View>
   )
