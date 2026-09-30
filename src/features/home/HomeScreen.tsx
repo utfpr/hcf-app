@@ -165,21 +165,6 @@ export function HomeScreen() {
           )}
         </View>
       </ScrollView>
-
-      {/* =========================
-          BOTÃO +
-      ========================== */}
-
-      <Pressable
-        style={styles.addButton}
-        onPress={handleAddPress}
-        hitSlop={8}
-      >
-        <Text style={styles.addButtonText}>
-          +
-        </Text>
-      </Pressable>
-
     </View>
   );
 }
