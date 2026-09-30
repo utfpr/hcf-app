@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View, Platform, PermissionsAndroid } from 'react-native';
-import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-import { ArrowLeft, Check, ChevronDown, Clock, Image as ImageIcon, MapPin, Mic, Play, Pause, Video as VideoIcon, X } from 'lucide-react-native';
+import { launchCamera } from 'react-native-image-picker';
+import DocumentPicker, { types } from '@react-native-documents/picker';
+import { ArrowLeft, Check, ChevronDown, Clock, Camera as CameraIcon, MapPin, Mic, Play, Pause, Video as VideoIcon, Upload as UploadIcon, X } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,6 +25,7 @@ export interface FormularioProps {
 interface ImageAsset { uri: string; name: string; type: string; sizeLabel: string; capturadoEm: string }
 interface AudioAsset { uri: string; durationLabel: string; capturadoEm: string }
 interface VideoAsset { uri: string; name: string; type: string; sizeLabel: string; durationLabel?: string; capturadoEm: string }
+interface UploadAsset { uri: string; name: string; type: string; sizeLabel: string; capturadoEm: string}
 
 interface ModeConfig {
   title: string;
@@ -77,17 +79,17 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
   const [isFamilyListVisible, setIsFamilyListVisible] = useState(false);
   const [scientificName, setScientificName] = useState('');
   const [notes, setNotes] = useState('');
+
   const [image, setImage] = useState<ImageAsset | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
-
   const [audio, setAudio] = useState<AudioAsset | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [recordTime, setRecordTime] = useState('00:00');
-
   const [video, setVideo] = useState<VideoAsset | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isCapturingVideo, setIsCapturingVideo] = useState(false);
+  const [uploads, setUploads] = useState<UploadAsset[]>({});
 
   const { trigger: registrar, loading: isSaving } = useRegistrarEvento(expedicaoId);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -99,398 +101,536 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
     };
   }, []);
 
-  async function handleAddImage() {
-    setImageError(null);
-    const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
-    if (result.didCancel) return;
-    const asset = result.assets?.[0];
-    if (result.errorCode || !asset?.uri) {
-      setImageError('Não foi possível selecionar a imagem. Tente novamente.');
-      return;
-    }
-    setImage({
-      uri: asset.uri,
-      name: asset.fileName ?? 'imagem_coleta.jpg',
-      type: asset.type ?? 'image/jpeg',
-      sizeLabel: formatFileSize(asset.fileSize),
-      capturadoEm: new Date().toISOString(),
-    });
-  }
-
   async function checkCameraPermission() {
-    if (Platform.OS === 'android') {
-      try {
-        const grants = await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.CAMERA,
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-        ]);
-        return grants['android.permission.CAMERA'] === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.warn(err);
-        return false;
+      if (Platform.OS === 'android') {
+        try {
+          const grants = await PermissionsAndroid.requestMultiple([
+            PermissionsAndroid.PERMISSIONS.CAMERA,
+            PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          ]);
+          return grants['android.permission.CAMERA'] === PermissionsAndroid.RESULTS.GRANTED;
+        } catch (err) {
+          console.warn(err);
+          return false;
+        }
       }
-    }
-    return true;
-  }
-
-  async function handleAddVideo() {
-    setVideoError(null);
-
-    const hasPermission = await checkCameraPermission();
-    if (!hasPermission) {
-      setVideoError('Permissão de câmera negada. Habilite o acesso à câmera para gravar vídeos.');
-      return;
+      return true;
     }
 
-    setIsCapturingVideo(true);
-    try {
-      const result = await launchCamera({ mediaType: 'video', videoQuality: 'high', saveToPhotos: false });
-      if (result.didCancel) return;
-
-      const asset = result.assets?.[0];
-      if (result.errorCode || !asset?.uri) {
-        setVideoError('Não foi possível gravar o vídeo. Tente novamente.');
+    async function handleTakePhoto() {
+      setImageError(null);
+      const hasPermission = await checkCameraPermission();
+      if (!hasPermission) {
+        setImageError('Permissão de câmera negada.');
         return;
       }
 
-      setVideo({
+      const result = await launchCamera({ mediaType: 'photo', saveToPhotos: true });
+      if (result.didCancel) return;
+      const asset = result.assets?.[0];
+      if (result.errorCode || !asset?.uri) {
+        setImageError('Não foi possível capturar a imagem.');
+        return;
+      }
+      setImage({
         uri: asset.uri,
-        name: asset.fileName ?? `video_${Date.now()}.mp4`,
-        type: asset.type ?? 'video/mp4',
+        name: asset.fileName ?? `foto_${Date.now()}.jpg`,
+        type: asset.type ?? 'image/jpeg',
         sizeLabel: formatFileSize(asset.fileSize),
-        durationLabel: formatDuration(asset.duration),
         capturadoEm: new Date().toISOString(),
       });
-    } finally {
-      setIsCapturingVideo(false);
     }
-  }
 
-  function handleRemoveVideo() {
-    setVideo(null);
-  }
+    async function handleAddVideo() {
+      setVideoError(null);
+      const hasPermission = await checkCameraPermission();
+      if (!hasPermission) {
+        setVideoError('Permissão de câmera negada.');
+        return;
+      }
 
-  async function checkPermissions() {
-    if (Platform.OS === 'android') {
+      setIsCapturingVideo(true);
       try {
-        const grants = await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-        ]);
-        return grants['android.permission.RECORD_AUDIO'] === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.warn(err);
-        return false;
+        const result = await launchCamera({ mediaType: 'video', videoQuality: 'high', saveToPhotos: false });
+        if (result.didCancel) return;
+        const asset = result.assets?.[0];
+        if (result.errorCode || !asset?.uri) {
+          setVideoError('Não foi possível gravar o vídeo.');
+          return;
+        }
+        setVideo({
+          uri: asset.uri,
+          name: asset.fileName ?? `video_${Date.now()}.mp4`,
+          type: asset.type ?? 'video/mp4',
+          sizeLabel: formatFileSize(asset.fileSize),
+          durationLabel: formatDuration(asset.duration),
+          capturadoEm: new Date().toISOString(),
+        });
+      } finally {
+        setIsCapturingVideo(false);
       }
     }
-    return true;
-  }
 
-  async function handleToggleRecord() {
-    if (isRecording) {
-      const resultUri = await audioRecorderPlayer.stopRecorder();
-      audioRecorderPlayer.removeRecordBackListener();
-      setIsRecording(false);
-      setAudio({ uri: resultUri, durationLabel: recordTime, capturadoEm: new Date().toISOString() });
-    } else {
-      const hasPermission = await checkPermissions();
-      if (!hasPermission) return;
-
-      setIsRecording(true);
-      setRecordTime('00:00');
-
-      await audioRecorderPlayer.startRecorder();
-      audioRecorderPlayer.addRecordBackListener((e) => {
-        const time = audioRecorderPlayer.mmssss(Math.floor(e.currentPosition));
-        setRecordTime(time.substring(0, 5));
-      });
-    }
-  }
-
-  async function handleTogglePlay() {
-    if (!audio?.uri) return;
-
-    if (isPlaying) {
-      await audioRecorderPlayer.stopPlayer();
-      audioRecorderPlayer.removePlayBackListener();
-      setIsPlaying(false);
-    } else {
-      setIsPlaying(true);
-      await audioRecorderPlayer.startPlayer(audio.uri);
-      audioRecorderPlayer.addPlayBackListener((e) => {
-        if (e.currentPosition >= e.duration) {
-          audioRecorderPlayer.stopPlayer();
-          setIsPlaying(false);
+    async function checkAudioPermissions() {
+      if (Platform.OS === 'android') {
+        try {
+          const grants = await PermissionsAndroid.requestMultiple([
+            PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+            PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          ]);
+          return grants['android.permission.RECORD_AUDIO'] === PermissionsAndroid.RESULTS.GRANTED;
+        } catch (err) {
+          console.warn(err);
+          return false;
         }
-      });
-    }
-  }
-
-  function handleRemoveAudio() {
-    if (isPlaying) {
-      audioRecorderPlayer.stopPlayer();
-      setIsPlaying(false);
-    }
-    setAudio(null);
-    setRecordTime('00:00');
-  }
-
-  function buildEventoPayload(): CriarEventoPayload {
-    const observacoes = notes.trim() || null;
-    const base = { capturado_em: capturadoEm.toISOString(), latitude, longitude, observacoes };
-
-    if (!isCollection) return { ...base, tipo: 'DIARIO' };
-
-    return {
-      ...base,
-      tipo: 'COLETA',
-      coleta: { familia: family, nome_cientifico: scientificName.trim() || null },
-    };
-  }
-
-  function buildEvidencias(): CriarEvidenciaPayload[] {
-    const evidencias: CriarEvidenciaPayload[] = [];
-
-    if (image) {
-      evidencias.push({
-        arquivo: { uri: image.uri, name: image.name, type: image.type },
-        nome: image.name,
-        capturado_em: image.capturadoEm,
-      });
+      }
+      return true;
     }
 
-    if (audio) {
-      // O gravador salva AAC em container MP4 (sound.mp4 no Android, sound.m4a no iOS).
-      const extensao = audio.uri.endsWith('.m4a') ? 'm4a' : 'mp4';
-      const nome = `audio_${Date.now()}.${extensao}`;
-      evidencias.push({
-        arquivo: { uri: audio.uri, name: nome, type: 'audio/mp4' },
-        nome,
-        capturado_em: audio.capturadoEm,
-      });
+    async function handleToggleRecord() {
+      if (isRecording) {
+        const resultUri = await audioRecorderPlayer.stopRecorder();
+        audioRecorderPlayer.removeRecordBackListener();
+        setIsRecording(false);
+        setAudio({ uri: resultUri, durationLabel: recordTime, capturadoEm: new Date().toISOString() });
+      } else {
+        const hasPermission = await checkAudioPermissions();
+        if (!hasPermission) return;
+        setIsRecording(true);
+        setRecordTime('00:00');
+        await audioRecorderPlayer.startRecorder();
+        audioRecorderPlayer.addRecordBackListener((e) => {
+          const time = audioRecorderPlayer.mmssss(Math.floor(e.currentPosition));
+          setRecordTime(time.substring(0, 5));
+        });
+      }
     }
 
-    if (video) {
-      evidencias.push({
-        arquivo: { uri: video.uri, name: video.name, type: video.type },
-        nome: video.name,
-        capturado_em: video.capturadoEm,
-      });
+    async function handleTogglePlay() {
+      if (!audio?.uri) return;
+      if (isPlaying) {
+        await audioRecorderPlayer.stopPlayer();
+        audioRecorderPlayer.removePlayBackListener();
+        setIsPlaying(false);
+      } else {
+        setIsPlaying(true);
+        await audioRecorderPlayer.startPlayer(audio.uri);
+        audioRecorderPlayer.addPlayBackListener((e) => {
+          if (e.currentPosition >= e.duration) {
+            audioRecorderPlayer.stopPlayer();
+            setIsPlaying(false);
+          }
+        });
+      }
     }
 
-    return evidencias;
-  }
+    async function handleUploadMedia() {
+      try {
+        const results = await DocumentPicker.pick({
+          allowMultiSelection: true,
+          type: [types.images, types.video, types.audio],
+        });
 
-  async function handleSave() {
-    if (!expedicaoId || isSaving || isRecording || isCapturingVideo) return;
+        const newUploads = results.map(file => ({
+          uri: file.uri,
+          name: file.name ?? `upload_${Date.now()}`,
+          type: file.type ?? 'application/octet-stream',
+          sizeLabel: formatFileSize(file.size ?? 0),
+          capturadoEm: new Date().toISOString(),
+        }));
 
-    if (isPlaying) {
-      await audioRecorderPlayer.stopPlayer();
-      audioRecorderPlayer.removePlayBackListener();
-      setIsPlaying(false);
+        setUploads(prev => [...prev, ...newUploads]);
+      } catch (err) {
+        if (!DocumentPicker.isCancel(err)) {
+          setImageError('Erro ao realizar upload.');
+        }
+      }
     }
 
-    setSaveError(null);
-    try {
-      await registrar(buildEventoPayload(), buildEvidencias());
-    } catch (error) {
-      setSaveError(getUserFacingHttpError(error, 'Não foi possível salvar o registro. Tente novamente.'));
-      return;
+    function buildEventoPayload(): CriarEventoPayload {
+      const observacoes = notes.trim() || null;
+      const base = { capturado_em: capturadoEm.toISOString(), latitude, longitude, observacoes };
+      if (!isCollection) return { ...base, tipo: 'DIARIO' };
+      return {
+        ...base,
+        tipo: 'COLETA',
+        coleta: { familia: family, nome_cientifico: scientificName.trim() || null },
+      };
     }
 
-    Alert.alert(
-      isCollection ? 'Coleta salva' : 'Diário salvo',
-      'O registro foi salvo na expedição.',
-      [{ text: 'OK', onPress: () => navigation.popTo('ExpeditionDetail', { expeditionId: String(expedicaoId) }) }],
-      { cancelable: false },
-    );
-  }
+    function buildEvidencias(): CriarEvidenciaPayload[] {
+      const evidencias: CriarEvidenciaPayload[] = [];
+
+      if (image) evidencias.push({ arquivo: { uri: image.uri, name: image.name, type: image.type }, nome: image.name, capturado_em: image.capturadoEm });
+      if (video) evidencias.push({ arquivo: { uri: video.uri, name: video.name, type: video.type }, nome: video.name, capturado_em: video.capturadoEm });
+      if (audio) {
+        const extensao = audio.uri.endsWith('.m4a') ? 'm4a' : 'mp4';
+        const nome = `audio_${Date.now()}.${extensao}`;
+        evidencias.push({ arquivo: { uri: audio.uri, name: nome, type: 'audio/mp4' }, nome, capturado_em: audio.capturadoEm });
+      }
+      for (const upload of uploads) {
+        evidencias.push({ arquivo: { uri: upload.uri, name: upload.name, type: upload.type }, nome: upload.name, capturado_em: upload.capturadoEm });
+      }
+
+      return evidencias;
+    }
+
+    async function handleSave() {
+      if (!expedicaoId || isSaving || isRecording || isCapturingVideo) return;
+      if (isPlaying) {
+        await audioRecorderPlayer.stopPlayer();
+        audioRecorderPlayer.removePlayBackListener();
+        setIsPlaying(false);
+      }
+      setSaveError(null);
+      try {
+        await registrar(buildEventoPayload(), buildEvidencias());
+      } catch (error) {
+        setSaveError(getUserFacingHttpError(error, 'Não foi possível salvar o registro. Tente novamente.'));
+        return;
+      }
+      Alert.alert(isCollection ? 'Coleta salva' : 'Diário salvo', 'O registro foi salvo na expedição.', [{ text: 'OK', onPress: () => navigation.popTo('ExpeditionDetail', { expeditionId: String(expedicaoId) }) }], { cancelable: false });
+    }async function checkCameraPermission() {
+         if (Platform.OS === 'android') {
+           try {
+             const grants = await PermissionsAndroid.requestMultiple([
+               PermissionsAndroid.PERMISSIONS.CAMERA,
+               PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+             ]);
+             return grants['android.permission.CAMERA'] === PermissionsAndroid.RESULTS.GRANTED;
+           } catch (err) {
+             console.warn(err);
+             return false;
+           }
+         }
+         return true;
+       }
+
+       async function handleTakePhoto() {
+         setImageError(null);
+         const hasPermission = await checkCameraPermission();
+         if (!hasPermission) {
+           setImageError('Permissão de câmera negada.');
+           return;
+         }
+
+         const result = await launchCamera({ mediaType: 'photo', saveToPhotos: true });
+         if (result.didCancel) return;
+         const asset = result.assets?.[0];
+         if (result.errorCode || !asset?.uri) {
+           setImageError('Não foi possível capturar a imagem.');
+           return;
+         }
+         setImage({
+           uri: asset.uri,
+           name: asset.fileName ?? `foto_${Date.now()}.jpg`,
+           type: asset.type ?? 'image/jpeg',
+           sizeLabel: formatFileSize(asset.fileSize),
+           capturadoEm: new Date().toISOString(),
+         });
+       }
+
+       async function handleAddVideo() {
+         setVideoError(null);
+         const hasPermission = await checkCameraPermission();
+         if (!hasPermission) {
+           setVideoError('Permissão de câmera negada.');
+           return;
+         }
+
+         setIsCapturingVideo(true);
+         try {
+           const result = await launchCamera({ mediaType: 'video', videoQuality: 'high', saveToPhotos: false });
+           if (result.didCancel) return;
+           const asset = result.assets?.[0];
+           if (result.errorCode || !asset?.uri) {
+             setVideoError('Não foi possível gravar o vídeo.');
+             return;
+           }
+           setVideo({
+             uri: asset.uri,
+             name: asset.fileName ?? `video_${Date.now()}.mp4`,
+             type: asset.type ?? 'video/mp4',
+             sizeLabel: formatFileSize(asset.fileSize),
+             durationLabel: formatDuration(asset.duration),
+             capturadoEm: new Date().toISOString(),
+           });
+         } finally {
+           setIsCapturingVideo(false);
+         }
+       }
+
+       async function checkAudioPermissions() {
+         if (Platform.OS === 'android') {
+           try {
+             const grants = await PermissionsAndroid.requestMultiple([
+               PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+               PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+               PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+             ]);
+             return grants['android.permission.RECORD_AUDIO'] === PermissionsAndroid.RESULTS.GRANTED;
+           } catch (err) {
+             console.warn(err);
+             return false;
+           }
+         }
+         return true;
+       }
+
+       async function handleToggleRecord() {
+         if (isRecording) {
+           const resultUri = await audioRecorderPlayer.stopRecorder();
+           audioRecorderPlayer.removeRecordBackListener();
+           setIsRecording(false);
+           setAudio({ uri: resultUri, durationLabel: recordTime, capturadoEm: new Date().toISOString() });
+         } else {
+           const hasPermission = await checkAudioPermissions();
+           if (!hasPermission) return;
+           setIsRecording(true);
+           setRecordTime('00:00');
+           await audioRecorderPlayer.startRecorder();
+           audioRecorderPlayer.addRecordBackListener((e) => {
+             const time = audioRecorderPlayer.mmssss(Math.floor(e.currentPosition));
+             setRecordTime(time.substring(0, 5));
+           });
+         }
+       }
+
+       async function handleTogglePlay() {
+         if (!audio?.uri) return;
+         if (isPlaying) {
+           await audioRecorderPlayer.stopPlayer();
+           audioRecorderPlayer.removePlayBackListener();
+           setIsPlaying(false);
+         } else {
+           setIsPlaying(true);
+           await audioRecorderPlayer.startPlayer(audio.uri);
+           audioRecorderPlayer.addPlayBackListener((e) => {
+             if (e.currentPosition >= e.duration) {
+               audioRecorderPlayer.stopPlayer();
+               setIsPlaying(false);
+             }
+           });
+         }
+       }
+
+       async function handleUploadMedia() {
+         try {
+           const results = await DocumentPicker.pick({
+             allowMultiSelection: true,
+             type: [types.images, types.video, types.audio],
+           });
+
+           const newUploads = results.map(file => ({
+             uri: file.uri,
+             name: file.name ?? `upload_${Date.now()}`,
+             type: file.type ?? 'application/octet-stream',
+             sizeLabel: formatFileSize(file.size ?? 0),
+             capturadoEm: new Date().toISOString(),
+           }));
+
+           setUploads(prev => [...prev, ...newUploads]);
+         } catch (err) {
+           if (!DocumentPicker.isCancel(err)) {
+             setImageError('Erro ao realizar upload.');
+           }
+         }
+       }
+
+       function buildEventoPayload(): CriarEventoPayload {
+         const observacoes = notes.trim() || null;
+         const base = { capturado_em: capturadoEm.toISOString(), latitude, longitude, observacoes };
+         if (!isCollection) return { ...base, tipo: 'DIARIO' };
+         return {
+           ...base,
+           tipo: 'COLETA',
+           coleta: { familia: family, nome_cientifico: scientificName.trim() || null },
+         };
+       }
+
+       function buildEvidencias(): CriarEvidenciaPayload[] {
+         const evidencias: CriarEvidenciaPayload[] = [];
+
+         if (image) evidencias.push({ arquivo: { uri: image.uri, name: image.name, type: image.type }, nome: image.name, capturado_em: image.capturadoEm });
+         if (video) evidencias.push({ arquivo: { uri: video.uri, name: video.name, type: video.type }, nome: video.name, capturado_em: video.capturadoEm });
+         if (audio) {
+           const extensao = audio.uri.endsWith('.m4a') ? 'm4a' : 'mp4';
+           const nome = `audio_${Date.now()}.${extensao}`;
+           evidencias.push({ arquivo: { uri: audio.uri, name: nome, type: 'audio/mp4' }, nome, capturado_em: audio.capturadoEm });
+         }
+         for (const upload of uploads) {
+           evidencias.push({ arquivo: { uri: upload.uri, name: upload.name, type: upload.type }, nome: upload.name, capturado_em: upload.capturadoEm });
+         }
+
+         return evidencias;
+       }
+
+       async function handleSave() {
+         if (!expedicaoId || isSaving || isRecording || isCapturingVideo) return;
+         if (isPlaying) {
+           await audioRecorderPlayer.stopPlayer();
+           audioRecorderPlayer.removePlayBackListener();
+           setIsPlaying(false);
+         }
+         setSaveError(null);
+         try {
+           await registrar(buildEventoPayload(), buildEvidencias());
+         } catch (error) {
+           setSaveError(getUserFacingHttpError(error, 'Não foi possível salvar o registro. Tente novamente.'));
+           return;
+         }
+         Alert.alert(isCollection ? 'Coleta salva' : 'Diário salvo', 'O registro foi salvo na expedição.', [{ text: 'OK', onPress: () => navigation.popTo('ExpeditionDetail', { expeditionId: String(expedicaoId) }) }], { cancelable: false });
+       }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
+          <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
-        <View style={styles.header}>
-          <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => navigation.goBack()}>
-            <ArrowLeft color={colors.textPrimary} size={22} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{config.title}</Text>
-          <View style={{ width: 22 }} />
-        </View>
-
-        <View style={styles.metaRow}>
-          <View style={styles.metaChip}>
-            <MapPin size={14} color={colors.textSecondary} />
-            <Text style={styles.metaText}>{latitude.toFixed(4)}, {longitude.toFixed(4)}</Text>
+          <View style={styles.header}>
+            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => navigation.goBack()}>
+              <ArrowLeft color={colors.textPrimary} size={22} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{config.title}</Text>
+            <View style={{ width: 22 }} />
           </View>
-          <View style={styles.metaChip}>
-            <Clock size={14} color={colors.textSecondary} />
-            <Text style={styles.metaText}>{dataHora}</Text>
-          </View>
-        </View>
 
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={styles.formCard}>
-            {isCollection && (
-              <>
-                <Text style={styles.labelFirst}>Família</Text>
-                <TouchableOpacity
-                  style={styles.selectInput}
-                  onPress={() => setIsFamilyListVisible(v => !v)}
-                  accessibilityRole="button"
-                >
-                  <Text style={family ? styles.selectValue : styles.selectPlaceholder}>
-                    {family ?? 'Selecione a família'}
-                  </Text>
-                  <ChevronDown color={colors.textSecondary} size={18} />
+          <View style={styles.metaRow}>
+            <View style={styles.metaChip}>
+              <MapPin size={14} color={colors.textSecondary} />
+              <Text style={styles.metaText}>{latitude.toFixed(4)}, {longitude.toFixed(4)}</Text>
+            </View>
+            <View style={styles.metaChip}>
+              <Clock size={14} color={colors.textSecondary} />
+              <Text style={styles.metaText}>{dataHora}</Text>
+            </View>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            <View style={styles.formCard}>
+              {isCollection && (
+                <>
+                  <Text style={styles.labelFirst}>Família</Text>
+                  <TouchableOpacity style={styles.selectInput} onPress={() => setIsFamilyListVisible(v => !v)}>
+                    <Text style={family ? styles.selectValue : styles.selectPlaceholder}>{family ?? 'Selecione a família'}</Text>
+                    <ChevronDown color={colors.textSecondary} size={18} />
+                  </TouchableOpacity>
+                  {isFamilyListVisible && (
+                    <View style={styles.optionsList}>
+                      {FAMILY_OPTIONS.map(option => (
+                        <TouchableOpacity key={option} style={styles.option} onPress={() => { setFamily(option); setIsFamilyListVisible(false); }}>
+                          <Text style={styles.optionText}>{option}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  <Text style={styles.label}>Nome científico</Text>
+                  <TextInput style={styles.input} value={scientificName} onChangeText={setScientificName} placeholder="Ex.: Euterpe edulis" placeholderTextColor={colors.placeholder} autoCapitalize="none" autoCorrect={false} />
+                </>
+              )}
+
+              <Text style={isCollection ? styles.label : styles.labelFirst}>{config.notesLabel}</Text>
+              <TextInput style={styles.textArea} value={notes} onChangeText={setNotes} placeholder={config.notesPlaceholder} placeholderTextColor={colors.placeholder} multiline numberOfLines={5} />
+
+              <Text style={styles.label}>Multimídia</Text>
+
+              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+                <TouchableOpacity style={styles.mediaButton} onPress={handleTakePhoto}>
+                  <CameraIcon size={16} color={colors.onAccent} />
+                  <Text style={styles.mediaButtonText}>Câmera</Text>
                 </TouchableOpacity>
-                {isFamilyListVisible && (
-                  <View style={styles.optionsList}>
-                    {FAMILY_OPTIONS.map(option => (
-                      <TouchableOpacity
-                        key={option}
-                        style={styles.option}
-                        onPress={() => {
-                          setFamily(option);
-                          setIsFamilyListVisible(false);
-                        }}
-                      >
-                        <Text style={styles.optionText}>{option}</Text>
-                      </TouchableOpacity>
+                <TouchableOpacity style={styles.mediaButton} onPress={handleAddVideo} disabled={isCapturingVideo}>
+                  {isCapturingVideo ? <ActivityIndicator color={colors.onAccent} size="small" /> : <VideoIcon size={16} color={colors.onAccent} />}
+                  <Text style={styles.mediaButtonText}>Vídeo</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+                <TouchableOpacity style={[styles.mediaButton, isRecording && { backgroundColor: '#d32f2f' }]} onPress={handleToggleRecord} disabled={!!audio && !isRecording}>
+                  <Mic size={16} color={colors.onAccent} />
+                  <Text style={styles.mediaButtonText}>{isRecording ? `Gravando... ${recordTime}` : 'Áudio'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.mediaButton} onPress={handleUploadMedia}>
+                  <UploadIcon size={16} color={colors.onAccent} />
+                  <Text style={styles.mediaButtonText}>Upload</Text>
+                </TouchableOpacity>
+              </View>
+
+              {imageError && <Text style={styles.mediaError}>{imageError}</Text>}
+              {videoError && <Text style={styles.mediaError}>{videoError}</Text>}
+
+              {image && (
+                <View style={styles.previewRow}>
+                  <Image source={{ uri: image.uri }} style={styles.previewImage} />
+                  <View style={styles.previewInfo}>
+                    <Text style={styles.previewName} numberOfLines={1}>{image.name}</Text>
+                    <Text style={styles.previewMeta}>{image.sizeLabel}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setImage(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <X size={16} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {video && (
+                <View style={styles.previewRow}>
+                  <View style={styles.previewThumb}><VideoIcon size={18} color={colors.textSecondary} /></View>
+                  <View style={styles.previewInfo}>
+                    <Text style={styles.previewName} numberOfLines={1}>{video.name}</Text>
+                    <Text style={styles.previewMeta}>{video.durationLabel ? `${video.durationLabel} • ${video.sizeLabel}` : video.sizeLabel}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setVideo(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <X size={16} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {audio && (
+                <View style={styles.previewRow}>
+                  <TouchableOpacity style={styles.audioPlayIcon} onPress={handleTogglePlay} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    {isPlaying ? <Pause size={14} color={colors.textSecondary} /> : <Play size={14} color={colors.textSecondary} />}
+                  </TouchableOpacity>
+                  <View style={styles.waveform}>
+                    {[8, 14, 6, 16, 10, 18, 9, 13].map((height, index) => (
+                      <View key={index} style={[styles.waveformBar, { height, backgroundColor: isPlaying ? '#0288d1' : colors.placeholder }]} />
                     ))}
                   </View>
-                )}
+                  <Text style={styles.previewMeta}>{audio.durationLabel}</Text>
+                  <TouchableOpacity onPress={() => { if (isPlaying) handleTogglePlay(); setAudio(null); setRecordTime('00:00'); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <X size={16} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              )}
 
-                <Text style={styles.label}>Nome científico</Text>
-                <TextInput
-                  style={styles.input}
-                  value={scientificName}
-                  onChangeText={setScientificName}
-                  placeholder="Ex.: Euterpe edulis"
-                  placeholderTextColor={colors.placeholder}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </>
-            )}
-
-            {/* no diário, a anotação é o primeiro campo */}
-            <Text style={isCollection ? styles.label : styles.labelFirst}>{config.notesLabel}</Text>
-            <TextInput
-              style={styles.textArea}
-              value={notes}
-              onChangeText={setNotes}
-              placeholder={config.notesPlaceholder}
-              placeholderTextColor={colors.placeholder}
-              multiline
-              numberOfLines={5}
-            />
-
-            <Text style={styles.label}>Multimídia</Text>
-            <View style={styles.mediaRow}>
-              <TouchableOpacity style={styles.mediaButton} onPress={handleAddImage}>
-                <ImageIcon size={16} color={colors.onAccent} />
-                <Text style={styles.mediaButtonText}>Imagem</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.mediaButton, isRecording && { backgroundColor: '#d32f2f' }]}
-                onPress={handleToggleRecord}
-                disabled={!!audio && !isRecording}
-              >
-                <Mic size={16} color={colors.onAccent} />
-                <Text style={styles.mediaButtonText}>
-                  {isRecording ? `Gravando... ${recordTime}` : 'Áudio'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.mediaButton}
-                onPress={handleAddVideo}
-                disabled={isCapturingVideo}
-              >
-                {isCapturingVideo ? (
-                  <ActivityIndicator color={colors.onAccent} size="small" />
-                ) : (
-                  <VideoIcon size={16} color={colors.onAccent} />
-                )}
-                <Text style={styles.mediaButtonText}>Vídeo</Text>
-              </TouchableOpacity>
+              {uploads.map((upload, index) => (
+                <View key={index} style={styles.previewRow}>
+                  <View style={styles.previewThumb}>
+                    <UploadIcon size={18} color={colors.textSecondary} />
+                  </View>
+                  <View style={styles.previewInfo}>
+                    <Text style={styles.previewName} numberOfLines={1}>{upload.name}</Text>
+                    <Text style={styles.previewMeta}>{upload.sizeLabel}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setUploads(prev => prev.filter((_, i) => i !== index))} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <X size={16} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              ))}
             </View>
+          </ScrollView>
 
-            {imageError ? <Text style={styles.mediaError}>{imageError}</Text> : null}
-            {videoError ? <Text style={styles.mediaError}>{videoError}</Text> : null}
+          {!expedicaoId ? (
+            <Text style={styles.saveError}>Abra o formulário a partir de uma expedição para poder salvar.</Text>
+          ) : saveError ? (
+            <Text style={styles.saveError}>{saveError}</Text>
+          ) : null}
 
-            {image && (
-              <View style={styles.previewRow}>
-                <Image source={{ uri: image.uri }} style={styles.previewImage} />
-                <View style={styles.previewInfo}>
-                  <Text style={styles.previewName} numberOfLines={1}>{image.name}</Text>
-                  <Text style={styles.previewMeta}>{image.sizeLabel}</Text>
-                </View>
-                <TouchableOpacity onPress={() => setImage(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <X size={16} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {audio && (
-              <View style={styles.previewRow}>
-                <TouchableOpacity style={styles.audioPlayIcon} onPress={handleTogglePlay} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  {isPlaying ? <Pause size={14} color={colors.textSecondary} /> : <Play size={14} color={colors.textSecondary} />}
-                </TouchableOpacity>
-                <View style={styles.waveform}>
-                  {[8, 14, 6, 16, 10, 18, 9, 13].map((height, index) => (
-                    <View key={index} style={[styles.waveformBar, { height, backgroundColor: isPlaying ? '#0288d1' : colors.placeholder }]} />
-                  ))}
-                </View>
-                <Text style={styles.previewMeta}>{audio.durationLabel}</Text>
-                <TouchableOpacity onPress={handleRemoveAudio} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <X size={16} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {video && (
-              <View style={styles.previewRow}>
-                <View style={styles.previewThumb}>
-                  <VideoIcon size={18} color={colors.textSecondary} />
-                </View>
-                <View style={styles.previewInfo}>
-                  <Text style={styles.previewName} numberOfLines={1}>{video.name}</Text>
-                  <Text style={styles.previewMeta}>
-                    {video.durationLabel ? `${video.durationLabel} • ${video.sizeLabel}` : video.sizeLabel}
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={handleRemoveVideo} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <X size={16} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-
-        {!expedicaoId ? (
-          <Text style={styles.saveError}>Abra o formulário a partir de uma expedição para poder salvar.</Text>
-        ) : saveError ? (
-          <Text style={styles.saveError}>{saveError}</Text>
-        ) : null}
-
-        <TouchableOpacity
-          style={[styles.saveButton, (!expedicaoId || isSaving || isRecording || isCapturingVideo) && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={!expedicaoId || isSaving || isRecording || isCapturingVideo}
-        >
-          {isSaving ? (
-            <ActivityIndicator color={colors.onAccent} />
-          ) : (
-            <Check size={18} color={colors.onAccent} />
-          )}
-          <Text style={styles.saveButtonText}>{isSaving ? 'Salvando...' : config.saveLabel}</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
-  );
-}
+          <TouchableOpacity style={[styles.saveButton, (!expedicaoId || isSaving || isRecording || isCapturingVideo) && styles.saveButtonDisabled]} onPress={handleSave} disabled={!expedicaoId || isSaving || isRecording || isCapturingVideo}>
+            {isSaving ? <ActivityIndicator color={colors.onAccent} /> : <Check size={18} color={colors.onAccent} />}
+            <Text style={styles.saveButtonText}>{isSaving ? 'Salvando...' : config.saveLabel}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
