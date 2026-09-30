@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { ArrowLeft } from 'lucide-react-native'
+import { ArrowLeft, BookOpen, Clock, Leaf, Plus, Users } from 'lucide-react-native'
 import { useState } from 'react'
 
 import { EvidenceMode, RootStackParamList } from '@/navigation/types'
@@ -136,13 +136,21 @@ export function ExpeditionDetailScreen() {
           {data.descricao ?? `Expedição #${data.id}`}
         </Text>
         <View style={styles.infoRow}>
-          <Text style={styles.info}>
-            🕒 {formatDate(data.data_inicio)} – {formatDate(data.data_fim)}
-          </Text>
+          <View style={[styles.iconRow, styles.infoItem]}>
+            <Clock color={colors.placeholder} size={12} />
+            <Text style={styles.info}>
+              {formatDate(data.data_inicio)} – {formatDate(data.data_fim)}
+            </Text>
+          </View>
           <Text style={styles.status}>{status}</Text>
         </View>
 
-        <Text style={styles.sectionTitle}>EQUIPE</Text>
+        <View style={styles.divider} />
+
+        <View style={[styles.iconRow, styles.sectionHeader]}>
+          <Users size={12} color={colors.textSecondary} />
+          <Text style={styles.sectionTitleText}>EQUIPE</Text>
+        </View>
         {data.participantes.length > 0 ? (
           <View style={styles.teamRow}>
             {data.participantes.map(participante => (
@@ -155,7 +163,8 @@ export function ExpeditionDetailScreen() {
           <Text style={styles.emptyTeamText}>Nenhum participante cadastrado.</Text>
         )}
 
-        <Text style={styles.sectionTitle}>REGISTROS</Text>
+        <View style={styles.divider} />
+
         {registros.loading && !registros.data ? (
           <ActivityIndicator color={colors.accent} />
         ) : registros.error && !registros.data ? (
@@ -184,11 +193,13 @@ export function ExpeditionDetailScreen() {
 
       {isMenuOpen && (
         <View style={styles.floatingMenu}>
-          <TouchableOpacity style={styles.menuOption} onPress={() => handleOpenForm('diary')}>
-            <Text style={styles.menuOptionText}>📘 Novo diário</Text>
+          <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('collection')}>
+            <Leaf color={colors.accent} size={14} />
+            <Text style={styles.menuOptionText}>Coleta</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuOption} onPress={() => handleOpenForm('collection')}>
-            <Text style={styles.menuOptionText}>🌿 Nova coleta</Text>
+          <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('diary')}>
+            <BookOpen color={colors.diary} size={14} />
+            <Text style={styles.menuOptionText}>Diário</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -196,7 +207,7 @@ export function ExpeditionDetailScreen() {
         style={styles.floatingButton}
         onPress={() => setIsMenuOpen(!isMenuOpen)}
       >
-        <Text style={styles.floatingButtonText}>+</Text>
+        <Text style={styles.floatingButtonText}><Plus color={colors.onAccent} size={28}/></Text>
       </TouchableOpacity>
 
       <EvidenciaViewer evidencia={evidenciaAberta} onClose={() => setEvidenciaAberta(null)} />
@@ -218,6 +229,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.borderAlt,
   },
+  CardIcon: {
+    fontSize: 14,
+  },
   headerTitle: {
     color: colors.textPrimary,
     fontSize: 17,
@@ -234,9 +248,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   infoRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  info: { color: colors.textSecondary, marginRight: 12 },
-  status: { color: colors.accent },
-  sectionTitle: { color: colors.textSecondary, fontSize: 12, marginTop: 20, marginBottom: 8 },
+  iconRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  infoItem: { marginRight: 12 },
+  info: { color: colors.textSecondary, fontSize: 12 },
+  status: { color: colors.accent, fontWeight: 700 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: 16, marginHorizontal: -16 },
+  sectionHeader: { marginBottom: 8 },
+  sectionTitleText: { color: colors.textSecondary, fontSize: 12, fontWeight: 700 },
   teamRow: { flexDirection: 'row', flexWrap: 'wrap' },
   memberTag: {
     backgroundColor: colors.surfaceAlt,

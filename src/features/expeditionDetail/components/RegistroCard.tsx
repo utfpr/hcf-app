@@ -34,15 +34,11 @@ export function RegistroCard({ registro, onOpenEvidencia, audioAtivoId, onActiva
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <View style={styles.tipoBadge}>
+        <View style={[styles.tipoBadge, !isColeta && styles.tipoBadgeDiary]}>
           {isColeta
             ? <Leaf size={12} color={colors.accent} />
-            : <BookOpen size={12} color={colors.accent} />}
-          <Text style={styles.tipoText}>{isColeta ? 'Coleta' : 'Diário'}</Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Clock size={12} color={colors.textSecondary} />
-          <Text style={styles.metaText}>{formatDateTime(registro.capturado_em)}</Text>
+            : <BookOpen size={12} color={colors.diary} />}
+          <Text style={[styles.tipoText, isColeta ? styles.tipoTextColeta : styles.tipoTextDiario]}>{isColeta ? 'Coleta' : 'Diário'}</Text>
         </View>
       </View>
 
@@ -59,15 +55,6 @@ export function RegistroCard({ registro, onOpenEvidencia, audioAtivoId, onActiva
 
       {registro.observacoes ? (
         <Text style={styles.observacoes}>{registro.observacoes}</Text>
-      ) : null}
-
-      {registro.latitude !== null && registro.longitude !== null ? (
-        <View style={styles.metaItem}>
-          <MapPin size={12} color={colors.textSecondary} />
-          <Text style={styles.metaText}>
-            {registro.latitude.toFixed(4)}, {registro.longitude.toFixed(4)}
-          </Text>
-        </View>
       ) : null}
 
       {imagens.length > 0 ? (
@@ -101,6 +88,21 @@ export function RegistroCard({ registro, onOpenEvidencia, audioAtivoId, onActiva
           <Play size={14} color={colors.accent} />
         </TouchableOpacity>
       ))}
+
+      <View style={styles.footer}>
+        <View style={styles.metaItem}>
+          <Clock size={12} color={colors.textSecondary} />
+          <Text style={styles.metaText}>{formatDateTime(registro.capturado_em)}</Text>
+        </View>
+        {registro.latitude !== null && registro.longitude !== null ? (
+          <View style={styles.metaItem}>
+            <MapPin size={12} color={colors.textSecondary} />
+            <Text style={styles.metaText}>
+              {registro.latitude.toFixed(4)}, {registro.longitude.toFixed(4)}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   )
 }
@@ -124,14 +126,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 4,
+    backgroundColor: colors.backgroundAccent,
+    borderRadius: 9999,
     paddingVertical: 3,
     paddingHorizontal: 7,
   },
+  tipoBadgeDiary: {
+    backgroundColor: colors.backgroundDiary,
+  },
   tipoText: {
-    color: colors.accent,
     fontSize: 11,
+  },
+  tipoTextColeta: {
+    color: colors.accent,
+  },
+  tipoTextDiario: {
+    color: colors.diary,
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
   },
   metaItem: {
     flexDirection: 'row',
@@ -140,7 +158,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     color: colors.textSecondary,
-    fontSize: 12,
+    fontSize: 10,
   },
   coleta: {
     gap: 2,
