@@ -25,7 +25,7 @@ export function ExpeditionListScreen() {
 
   const { itens, error, loading, loadingMore, loadMore, refresh } = useExpeditionsInfinite()
 
-  // 2. Componentes de Loading e Erro
+  // Componentes de Loading e Erro
   function renderContent() {
     if (loading && itens.length === 0) {
       return (
@@ -69,7 +69,7 @@ export function ExpeditionListScreen() {
         renderItem={({ item }) => (
           <ExpeditionCard
             expedition={item}
-            // 5. Conectando a navegação para a tela de detalhes que você já arrumou!
+            // Conectando a navegação para a tela de detalhes que você já arrumou!
             onPress={() => navigation.navigate('ExpeditionDetail', { expeditionId: String(item.id) })}
           />
         )}
@@ -101,7 +101,7 @@ interface ExpeditionCardProps {
 }
 
 function ExpeditionCard({ expedition, onPress }: ExpeditionCardProps) {
-  // 3. Tratando os dados reais
+  // Tratando os dados reais
   const status = getStatus(expedition.data_inicio, expedition.data_fim)
   const title = expedition.descricao ?? `Expedição #${expedition.id}`
 
