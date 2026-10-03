@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -10,13 +9,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { Calendar, Menu, MapPin, Plus, ChevronLeft, ChevronRight } from 'lucide-react-native'
+import { Calendar, Menu, MapPin, Plus } from 'lucide-react-native'
 
 import { RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
 
-// Importando os hooks e utils reais que o Bruno e o Eduardo fizeram!
-import { useExpeditions } from '../expedition/hooks/useExpeditions'
+import { useExpeditionsInfinite } from '../expedition/hooks/useExpeditionsInfinite'
 import { ExpedicaoListItem } from '../expedition/types'
 import { formatDate, getStatus } from '../expedition/utils'
 
@@ -25,12 +23,11 @@ type ExpeditionListNavigationProp = NativeStackNavigationProp<RootStackParamList
 export function ExpeditionListScreen() {
   const navigation = useNavigation<ExpeditionListNavigationProp>()
 
-  // 1. Chamando o hook do backend!
-  const { data, error, loading, refresh, page, hasNextPage, nextPage, previousPage } = useExpeditions()
+  const { itens, error, loading, loadingMore, loadMore, refresh } = useExpeditionsInfinite()
 
   // 2. Componentes de Loading e Erro
   function renderContent() {
-    if (loading && !data) {
+    if (loading && itens.length === 0) {
       return (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
@@ -38,7 +35,7 @@ export function ExpeditionListScreen() {
       )
     }
 
-    if (error && !data) {
+    if (error && itens.length === 0) {
       return (
         <View style={styles.centerContainer}>
           <Text style={styles.emptyText}>Não foi possível carregar as expedições.</Text>
@@ -49,7 +46,7 @@ export function ExpeditionListScreen() {
       )
     }
 
-    if (data?.itens.length === 0) {
+    if (!loading && itens.length === 0) {
       return (
         <View style={styles.centerContainer}>
           <Text style={styles.emptyText}>Nenhuma expedição encontrada.</Text>
@@ -59,7 +56,7 @@ export function ExpeditionListScreen() {
 
     return (
       <FlatList
-        data={data?.itens}
+        data={itens}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.content}
         numColumns={2} // Isso substitui aquela função complexa 'chunkIntoRows' do mock!
@@ -67,6 +64,8 @@ export function ExpeditionListScreen() {
         ListHeaderComponent={<Text style={styles.title}>Expedições</Text>}
         refreshing={loading}
         onRefresh={refresh}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
         renderItem={({ item }) => (
           <ExpeditionCard
             expedition={item}
@@ -74,19 +73,9 @@ export function ExpeditionListScreen() {
             onPress={() => navigation.navigate('ExpeditionDetail', { expeditionId: String(item.id) })}
           />
         )}
-        // 4. Controles de paginação no final da lista
+        // Indicador de carregamento do scroll infinito
         ListFooterComponent={
-          data && data.total > 0 ? (
-            <View style={styles.paginationContainer}>
-              <TouchableOpacity disabled={page === 1} onPress={previousPage} style={[styles.pageButton, page === 1 && styles.pageButtonDisabled]}>
-                <ChevronLeft color={page === 1 ? colors.textSecondary : colors.onAccent} />
-              </TouchableOpacity>
-              <Text style={styles.pageText}>Página {page}</Text>
-              <TouchableOpacity disabled={!hasNextPage} onPress={nextPage} style={[styles.pageButton, !hasNextPage && styles.pageButtonDisabled]}>
-                <ChevronRight color={!hasNextPage ? colors.textSecondary : colors.onAccent} />
-              </TouchableOpacity>
-            </View>
-          ) : null
+          loadingMore ? <ActivityIndicator style={styles.footerLoader} color={colors.accent} /> : null
         }
       />
     )
@@ -242,24 +231,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 14,
   },
-  paginationContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
-    gap: 16,
-  },
-  pageButton: {
-    backgroundColor: colors.surfaceAlt,
-    padding: 8,
-    borderRadius: 8,
-  },
-  pageButtonDisabled: {
-    opacity: 0.5,
-  },
-  pageText: {
-    color: colors.textPrimary,
-    fontSize: 14,
+  footerLoader: {
+    marginVertical: 20,
   },
 })
