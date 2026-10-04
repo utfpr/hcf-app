@@ -1,5 +1,6 @@
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { BookOpen, Clock, FileText, Leaf, MapPin, Play, Video } from 'lucide-react-native'
+import { BookOpen, Clock, FileText, Leaf, MapPin, Play, Plus, Video } from 'lucide-react-native'
+
 
 import type { Evidencia, RegistroExpedicao } from '@/features/evento/types'
 import { arquivoUrl, tipoEvidencia } from '@/features/evento/utils'
@@ -21,11 +22,12 @@ function EvidenciaIcon({ evidencia }: { evidencia: Evidencia }) {
 interface RegistroCardProps {
   registro: RegistroExpedicao
   onOpenEvidencia: (evidencia: Evidencia) => void
+  onAddEvidencia: (registro: RegistroExpedicao) => void
   audioAtivoId: number | null
   onActivateAudio: (evidenciaId: number) => void
 }
 
-export function RegistroCard({ registro, onOpenEvidencia, audioAtivoId, onActivateAudio }: RegistroCardProps) {
+export function RegistroCard({ registro, onOpenEvidencia, onAddEvidencia, audioAtivoId, onActivateAudio }: RegistroCardProps) {
   const isColeta = registro.tipo === 'COLETA'
   const imagens = registro.evidencias.filter(e => tipoEvidencia(e) === 'imagem')
   const audios = registro.evidencias.filter(e => tipoEvidencia(e) === 'audio')
@@ -88,6 +90,15 @@ export function RegistroCard({ registro, onOpenEvidencia, audioAtivoId, onActiva
           <Play size={14} color={colors.accent} />
         </TouchableOpacity>
       ))}
+
+      <TouchableOpacity
+        style={styles.addEvidencia}
+        onPress={() => onAddEvidencia(registro)}
+        activeOpacity={0.8}
+      >
+        <Plus size={14} color={colors.accent} />
+        <Text style={styles.addEvidenciaText}>Adicionar evidência</Text>
+      </TouchableOpacity>
 
       <View style={styles.footer}>
         <View style={styles.metaItem}>
@@ -200,6 +211,21 @@ const styles = StyleSheet.create({
   arquivoNome: {
     flex: 1,
     color: colors.textPrimary,
+    fontSize: 12,
+  },
+    addEvidencia: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  addEvidenciaText: {
+    color: colors.accent,
     fontSize: 12,
   },
 })

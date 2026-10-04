@@ -21,10 +21,11 @@ import { useRegistrosExpedicao } from '../evento/hooks/useRegistrosExpedicao'
 import { useExpedition } from '../expedition/hooks/useExpedition'
 import { formatDate, getStatus } from '../expedition/utils'
 
-import type { Evidencia } from '../evento/types'
-
 import { EvidenciaViewer } from './components/EvidenciaViewer'
 import { RegistroCard } from './components/RegistroCard'
+
+import type { Evidencia, RegistroExpedicao } from '../evento/types'
+import { AdicionarEvidenciaModal } from './components/AdicionarEvidenciaModal'
 
 type ExpeditionDetailRouteProp = RouteProp<RootStackParamList, 'ExpeditionDetail'>
 type ExpeditionDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionDetail'>
@@ -39,11 +40,18 @@ export function ExpeditionDetailScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [evidenciaAberta, setEvidenciaAberta] = useState<Evidencia | null>(null)
   const [audioAtivoId, setAudioAtivoId] = useState<number | null>(null)
+  const [registroParaEvidencia, setRegistroParaEvidencia] = useState<RegistroExpedicao | null>(null)
+
 
   function handleOpenEvidencia(evidencia: Evidencia) {
     // Para o áudio que estiver tocando antes de abrir a foto/vídeo
     setAudioAtivoId(null)
     setEvidenciaAberta(evidencia)
+  }
+
+  function handleAddEvidencia(registro: RegistroExpedicao) {   // <- NOVO
+    setAudioAtivoId(null) // para o áudio que estiver tocando
+    setRegistroParaEvidencia(registro)
   }
 
   const { data, error, loading, refresh } = useExpedition(Number(expeditionId))
@@ -179,6 +187,7 @@ export function ExpeditionDetailScreen() {
             <RegistroCard
               key={registro.id}
               registro={registro}
+              onAddEvidencia={handleAddEvidencia}
               onOpenEvidencia={handleOpenEvidencia}
               audioAtivoId={audioAtivoId}
               onActivateAudio={setAudioAtivoId}
@@ -211,6 +220,12 @@ export function ExpeditionDetailScreen() {
       </TouchableOpacity>
 
       <EvidenciaViewer evidencia={evidenciaAberta} onClose={() => setEvidenciaAberta(null)} />
+        
+      <AdicionarEvidenciaModal
+        registro={registroParaEvidencia}
+        expedicaoId={Number(expeditionId)}
+        onClose={() => setRegistroParaEvidencia(null)}
+      />
     </SafeAreaView>
   )
 }
