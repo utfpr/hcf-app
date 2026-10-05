@@ -1,16 +1,20 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Expedition } from '../types';
 
 interface Props {
   expedition: Expedition;
+  onPress?: (expedition: Expedition) => void;
 }
 
-export function ExpeditionCard({ expedition }: Props) {
+export function ExpeditionCard({ expedition, onPress }: Props) {
   const isFinalizada = expedition.status === 'Finalizada';
 
   return (
-    <View style={styles.card}>
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      onPress={() => onPress?.(expedition)}
+    >
       {/* Topo do card: Nome à esquerda e Status à direita */}
       <View style={styles.cardHeader}>
         <Text style={styles.title} numberOfLines={1}>
@@ -43,7 +47,7 @@ export function ExpeditionCard({ expedition }: Props) {
         />
         <Text style={styles.infoText}>{expedition.location}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -56,6 +60,10 @@ const styles = StyleSheet.create({
     borderColor: '#274936',
     padding: 16,
     gap: 8,
+  },
+  cardPressed: {
+    opacity: 0.8,
+    borderColor: '#1FAD5A',
   },
   cardHeader: {
     flexDirection: 'row',

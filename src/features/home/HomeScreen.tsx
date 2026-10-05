@@ -54,8 +54,8 @@ export function HomeScreen() {
     // TODO: navegar para a página de nova expedição
   }
 
-  function handleExpeditionPress(_expedition: Expedition) {
-    // TODO: navegar para os detalhes da expedição
+  function handleExpeditionPress(expedition: Expedition) {
+    navigation.navigate('ExpeditionDetail', { expeditionId: expedition.id });
   }
 
   return (
@@ -159,7 +159,7 @@ export function HomeScreen() {
               ) : null}
 
               {history.map(item => (
-                <ExpeditionCard key={item.id} expedition={item} />
+                <ExpeditionCard key={item.id} expedition={item} onPress={handleExpeditionPress} />
               ))}
             </View>
           )}
