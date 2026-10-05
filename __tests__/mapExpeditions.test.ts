@@ -53,6 +53,18 @@ describe('splitExpeditions', () => {
     expect(history).toHaveLength(0);
   });
 
+  it('move para o histórico no dia seguinte ao fim', () => {
+    const expedicao = item({ id: 1, data_inicio: '2026-09-25', data_fim: '2026-10-05' });
+
+    const ultimoDia = splitExpeditions([expedicao], '2026-10-05');
+    expect(ultimoDia.active.map(e => e.status)).toEqual(['Em andamento']);
+    expect(ultimoDia.history).toHaveLength(0);
+
+    const diaSeguinte = splitExpeditions([expedicao], '2026-10-06');
+    expect(diaSeguinte.active).toHaveLength(0);
+    expect(diaSeguinte.history.map(e => e.status)).toEqual(['Finalizada']);
+  });
+
   it('ordena ativas pelo início e histórico pelo fim mais recente', () => {
     const { active, history } = splitExpeditions(
       [
