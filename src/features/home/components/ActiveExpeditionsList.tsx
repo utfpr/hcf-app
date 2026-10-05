@@ -6,7 +6,7 @@ import {
   View,
 } from 'react-native';
 import { Expedition } from '../types';
-import { ActiveExpeditionCard } from './ActiveExpeditionCard';
+import { ExpeditionCard } from './ExpeditionCard';
 
 interface Props {
   expeditions: Expedition[];
@@ -40,7 +40,7 @@ export function ActiveExpeditionsList({
   return (
     <View style={styles.grid}>
       {expeditions.map(item => (
-        <ActiveExpeditionCard
+        <ExpeditionCard
           key={item.id}
           expedition={item}
           onPress={onPressExpedition}
