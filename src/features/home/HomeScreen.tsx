@@ -18,7 +18,7 @@ import { getHttpErrorMessage, isNetworkError } from '@/libraries/http/httpError'
 import { RootStackParamList } from '@/navigation/types';
 import { colors } from '@/theme/colors';
 
-import { ExpeditionCard } from './components/HistoryExpeditionCard';
+import { ExpeditionCard } from './components/ExpeditionCard';
 import { ActiveExpeditionsList } from './components/ActiveExpeditionsList';
 import { useHomeExpeditions } from './hooks/useHomeExpeditions';
 import { Expedition } from './types';
@@ -149,7 +149,7 @@ export function HomeScreen() {
           {isHistoryOpen && (
             <View style={styles.historyList}>
               {loading && history.length === 0 ? (
-                <ActivityIndicator size="small" color={colors.accent} />
+                <ActivityIndicator style={styles.historyLoading} size="small" color={colors.accent} />
               ) : null}
 
               {!loading && history.length === 0 ? (
@@ -315,13 +315,20 @@ const styles = StyleSheet.create({
   },
 
   historyList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     padding: 12,
     gap: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
 
+  historyLoading: {
+    width: '100%',
+  },
+
   historyEmpty: {
+    width: '100%',
     color: colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',

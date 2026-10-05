@@ -1,4 +1,5 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { AppState } from 'react-native';
 
 import { useAuth } from '@/contexts/Auth/useAuth';
 import { useContainer } from '@/contexts/Container/useContainer';
@@ -28,17 +29,30 @@ export function useHomeExpeditions() {
   );
 
   const query = useQuery(fetcher, userId ? ['home-expeditions', userId] : null);
+  const { refresh } = query;
+
+  // Recalculado a cada render: se o app ficar aberto de um dia para o outro, a expedição
+  // que terminou ontem passa para o histórico mesmo que a API devolva os mesmos dados
+  const today = toApiDate(new Date());
 
   const expeditions = useMemo(
-    () => (query.data ? splitExpeditions(query.data.itens, toApiDate(new Date())) : EMPTY),
-    [query.data],
+    () => (query.data ? splitExpeditions(query.data.itens, today) : EMPTY),
+    [query.data, today],
   );
+
+  // Ao voltar do segundo plano, busca de novo (e re-renderiza com a data atual)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') refresh();
+    });
+    return () => subscription.remove();
+  }, [refresh]);
 
   return {
     ...expeditions,
     loading: query.loading,
     refreshing: query.validating && !query.loading,
     error: query.error,
-    refresh: query.refresh,
+    refresh,
   };
 }
