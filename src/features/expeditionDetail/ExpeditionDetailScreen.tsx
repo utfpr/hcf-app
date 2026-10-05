@@ -68,6 +68,11 @@ export function ExpeditionDetailScreen() {
     navigation.navigate('Formulario', { expeditionId, mode, ...MOCK_COORDS })
   }
 
+  function handleOpenLembrete() {
+    setIsMenuOpen(false)
+    navigation.navigate('Lembrete', { expeditionId, ...MOCK_COORDS })
+  }
+
   function renderHeader() {
     return (
       <View style={styles.header}>
@@ -209,6 +214,9 @@ export function ExpeditionDetailScreen() {
           <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('diary')}>
             <BookOpen color={colors.diary} size={14} />
             <Text style={styles.menuOptionText}>Diário</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuOption} onPress={handleOpenLembrete}>
+            <Text style={styles.menuOptionText}>🔔 Novo lembrete</Text>
           </TouchableOpacity>
         </View>
       )}

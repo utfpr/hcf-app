@@ -6,6 +6,7 @@ import { HomeScreen } from '@/features/home/HomeScreen'
 import { ExpeditionListScreen } from '@/features/expeditionList/ExpeditionListScreen'
 import { ExpeditionDetailScreen } from '@/features/expeditionDetail/ExpeditionDetailScreen'
 import { Formulario } from '@/features/evidenceForm/evidenceForm'
+import { LembreteForm } from '@/features/reminderForm/reminderForm'
 
 import { RootStackParamList } from './types'
 
@@ -24,6 +25,18 @@ function FormularioScreen() {
   )
 }
 
+function LembreteScreen() {
+  const route = useRoute<RouteProp<RootStackParamList, 'Lembrete'>>()
+  const { expeditionId, latitude, longitude } = route.params
+  return (
+    <LembreteForm
+      expedicaoId={expeditionId ? Number(expeditionId) : undefined}
+      latitude={latitude}
+      longitude={longitude}
+    />
+  )
+}
+
 export function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -31,6 +44,7 @@ export function AppNavigator() {
       <Stack.Screen name="ExpeditionList" component={ExpeditionListScreen} />
       <Stack.Screen name="ExpeditionDetail" component={ExpeditionDetailScreen} />
       <Stack.Screen name="Formulario" component={FormularioScreen} />
+      <Stack.Screen name="Lembrete" component={LembreteScreen} />
     </Stack.Navigator>
   )
 }
