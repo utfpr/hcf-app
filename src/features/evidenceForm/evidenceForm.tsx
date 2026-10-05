@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Image, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View, Platform, PermissionsAndroid, ActivityIndicator, Alert } from 'react-native';
-import { launchCamera } from 'react-native-image-picker';
-import { pick, types } from '@react-native-documents/picker';
-import { ArrowLeft, Check, ChevronDown, Clock, Camera as CameraIcon, MapPin, Mic, Play, Pause, Video as VideoIcon, Upload as UploadIcon, X } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
+import { ArrowLeft, Check, ChevronDown, Clock, MapPin } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import { EvidenceMode } from '@/navigation/types';
 import { colors } from '../../theme/colors';
 import { styles } from './styles';
 import { useRegistrarEvento } from '@/features/evento/hooks/useRegistrarEvento';
-import type { CriarEventoPayload, CriarEvidenciaPayload } from '@/features/evento/types';
+import { useMultimidia } from '@/features/evento/hooks/useMultimidia';
+import { Multimidia } from '@/features/evento/components/Multimidia';
+import type { CriarEventoPayload } from '@/features/evento/types';
 import { getUserFacingHttpError } from '@/libraries/http/httpError';
 
 export interface FormularioProps {
@@ -19,9 +18,6 @@ export interface FormularioProps {
   latitude: number;
   longitude: number;
 }
-
-interface UploadAsset { uri: string; name: string; type: string; sizeLabel: string; }
-interface AudioAsset { uri: string; durationLabel: string; }
 
 interface ModeConfig {
   title: string;
@@ -47,13 +43,6 @@ const MODE_CONFIG: Record<EvidenceMode, ModeConfig> = {
 
 const FAMILY_OPTIONS = ['Acanthaceae', 'Asteraceae', 'Bromeliaceae', 'Fabaceae', 'Myrtaceae', 'Orchidaceae', 'Rubiaceae'];
 
-function formatFileSize(size?: number) {
-  if (!size) return 'Tamanho não disponível';
-  return size < 1024 ? String(size) + ' B' : (size / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-const audioRecorderPlayer = new AudioRecorderPlayer();
-
 export function Formulario({ expedicaoId, mode, latitude, longitude }: FormularioProps) {
   const navigation = useNavigation();
   const config = MODE_CONFIG[mode];
@@ -67,163 +56,15 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
   const [scientificName, setScientificName] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Estados de Mídia
-  const [uploads, setUploads] = useState<UploadAsset[]>([]);
-  const [mediaError, setMediaError] = useState<string | null>(null);
-
-  const [audio, setAudio] = useState<AudioAsset | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [recordTime, setRecordTime] = useState('00:00');
+  const multimidia = useMultimidia();
 
   // Hooks da API
   const { trigger: registrar, loading: isSaving } = useRegistrarEvento(expedicaoId);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const saveDisabled = !expedicaoId || isSaving || multimidia.busy;
 
-  useEffect(() => {
-    return () => {
-      audioRecorderPlayer.removeRecordBackListener();
-      audioRecorderPlayer.removePlayBackListener();
-    };
-  }, []);
-
-  async function checkPermissions() {
-    if (Platform.OS === 'android') {
-      try {
-        const grants = await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.CAMERA,
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-        ]);
-        return (
-          grants['android.permission.CAMERA'] === PermissionsAndroid.RESULTS.GRANTED &&
-          grants['android.permission.RECORD_AUDIO'] === PermissionsAndroid.RESULTS.GRANTED
-        );
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
-    }
-    return true;
-  }
-
-  async function handleOpenCameraMenu() {
-    setMediaError(null);
-    const hasPermission = await checkPermissions();
-
-    if (!hasPermission) {
-      setMediaError('Permissão de câmera/microfone negada.');
-      return;
-    }
-
-    Alert.alert(
-      'Câmera',
-      'O que você deseja capturar?',
-      [
-        { text: 'Tirar Foto', onPress: () => launchNativeCamera('photo') },
-        { text: 'Gravar Vídeo', onPress: () => launchNativeCamera('video') },
-        { text: 'Cancelar', style: 'cancel' },
-      ]
-    );
-  }
-
-  async function launchNativeCamera(mediaType: 'photo' | 'video') {
-    const result = await launchCamera({
-      mediaType,
-      saveToPhotos: true,
-      videoQuality: 'high'
-    });
-
-    if (result.didCancel) return;
-    const asset = result.assets?.[0];
-
-    if (result.errorCode || !asset?.uri) {
-      setMediaError(`Não foi possível capturar o ${mediaType === 'photo' ? 'imagem' : 'vídeo'}.`);
-      return;
-    }
-
-    setUploads(prev => [...prev, {
-      uri: asset.uri!,
-      name: asset.fileName ?? `captura_${Date.now()}.${mediaType === 'photo' ? 'jpg' : 'mp4'}`,
-      type: asset.type ?? (mediaType === 'photo' ? 'image/jpeg' : 'video/mp4'),
-      sizeLabel: formatFileSize(asset.fileSize),
-    }]);
-  }
-
-  // 2. Gravação de Áudio
-  async function handleToggleRecord() {
-    if (isRecording) {
-      const resultUri = await audioRecorderPlayer.stopRecorder();
-      audioRecorderPlayer.removeRecordBackListener();
-      setIsRecording(false);
-      setAudio({ uri: resultUri, durationLabel: recordTime });
-    } else {
-      const hasPermissions = await checkPermissions();
-      if (!hasPermissions) return;
-
-      setIsRecording(true);
-      setRecordTime('00:00');
-
-      await audioRecorderPlayer.startRecorder();
-      audioRecorderPlayer.addRecordBackListener((e) => {
-        const time = audioRecorderPlayer.mmssss(Math.floor(e.currentPosition));
-        setRecordTime(time.substring(0, 5));
-      });
-    }
-  }
-
-  async function handleTogglePlay() {
-    if (!audio?.uri) return;
-    if (isPlaying) {
-      await audioRecorderPlayer.stopPlayer();
-      audioRecorderPlayer.removePlayBackListener();
-      setIsPlaying(false);
-    } else {
-      setIsPlaying(true);
-      await audioRecorderPlayer.startPlayer(audio.uri);
-      audioRecorderPlayer.addPlayBackListener((e) => {
-        if (e.currentPosition >= e.duration) {
-          audioRecorderPlayer.stopPlayer();
-          setIsPlaying(false);
-        }
-      });
-    }
-  }
-
-  // 3. Upload Múltiplo
-  async function handleUploadMedia() {
-    try {
-      const results = await pick({
-        allowMultiSelection: true,
-        type: [types.images, types.video, types.audio],
-      });
-
-      if (!results || results.length === 0) return;
-
-      const newUploads = results.map(file => {
-        const safeName = file.name || file.uri.split('/').pop() || `upload_${Date.now()}`;
-        return {
-          uri: file.uri,
-          name: safeName,
-          type: file.type || 'application/octet-stream',
-          sizeLabel: formatFileSize(file.size ?? 0),
-        };
-      });
-
-      setUploads(prev => [...prev, ...newUploads]);
-    } catch (err: any) {
-      if (err?.code === 'DOCUMENT_PICKER_CANCELED' || String(err).toLowerCase().includes('cancel')) {
-        return;
-      }
-      setMediaError('Erro ao realizar upload. Tente novamente.');
-      console.warn('Erro no Picker:', err);
-    }
-  }
-
-  // 4. Salvar na API
   async function handleSave() {
-    if (!expedicaoId || isSaving || isRecording) return;
+    if (saveDisabled) return;
     setSaveError(null);
 
     const base = { capturado_em: agora.toISOString(), latitude, longitude, observacoes: notes.trim() || null };
@@ -231,16 +72,7 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
       ? { ...base, tipo: 'COLETA', coleta: { familia: family, nome_cientifico: scientificName.trim() || null } }
       : { ...base, tipo: 'DIARIO' };
 
-    const evidencias: CriarEvidenciaPayload[] = [];
-
-    if (audio) {
-      const ext = audio.uri.endsWith('.m4a') ? 'm4a' : 'mp4';
-      evidencias.push({ arquivo: { uri: audio.uri, name: `audio_${Date.now()}.${ext}`, type: 'audio/mp4' }, nome: 'Áudio', capturado_em: agora.toISOString() });
-    }
-
-    for (const upload of uploads) {
-      evidencias.push({ arquivo: { uri: upload.uri, name: upload.name, type: upload.type }, nome: upload.name, capturado_em: agora.toISOString() });
-    }
+    const evidencias = multimidia.pendentes.map(p => p.payload);
 
     try {
       await registrar(eventoPayload, evidencias);
@@ -330,77 +162,16 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
 
             <Text style={styles.label}>Multimídia</Text>
 
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-              <TouchableOpacity style={[styles.mediaButton, { flex: 1 }]} onPress={handleOpenCameraMenu}>
-                <CameraIcon size={16} color="#FFFFFF" />
-                <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>Câmera</Text>
-              </TouchableOpacity>
+            <Multimidia state={multimidia} disabled={isSaving} />
 
-              <TouchableOpacity style={[styles.mediaButton, { flex: 1 }]} onPress={handleUploadMedia}>
-                <UploadIcon size={16} color="#FFFFFF" />
-                <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>Uploads</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.mediaButton, { flex: 1 }, isRecording && { backgroundColor: '#d32f2f' }]}
-                onPress={handleToggleRecord}
-                disabled={!!audio && !isRecording}
-              >
-                <Mic size={16} color="#FFFFFF" />
-                <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>
-                  {isRecording ? recordTime : 'Áudio'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {mediaError ? <Text style={styles.mediaError}>{mediaError}</Text> : null}
             {saveError ? <Text style={styles.mediaError}>{saveError}</Text> : null}
-
-            {/* Preview de Áudio */}
-            {audio && (
-              <View style={styles.previewRow}>
-                <TouchableOpacity style={styles.audioPlayIcon} onPress={handleTogglePlay} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  {isPlaying ? <Pause size={14} color={colors.textSecondary} /> : <Play size={14} color={colors.textSecondary} />}
-                </TouchableOpacity>
-                <View style={styles.waveform}>
-                  {[8,14,6,16,10,18,9,13].map((height, index) => (
-                    <View key={index} style={[styles.waveformBar, { height, backgroundColor: isPlaying ? '#0288d1' : colors.placeholder }]} />
-                  ))}
-                </View>
-                <Text style={styles.previewMeta}>{audio.durationLabel}</Text>
-                <TouchableOpacity onPress={() => { if (isPlaying) handleTogglePlay(); setAudio(null); setRecordTime('00:00'); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <X size={16} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Preview de Múltiplos Uploads / Câmera */}
-            {uploads.map((upload, index) => (
-              <View key={index} style={styles.previewRow}>
-                {upload.type.includes('image') ? (
-                  <Image source={{ uri: upload.uri }} style={styles.previewImage} />
-                ) : (
-                  <View style={styles.previewThumb}>
-                    {upload.type.includes('video') ? <VideoIcon size={18} color={colors.textSecondary} /> : <UploadIcon size={18} color={colors.textSecondary} />}
-                  </View>
-                )}
-                <View style={styles.previewInfo}>
-                  <Text style={styles.previewName} numberOfLines={1}>{upload.name}</Text>
-                  <Text style={styles.previewMeta}>{upload.sizeLabel}</Text>
-                </View>
-                <TouchableOpacity onPress={() => setUploads(prev => prev.filter((_, i) => i !== index))} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <X size={16} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            ))}
-
           </View>
         </ScrollView>
 
         <TouchableOpacity
-          style={[styles.saveButton, (!expedicaoId || isSaving || isRecording) && { opacity: 0.7 }]}
+          style={[styles.saveButton, saveDisabled && { opacity: 0.7 }]}
           onPress={handleSave}
-          disabled={!expedicaoId || isSaving || isRecording}
+          disabled={saveDisabled}
         >
           {isSaving ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
