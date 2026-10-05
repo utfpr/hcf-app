@@ -4,18 +4,27 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextStyle,
   View,
+  ViewStyle,
 } from 'react-native';
-import { Expedition } from '../types';
+import { Expedition, ExpeditionStatus } from '../types';
 
 interface Props {
   expedition: Expedition;
   onPress?: (expedition: Expedition) => void;
 }
 
-export function ActiveExpeditionCard({ expedition, onPress }: Props) {
-  const isPlanejada = expedition.status === 'Planejada';
-  const isFinalizada = expedition.status === 'Finalizada';
+// Único ponto em que o card muda conforme o status: as cores do badge
+const STATUS_STYLES: Record<ExpeditionStatus, { badge: ViewStyle; text: TextStyle }> = {
+  'Em andamento': { badge: {}, text: {} },
+  Planejada: { badge: { backgroundColor: '#27493680' }, text: { color: '#81C784' } },
+  Finalizada: { badge: { backgroundColor: '#1FAD5A1A' }, text: { color: '#819888' } },
+};
+
+/** Card de expedição usado na Home (ativas e histórico) e na listagem */
+export function ExpeditionCard({ expedition, onPress }: Props) {
+  const statusStyle = STATUS_STYLES[expedition.status];
 
   return (
     <Pressable
@@ -56,20 +65,8 @@ export function ActiveExpeditionCard({ expedition, onPress }: Props) {
       </View>
 
       {/* Badge de Status */}
-      <View
-        style={[
-          styles.badge,
-          isPlanejada && styles.badgePlanejada,
-          isFinalizada && styles.badgeFinalizada,
-        ]}
-      >
-        <Text
-          style={[
-            styles.badgeText,
-            isPlanejada && styles.badgeTextPlanejada,
-            isFinalizada && styles.badgeTextFinalizada,
-          ]}
-        >
+      <View style={[styles.badge, statusStyle.badge]}>
+        <Text style={[styles.badgeText, statusStyle.text]}>
           {expedition.status}
         </Text>
       </View>
@@ -125,21 +122,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 12,
   },
-  badgePlanejada: {
-    backgroundColor: '#27493680',
-  },
-  badgeFinalizada: {
-    backgroundColor: '#1FAD5A1A',
-  },
   badgeText: {
     color: '#1FAD5A',
     fontSize: 11,
     fontWeight: '600',
-  },
-  badgeTextPlanejada: {
-    color: '#81C784',
-  },
-  badgeTextFinalizada: {
-    color: '#819888',
   },
 });

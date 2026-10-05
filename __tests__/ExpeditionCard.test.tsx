@@ -1,9 +1,8 @@
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
-import { ActiveExpeditionCard } from '../src/features/home/components/ActiveExpeditionCard';
+import { ExpeditionCard } from '../src/features/home/components/ExpeditionCard';
 import { ActiveExpeditionsList } from '../src/features/home/components/ActiveExpeditionsList';
 import { Expedition } from '../src/features/home/types';
-import { MOCK_ACTIVE_EXPEDITIONS } from '../src/features/home/expeditions-mock';
 
 describe('ActiveExpeditions', () => {
   const sampleExpedition: Expedition = {
@@ -14,11 +13,16 @@ describe('ActiveExpeditions', () => {
     status: 'Em andamento',
   };
 
-  it('renders ActiveExpeditionCard with correct info', () => {
+  const expeditions: Expedition[] = [
+    sampleExpedition,
+    { ...sampleExpedition, id: 'test-2', name: 'Chapada dos Veadeiros', status: 'Planejada' },
+  ];
+
+  it('renders ExpeditionCard with correct info', () => {
     let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
     ReactTestRenderer.act(() => {
       renderer = ReactTestRenderer.create(
-        <ActiveExpeditionCard expedition={sampleExpedition} />
+        <ExpeditionCard expedition={sampleExpedition} />
       );
     });
 
@@ -33,13 +37,13 @@ describe('ActiveExpeditions', () => {
     let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
     ReactTestRenderer.act(() => {
       renderer = ReactTestRenderer.create(
-        <ActiveExpeditionsList expeditions={MOCK_ACTIVE_EXPEDITIONS} />
+        <ActiveExpeditionsList expeditions={expeditions} />
       );
     });
 
     const root = renderer!.root;
-    const cards = root.findAllByType(ActiveExpeditionCard);
-    expect(cards.length).toBe(MOCK_ACTIVE_EXPEDITIONS.length);
+    const cards = root.findAllByType(ExpeditionCard);
+    expect(cards.length).toBe(expeditions.length);
   });
 
   it('renders empty message when there are no expeditions', () => {
