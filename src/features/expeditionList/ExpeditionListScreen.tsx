@@ -9,21 +9,24 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { Calendar, Menu, MapPin, Plus } from 'lucide-react-native'
+import { Menu } from 'lucide-react-native'
 
+import { useAuth } from '@/contexts/Auth/useAuth'
 import { RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
 
 import { useExpeditionsInfinite } from '../expedition/hooks/useExpeditionsInfinite'
-import { ExpedicaoListItem } from '../expedition/types'
-import { formatDate, getStatus } from '../expedition/utils'
+import { ExpeditionCard } from '../home/components/ExpeditionCard'
+import { toApiDate, toExpedition } from '../home/mapExpeditions'
 
 type ExpeditionListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionList'>
 
 export function ExpeditionListScreen() {
   const navigation = useNavigation<ExpeditionListNavigationProp>()
+  const { user } = useAuth()
 
   const { itens, error, loading, loadingMore, loadMore, refresh } = useExpeditionsInfinite()
+  const today = toApiDate(new Date())
 
   // Componentes de Loading e Erro
   function renderContent() {
@@ -59,7 +62,7 @@ export function ExpeditionListScreen() {
         data={itens}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.content}
-        numColumns={2} // Isso substitui aquela função complexa 'chunkIntoRows' do mock!
+        numColumns={2}
         columnWrapperStyle={styles.row}
         ListHeaderComponent={<Text style={styles.title}>Expedições</Text>}
         refreshing={loading}
@@ -68,9 +71,8 @@ export function ExpeditionListScreen() {
         onEndReachedThreshold={0.5}
         renderItem={({ item }) => (
           <ExpeditionCard
-            expedition={item}
-            // Conectando a navegação para a tela de detalhes que você já arrumou!
-            onPress={() => navigation.navigate('ExpeditionDetail', { expeditionId: String(item.id) })}
+            expedition={toExpedition(item, today)}
+            onPress={expedition => navigation.navigate('ExpeditionDetail', { expeditionId: expedition.id })}
           />
         )}
         // Indicador de carregamento do scroll infinito
@@ -87,45 +89,11 @@ export function ExpeditionListScreen() {
         <TouchableOpacity hitSlop={12}>
           <Menu size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.userName}>Dr. Silva</Text>
+        <Text style={styles.userName} numberOfLines={1}>{user?.nome}</Text>
       </View>
 
       {renderContent()}
     </SafeAreaView>
-  )
-}
-
-interface ExpeditionCardProps {
-  expedition: ExpedicaoListItem
-  onPress: () => void
-}
-
-function ExpeditionCard({ expedition, onPress }: ExpeditionCardProps) {
-  // Tratando os dados reais
-  const status = getStatus(expedition.data_inicio, expedition.data_fim)
-  const title = expedition.descricao ?? `Expedição #${expedition.id}`
-
-  return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
-      <Text style={styles.cardName} numberOfLines={2}>{title}</Text>
-
-      <View style={styles.cardRow}>
-        <Calendar size={13} color={colors.textSecondary} />
-        <Text style={styles.cardRowText}>{formatDate(expedition.data_inicio)}</Text>
-      </View>
-
-      <View style={styles.cardRow}>
-        <MapPin size={13} color={colors.textSecondary} />
-        <Text style={styles.cardRowText} numberOfLines={1}>
-          {/* Como a API só retorna o ID da cidade, deixamos um fallback por enquanto */}
-          Cidade ID: {expedition.cidade_id}
-        </Text>
-      </View>
-
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>{status}</Text>
-      </View>
-    </TouchableOpacity>
   )
 }
 
@@ -142,6 +110,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   userName: {
+    flexShrink: 1,
+    marginLeft: 16,
     color: colors.textPrimary,
     fontSize: 14,
   },
@@ -158,54 +128,7 @@ const styles = StyleSheet.create({
   },
   row: {
     justifyContent: 'space-between',
-  },
-  card: {
-    width: '48%',
-    backgroundColor: colors.cardBackground,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    padding: 12,
     marginBottom: 12,
-  },
-  cardName: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 4,
-  },
-  cardRowText: {
-    color: colors.textSecondary,
-    fontSize: 12,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 4,
-    paddingVertical: 3,
-    paddingHorizontal: 7,
-    marginTop: 6,
-  },
-  badgeText: {
-    color: colors.accent,
-    fontSize: 10,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 28,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   centerContainer: {
     flex: 1,
