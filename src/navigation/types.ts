@@ -13,6 +13,11 @@ export type RootStackParamList = {
     latitude: number
     longitude: number
   }
+  Lembrete: {
+    expeditionId?: string // De onde o lembrete foi aberto, para voltar depois de salvar
+    latitude: number
+    longitude: number
+  }
 }
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>

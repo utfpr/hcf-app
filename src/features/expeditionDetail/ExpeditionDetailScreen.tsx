@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { ArrowLeft, BookOpen, Clock, Leaf, Plus, Users } from 'lucide-react-native'
+import { ArrowLeft, Bell, BookOpen, Clock, Leaf, Plus, Users } from 'lucide-react-native'
 import { useState } from 'react'
 
 import { EvidenceMode, RootStackParamList } from '@/navigation/types'
@@ -66,6 +66,11 @@ export function ExpeditionDetailScreen() {
     setIsMenuOpen(false)
     setAudioAtivoId(null)
     navigation.navigate('Formulario', { expeditionId, mode, ...MOCK_COORDS })
+  }
+
+  function handleOpenLembrete() {
+    setIsMenuOpen(false)
+    navigation.navigate('Lembrete', { expeditionId, ...MOCK_COORDS })
   }
 
   function renderHeader() {
@@ -209,6 +214,10 @@ export function ExpeditionDetailScreen() {
           <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('diary')}>
             <BookOpen color={colors.diary} size={14} />
             <Text style={styles.menuOptionText}>Diário</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={handleOpenLembrete}>
+            <Bell color={colors.bell} size={14} />
+            <Text style={styles.menuOptionText}>Lembrete</Text>
           </TouchableOpacity>
         </View>
       )}

@@ -11,6 +11,7 @@ export const colors = {
   textSecondary: '#819888',    // texto de apoio: legendas, metadados, labels de campo, texto secundário de qualquer tipo
   accent: '#1FAD5A',           // verde de destaque: botões de ação, badges de status ativo, ícones/texto que precisam chamar atenção
   diary: '#308CE8',            // cor associada ao diário
+  bell: '#F2C94C',             // cor associada a notificações
   backgroundAccent: '#1FAD5A1A', // fundo de elementos destacados (botão ativo, badge de status ativo, chip de meta-info)
   backgroundDiary: '#308CE81A',
   onAccent: '#FFFFFF',         // cor de texto/ícone usada em cima de um fundo accent (branco puro, só nesse contexto)
