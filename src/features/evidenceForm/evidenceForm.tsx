@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Image, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View, Platform, PermissionsAndroid, ActivityIndicator, Alert } from 'react-native';
 import { launchCamera } from 'react-native-image-picker';
-import DocumentPicker, { types } from '@react-native-documents/picker';
+import { pick, types } from '@react-native-documents/picker';
 import { ArrowLeft, Check, ChevronDown, Clock, Camera as CameraIcon, MapPin, Mic, Play, Pause, Video as VideoIcon, Upload as UploadIcon, X } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -186,26 +186,35 @@ export function Formulario({ mode, latitude, longitude }: FormularioProps) {
 
   // 3. Upload Múltiplo (Galeria/Arquivos)
   async function handleUploadMedia() {
-    try {
-      const results = await DocumentPicker.pick({
-        allowMultiSelection: true,
-        type: [types.images, types.video, types.audio],
-      });
+      try {
+        const results = await pick({
+          allowMultiSelection: true,
+          type: [types.images, types.video, types.audio],
+        });
 
-      const newUploads = results.map(file => ({
-        uri: file.uri,
-        name: file.name ?? `upload_${Date.now()}`,
-        type: file.type ?? 'application/octet-stream',
-        sizeLabel: formatFileSize(file.size ?? 0),
-      }));
+        if (!results || results.length === 0) return;
 
-      setUploads(prev => [...prev, ...newUploads]);
-    } catch (err) {
-      if (!DocumentPicker.isCancel(err)) {
-        setMediaError('Erro ao realizar upload.');
+        const newUploads = results.map(file => {
+          const safeName = file.name || file.uri.split('/').pop() || `upload_${Date.now()}`;
+          return {
+            uri: file.uri,
+            name: safeName,
+            type: file.type || 'application/octet-stream',
+            sizeLabel: formatFileSize(file.size ?? 0),
+          };
+        });
+
+        setUploads(prev => [...prev, ...newUploads]);
+      } catch (err: any) {
+        // Checa diretamente o código de erro nativo
+        if (err?.code === 'DOCUMENT_PICKER_CANCELED' || String(err).toLowerCase().includes('cancel')) {
+          return; // Usuário fechou a galeria sem escolher nada
+        }
+
+        setMediaError('Erro ao realizar upload. Tente novamente.');
+        console.warn('Erro no Picker:', err);
       }
     }
-  }
 
   return (
       <SafeAreaView style={styles.container}>
@@ -303,8 +312,8 @@ export function Formulario({ mode, latitude, longitude }: FormularioProps) {
                   disabled={!!audio && !isRecording}
                 >
                   <Mic size={16} color="#FFFFFF" />
-                  <Text style={styles.mediaButtonText}>
-                    {isRecording ? `Gravando... ${recordTime}` : 'Áudio'}
+                  <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>
+                    {isRecording ? recordTime : 'Áudio'}
                   </Text>
                 </TouchableOpacity>
               </View>
