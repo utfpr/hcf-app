@@ -22,7 +22,7 @@
     "react": "19.2.3",
     "react-hook-form": "7.79.0",
     "react-native": "0.84.1",
-    "react-native-audio-recorder-player": "3.5.3",
+    "react-native-audio-recorder-player": "^3.5.3",
     "react-native-image-picker": "^8.2.1",
     "react-native-safe-area-context": "5.10.0",
     "react-native-screens": "4.25.2",

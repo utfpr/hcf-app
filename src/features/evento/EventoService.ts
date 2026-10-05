@@ -91,4 +91,19 @@ export class EventoService {
       throw error
     }
   }
+    // Anexa evidências a um evento que já existe. Diferente do registrar(), nunca
+  // exclui o evento se um envio falhar: ele já tem dados salvos. O callback avisa
+  // cada envio concluído, para a tela não reenviar essas evidências numa nova tentativa.
+  async adicionarEvidencias(
+    eventoId: number,
+    evidencias: CriarEvidenciaPayload[],
+    onEnviada?: (indice: number) => void,
+  ): Promise<Evidencia[]> {
+    const enviadas: Evidencia[] = []
+    for (let i = 0; i < evidencias.length; i++) {
+      enviadas.push(await this.enviarEvidencia(eventoId, evidencias[i]))
+      onEnviada?.(i)
+    }
+    return enviadas
+  }
 }
