@@ -1,3 +1,4 @@
+import type { Paginacao } from '@/features/expedition/types'
 import type { HttpClient } from '@/libraries/http/HttpClient'
 
 import type {
@@ -5,7 +6,11 @@ import type {
   CriarEvidenciaPayload,
   Evento,
   Evidencia,
+  RegistroExpedicao,
 } from './types'
+
+// A tela de detalhes mostra todos os registros de uma vez; acima disso será preciso paginar
+const LIMITE_REGISTROS = 100
 
 export interface RegistroSalvo {
   evento: Evento
@@ -21,6 +26,30 @@ export class EventoService {
       payload,
     )
     return response.data
+  }
+
+  async listar(expedicaoId: number): Promise<Paginacao<Evento>> {
+    const response = await this.httpClient.get<Paginacao<Evento>>(
+      `/v2/expedicoes/${expedicaoId}/eventos`,
+      { limite: LIMITE_REGISTROS },
+    )
+    return response.data
+  }
+
+  async listarEvidencias(eventoId: number): Promise<Evidencia[]> {
+    const response = await this.httpClient.get<Evidencia[]>(`/v2/eventos/${eventoId}/evidencias`)
+    return response.data
+  }
+
+  // Eventos da expedição (mais recentes primeiro) com as evidências de cada um
+  async listarRegistros(expedicaoId: number): Promise<RegistroExpedicao[]> {
+    const { itens } = await this.listar(expedicaoId)
+    return Promise.all(
+      itens.map(async evento => ({
+        ...evento,
+        evidencias: await this.listarEvidencias(evento.id),
+      })),
+    )
   }
 
   async excluir(eventoId: number): Promise<void> {

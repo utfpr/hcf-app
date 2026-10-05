@@ -102,15 +102,6 @@ export function ExpeditionListScreen() {
       </View>
 
       {renderContent()}
-
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.85}
-        // Aqui também já leva pro form para criar do zero (passando apenas a coordenada por enquanto)
-        onPress={() => navigation.navigate('Formulario', { latitude: -25.4284, longitude: -49.2733 })}
-      >
-        <Plus size={28} color={colors.onAccent} />
-      </TouchableOpacity>
     </SafeAreaView>
   )
 }

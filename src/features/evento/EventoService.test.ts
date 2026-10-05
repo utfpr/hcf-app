@@ -55,6 +55,17 @@ describe('EventoService', () => {
     expect(result).toEqual({ evento, evidencias: [{ id: 1, evento_id: 10 }] })
   })
 
+  it('lists the expedition events together with the evidences of each one', async () => {
+    const evidencia = { id: 1, evento_id: 10, url: '/uploads/evidencias/foto.jpg' }
+    httpClient.get
+      .mockResolvedValueOnce({ data: { itens: [evento], total: 1, limite: 100, pagina: 1 } })
+      .mockResolvedValueOnce({ data: [evidencia] })
+
+    await expect(service.listarRegistros(4)).resolves.toEqual([{ ...evento, evidencias: [evidencia] }])
+    expect(httpClient.get).toHaveBeenCalledWith('/v2/expedicoes/4/eventos', { limite: 100 })
+    expect(httpClient.get).toHaveBeenCalledWith('/v2/eventos/10/evidencias')
+  })
+
   it('removes the event when an evidence upload fails, so retrying does not duplicate it', async () => {
     const uploadError = new Error('Tipo de arquivo não suportado')
     httpClient.post.mockResolvedValue({ data: evento })

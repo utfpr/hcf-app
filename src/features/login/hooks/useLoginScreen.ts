@@ -5,20 +5,28 @@ import { useAuth } from '@/contexts/Auth/useAuth'
 import { useContainer } from '@/contexts/Container/useContainer'
 import { useMutation } from '@/hooks/query/useMutation'
 import {
+  getHttpErrorCode,
   getHttpErrorMessage,
-  getHttpStatus,
   isNetworkError,
 } from '@/libraries/http/httpError'
 
 import type { LoginResponse } from '../types'
 
+// Código de erro da API (HTTP 400) para e-mail ou senha inválidos
+const INVALID_CREDENTIALS_CODE = 100
+
+// algo@dominio.ext — sem espaços, um único @ e extensão com 2+ caracteres
+export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
 export const loginSchema = z.object({
   email: z
     .string()
-    .min(1, 'E-mail obrigatório')
-    .email('E-mail inválido'),
+    .trim()
+    .min(1, 'Informe seu e-mail')
+    .regex(EMAIL_REGEX, 'Formato de e-mail inválido (ex.: nome@utfpr.edu.br)'),
   senha: z
     .string()
+    .min(1, 'Informe sua senha')
     .min(6, 'Senha deve ter pelo menos 6 caracteres'),
 })
 
@@ -55,7 +63,7 @@ export function useLoginScreen() {
         return
       }
 
-      if (getHttpStatus(err) === 401) {
+      if (getHttpErrorCode(err) === INVALID_CREDENTIALS_CODE) {
         setError('E-mail ou senha incorretos.')
         return
       }
