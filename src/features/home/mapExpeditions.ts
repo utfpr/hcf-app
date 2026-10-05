@@ -38,7 +38,8 @@ function formatLocation(item: ExpedicaoListItem): string {
   return item.cidade_nome ?? 'Local não informado';
 }
 
-function toExpedition(item: ExpedicaoListItem, today: string): Expedition {
+/** Converte o item da API para o formato do card de expedição */
+export function toExpedition(item: ExpedicaoListItem, today: string): Expedition {
   return {
     id: String(item.id),
     name: item.descricao?.trim() || `Expedição #${item.id}`,
