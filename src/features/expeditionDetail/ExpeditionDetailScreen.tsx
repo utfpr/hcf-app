@@ -128,6 +128,8 @@ export function ExpeditionDetailScreen() {
   }
 
   const status = getStatus(data.data_inicio, data.data_fim)
+  // Expedição encerrada não recebe novos registros (só evidências nos registros existentes)
+  const isFinalizada = status === 'Finalizada'
 
   return (
     <SafeAreaView style={styles.wrapper}>
@@ -200,33 +202,40 @@ export function ExpeditionDetailScreen() {
           ))
         ) : (
           <Text style={styles.emptyTeamText}>
-            Nenhum registro ainda. Use o botão + para adicionar uma coleta ou diário.
+            {isFinalizada
+              ? 'Nenhum registro nesta expedição.'
+              : 'Nenhum registro ainda. Use o botão + para adicionar uma coleta ou diário.'}
           </Text>
         )}
       </ScrollView>
 
-      {isMenuOpen && (
-        <View style={styles.floatingMenu}>
-          <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('collection')}>
-            <Leaf color={colors.accent} size={14} />
-            <Text style={styles.menuOptionText}>Coleta</Text>
+      {/* Expedição finalizada é só para visualizar: sem o botão de novos registros */}
+      {!isFinalizada && (
+        <>
+          {isMenuOpen && (
+            <View style={styles.floatingMenu}>
+              <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('collection')}>
+                <Leaf color={colors.accent} size={14} />
+                <Text style={styles.menuOptionText}>Coleta</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('diary')}>
+                <BookOpen color={colors.diary} size={14} />
+                <Text style={styles.menuOptionText}>Diário</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={handleOpenLembrete}>
+                <Bell color={colors.bell} size={14} />
+                <Text style={styles.menuOptionText}>Lembrete</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <TouchableOpacity
+            style={styles.floatingButton}
+            onPress={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            <Text style={styles.floatingButtonText}><Plus color={colors.onAccent} size={28}/></Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('diary')}>
-            <BookOpen color={colors.diary} size={14} />
-            <Text style={styles.menuOptionText}>Diário</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={handleOpenLembrete}>
-            <Bell color={colors.bell} size={14} />
-            <Text style={styles.menuOptionText}>Lembrete</Text>
-          </TouchableOpacity>
-        </View>
+        </>
       )}
-      <TouchableOpacity
-        style={styles.floatingButton}
-        onPress={() => setIsMenuOpen(!isMenuOpen)}
-      >
-        <Text style={styles.floatingButtonText}><Plus color={colors.onAccent} size={28}/></Text>
-      </TouchableOpacity>
 
       <EvidenciaViewer evidencia={evidenciaAberta} onClose={() => setEvidenciaAberta(null)} />
         

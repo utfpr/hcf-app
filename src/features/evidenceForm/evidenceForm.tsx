@@ -7,6 +7,7 @@ import { EvidenceMode } from '@/navigation/types';
 import { colors } from '../../theme/colors';
 import { styles } from './styles';
 import { useRegistrarEvento } from '@/features/evento/hooks/useRegistrarEvento';
+import { useExpedition } from '@/features/expedition/hooks/useExpedition';
 import { useMultimidia } from '@/features/evento/hooks/useMultimidia';
 import { Multimidia } from '@/features/evento/components/Multimidia';
 import type { CriarEventoPayload } from '@/features/evento/types';
@@ -55,13 +56,25 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
   const [isFamilyListVisible, setIsFamilyListVisible] = useState(false);
   const [scientificName, setScientificName] = useState('');
   const [notes, setNotes] = useState('');
+  const [expeditionIdentifier, setExpeditionIdentifier] = useState(expedicaoId ? String(expedicaoId) : '');
+  const [selectedLocalId, setSelectedLocalId] = useState<number | null>(null);
+  const [isLocalListVisible, setIsLocalListVisible] = useState(false);
+
+  const numericExpeditionId = expeditionIdentifier ? Number(expeditionIdentifier) : undefined;
+  const expedition = useExpedition(
+    numericExpeditionId && Number.isInteger(numericExpeditionId) && numericExpeditionId > 0
+      ? numericExpeditionId
+      : undefined,
+  );
+  const locaisColeta = expedition.data?.rotas.flatMap(rota => rota.locais_coleta ?? []) ?? [];
+  const selectedLocal = locaisColeta.find(local => local.id === selectedLocalId);
 
   const multimidia = useMultimidia();
 
   // Hooks da API
-  const { trigger: registrar, loading: isSaving } = useRegistrarEvento(expedicaoId);
+  const { trigger: registrar, loading: isSaving } = useRegistrarEvento(numericExpeditionId);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const saveDisabled = !expedicaoId || isSaving || multimidia.busy;
+  const saveDisabled = !numericExpeditionId || isSaving || multimidia.busy;
 
   async function handleSave() {
     if (saveDisabled) return;
@@ -110,6 +123,51 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.formCard}>
+            <Text style={styles.labelFirst}>ID da expedição</Text>
+            <TextInput
+              style={styles.input}
+              value={expeditionIdentifier}
+              onChangeText={value => {
+                setExpeditionIdentifier(value.replace(/\D/g, ''));
+                setSelectedLocalId(null);
+                setIsLocalListVisible(false);
+              }}
+              placeholder="Digite o ID da expedição"
+              placeholderTextColor={colors.placeholder}
+              keyboardType="number-pad"
+            />
+
+            <Text style={styles.label}>Local da coleta/diário</Text>
+            <TouchableOpacity
+              style={styles.selectInput}
+              onPress={() => setIsLocalListVisible(value => !value)}
+              disabled={!numericExpeditionId || expedition.loading}
+            >
+              <Text style={selectedLocal ? styles.selectValue : styles.selectPlaceholder}>
+                {expedition.loading
+                  ? 'Carregando locais...'
+                  : selectedLocal?.descricao ?? 'Selecione o local'}
+              </Text>
+              <ChevronDown color={colors.textSecondary} size={18} />
+            </TouchableOpacity>
+            {expedition.error ? <Text style={styles.mediaError}>Não foi possível carregar os locais da expedição.</Text> : null}
+            {isLocalListVisible && (
+              <View style={styles.optionsList}>
+                {locaisColeta.length ? locaisColeta.map(local => (
+                  <TouchableOpacity
+                    key={local.id}
+                    style={styles.option}
+                    onPress={() => { setSelectedLocalId(local.id); setIsLocalListVisible(false); }}
+                  >
+                    <Text style={styles.optionText}>{local.descricao ?? `Local #${local.id}`}</Text>
+                  </TouchableOpacity>
+                )) : <Text style={styles.emptyOption}>Nenhum local vinculado às rotas desta expedição.</Text>}
+              </View>
+            )}
+
+            <Text style={styles.label}>Multimídia</Text>
+            <Multimidia state={multimidia} disabled={isSaving} />
+
             {isCollection && (
               <>
                 <Text style={styles.labelFirst}>Família</Text>
@@ -159,10 +217,6 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
               multiline
               numberOfLines={5}
             />
-
-            <Text style={styles.label}>Multimídia</Text>
-
-            <Multimidia state={multimidia} disabled={isSaving} />
 
             {saveError ? <Text style={styles.mediaError}>{saveError}</Text> : null}
           </View>
