@@ -107,6 +107,12 @@ export const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 14,
   },
+  emptyOption: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
   textArea: {
     backgroundColor: colors.inputBackground,
     borderRadius: 10,

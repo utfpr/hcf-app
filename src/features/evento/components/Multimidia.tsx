@@ -21,13 +21,22 @@ export function Multimidia({ state, disabled = false }: MultimidiaProps) {
       <View style={styles.mediaRow}>
         <TouchableOpacity
           style={styles.mediaButton}
-          onPress={state.abrirCamera}
+          onPress={state.capturarFoto}
           disabled={disabled || state.busy}
         >
           {isCapturing
             ? <ActivityIndicator size="small" color={colors.onAccent} />
             : <Camera size={16} color={colors.onAccent} />}
-          <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>Câmera</Text>
+          <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>Foto</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.mediaButton}
+          onPress={state.capturarVideo}
+          disabled={disabled || state.busy}
+        >
+          <Video size={16} color={colors.onAccent} />
+          <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>Vídeo</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -94,11 +103,12 @@ export function Multimidia({ state, disabled = false }: MultimidiaProps) {
 const styles = StyleSheet.create({
   mediaRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
     marginBottom: 12,
   },
   mediaButton: {
-    flex: 1,
+    width: '47%',
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.borderAlt,

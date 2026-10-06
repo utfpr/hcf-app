@@ -124,6 +124,16 @@ export function useMultimidia() {
     ])
   }
 
+  function capturarFoto() {
+    setError(null)
+    return capturar('photo')
+  }
+
+  function capturarVideo() {
+    setError(null)
+    return capturar('video')
+  }
+
   async function upload() {
     setError(null)
     try {
@@ -208,6 +218,8 @@ export function useMultimidia() {
     // Enquanto grava ou a câmera está aberta, não dá para salvar
     busy: isRecording || isCapturing,
     abrirCamera,
+    capturarFoto,
+    capturarVideo,
     upload,
     alternarGravacao,
     alternarReproducao,
