@@ -122,6 +122,9 @@ export const styles = StyleSheet.create({
     color: colors.inputText,
     textAlignVertical: 'top',
   },
+  diaryTextArea: {
+    minHeight: 230,
+  },
   mediaError: {
     color: colors.danger,
     fontSize: 12,
