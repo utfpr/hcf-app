@@ -40,15 +40,6 @@ export function Multimidia({ state, disabled = false }: MultimidiaProps) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.mediaButton}
-          onPress={state.upload}
-          disabled={disabled || state.busy}
-        >
-          <Upload size={16} color={colors.onAccent} />
-          <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>Upload</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
           style={[styles.mediaButton, isRecording && styles.mediaButtonRecording]}
           onPress={state.alternarGravacao}
           disabled={disabled || isCapturing}
@@ -62,6 +53,16 @@ export function Multimidia({ state, disabled = false }: MultimidiaProps) {
             {isRecording ? recordTime : 'Áudio'}
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.mediaButton}
+          onPress={state.upload}
+          disabled={disabled || state.busy}
+        >
+          <Upload size={16} color={colors.onAccent} />
+          <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>Upload</Text>
+        </TouchableOpacity>
+
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
