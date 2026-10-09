@@ -50,10 +50,6 @@ export function HomeScreen() {
     // TODO: navegar para a página do menu
   }
 
-  function handleAddPress() {
-    // TODO: navegar para a página de nova expedição
-  }
-
   function handleExpeditionPress(expedition: Expedition) {
     navigation.navigate('ExpeditionDetail', { expeditionId: expedition.id });
   }
