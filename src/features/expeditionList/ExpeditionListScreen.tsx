@@ -1,4 +1,4 @@
-import { useState } from 'react'
+
 import {
   ActivityIndicator,
   FlatList,
@@ -10,25 +10,41 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { Calendar, Menu, MapPin, Plus, ChevronLeft, ChevronRight } from 'lucide-react-native'
+import {
+  Calendar,
+  Menu,
+  MapPin,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react-native'
 
 import { RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
 
-// Importando os hooks e utils reais que o Bruno e o Eduardo fizeram!
 import { useExpeditions } from '../expedition/hooks/useExpeditions'
 import { ExpedicaoListItem } from '../expedition/types'
 import { formatDate, getStatus } from '../expedition/utils'
 
-type ExpeditionListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionList'>
+type ExpeditionListNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'ExpeditionList'
+>
 
 export function ExpeditionListScreen() {
   const navigation = useNavigation<ExpeditionListNavigationProp>()
 
-  // 1. Chamando o hook do backend!
-  const { data, error, loading, refresh, page, hasNextPage, nextPage, previousPage } = useExpeditions()
+  const {
+    data,
+    error,
+    loading,
+    refresh,
+    page,
+    hasNextPage,
+    nextPage,
+    previousPage,
+  } = useExpeditions()
 
-  // 2. Componentes de Loading e Erro
   function renderContent() {
     if (loading && !data) {
       return (
@@ -41,9 +57,17 @@ export function ExpeditionListScreen() {
     if (error && !data) {
       return (
         <View style={styles.centerContainer}>
-          <Text style={styles.emptyText}>Não foi possível carregar as expedições.</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => refresh()}>
-            <Text style={styles.retryButtonText}>Tentar Novamente</Text>
+          <Text style={styles.emptyText}>
+            Não foi possível carregar as expedições.
+          </Text>
+
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => refresh()}
+          >
+            <Text style={styles.retryButtonText}>
+              Tentar Novamente
+            </Text>
           </TouchableOpacity>
         </View>
       )
@@ -52,7 +76,9 @@ export function ExpeditionListScreen() {
     if (data?.itens.length === 0) {
       return (
         <View style={styles.centerContainer}>
-          <Text style={styles.emptyText}>Nenhuma expedição encontrada.</Text>
+          <Text style={styles.emptyText}>
+            Nenhuma expedição encontrada.
+          </Text>
         </View>
       )
     }
@@ -62,28 +88,62 @@ export function ExpeditionListScreen() {
         data={data?.itens}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.content}
-        numColumns={2} // Isso substitui aquela função complexa 'chunkIntoRows' do mock!
+        numColumns={2}
         columnWrapperStyle={styles.row}
-        ListHeaderComponent={<Text style={styles.title}>Expedições</Text>}
+        ListHeaderComponent={
+          <Text style={styles.title}>Expedições</Text>
+        }
         refreshing={loading}
         onRefresh={refresh}
         renderItem={({ item }) => (
           <ExpeditionCard
             expedition={item}
-            // 5. Conectando a navegação para a tela de detalhes que você já arrumou!
-            onPress={() => navigation.navigate('ExpeditionDetail', { expeditionId: String(item.id) })}
+            onPress={() =>
+              navigation.navigate('ExpeditionDetail', {
+                expeditionId: String(item.id),
+              })
+            }
           />
         )}
-        // 4. Controles de paginação no final da lista
         ListFooterComponent={
           data && data.total > 0 ? (
             <View style={styles.paginationContainer}>
-              <TouchableOpacity disabled={page === 1} onPress={previousPage} style={[styles.pageButton, page === 1 && styles.pageButtonDisabled]}>
-                <ChevronLeft color={page === 1 ? colors.textSecondary : colors.onAccent} />
+              <TouchableOpacity
+                disabled={page === 1}
+                onPress={previousPage}
+                style={[
+                  styles.pageButton,
+                  page === 1 && styles.pageButtonDisabled,
+                ]}
+              >
+                <ChevronLeft
+                  color={
+                    page === 1
+                      ? colors.textSecondary
+                      : colors.onAccent
+                  }
+                />
               </TouchableOpacity>
-              <Text style={styles.pageText}>Página {page}</Text>
-              <TouchableOpacity disabled={!hasNextPage} onPress={nextPage} style={[styles.pageButton, !hasNextPage && styles.pageButtonDisabled]}>
-                <ChevronRight color={!hasNextPage ? colors.textSecondary : colors.onAccent} />
+
+              <Text style={styles.pageText}>
+                Página {page}
+              </Text>
+
+              <TouchableOpacity
+                disabled={!hasNextPage}
+                onPress={nextPage}
+                style={[
+                  styles.pageButton,
+                  !hasNextPage && styles.pageButtonDisabled,
+                ]}
+              >
+                <ChevronRight
+                  color={
+                    !hasNextPage
+                      ? colors.textSecondary
+                      : colors.onAccent
+                  }
+                />
               </TouchableOpacity>
             </View>
           ) : null
@@ -98,6 +158,20 @@ export function ExpeditionListScreen() {
         <TouchableOpacity hitSlop={12}>
           <Menu size={24} color={colors.textPrimary} />
         </TouchableOpacity>
+
+        {/* Botão para acessar a lista de lembretes */}
+        <TouchableOpacity
+          style={styles.lembretesButton}
+          onPress={() => navigation.navigate('LembreteList')}
+          accessibilityRole="button"
+          accessibilityLabel="Abrir meus lembretes"
+        >
+          <Calendar size={16} color={colors.accent} />
+          <Text style={styles.lembretesButtonText}>
+            Meus Lembretes
+          </Text>
+        </TouchableOpacity>
+
         <Text style={styles.userName}>Dr. Silva</Text>
       </View>
 
@@ -106,8 +180,12 @@ export function ExpeditionListScreen() {
       <TouchableOpacity
         style={styles.fab}
         activeOpacity={0.85}
-        // Aqui também já leva pro form para criar do zero (passando apenas a coordenada por enquanto)
-        onPress={() => navigation.navigate('Formulario', { latitude: -25.4284, longitude: -49.2733 })}
+        onPress={() =>
+          navigation.navigate('Formulario', {
+            latitude: -25.4284,
+            longitude: -49.2733,
+          })
+        }
       >
         <Plus size={28} color={colors.onAccent} />
       </TouchableOpacity>
@@ -120,30 +198,55 @@ interface ExpeditionCardProps {
   onPress: () => void
 }
 
-function ExpeditionCard({ expedition, onPress }: ExpeditionCardProps) {
-  // 3. Tratando os dados reais
-  const status = getStatus(expedition.data_inicio, expedition.data_fim)
-  const title = expedition.descricao ?? `Expedição #${expedition.id}`
+function ExpeditionCard({
+  expedition,
+  onPress,
+}: ExpeditionCardProps) {
+  const status = getStatus(
+    expedition.data_inicio,
+    expedition.data_fim,
+  )
+
+  const title =
+    expedition.descricao ?? `Expedição #${expedition.id}`
 
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
-      <Text style={styles.cardName} numberOfLines={2}>{title}</Text>
+    <TouchableOpacity
+      style={styles.card}
+      activeOpacity={0.8}
+      onPress={onPress}
+    >
+      <Text style={styles.cardName} numberOfLines={2}>
+        {title}
+      </Text>
 
       <View style={styles.cardRow}>
-        <Calendar size={13} color={colors.textSecondary} />
-        <Text style={styles.cardRowText}>{formatDate(expedition.data_inicio)}</Text>
+        <Calendar
+          size={13}
+          color={colors.textSecondary}
+        />
+        <Text style={styles.cardRowText}>
+          {formatDate(expedition.data_inicio)}
+        </Text>
       </View>
 
       <View style={styles.cardRow}>
-        <MapPin size={13} color={colors.textSecondary} />
-        <Text style={styles.cardRowText} numberOfLines={1}>
-          {/* Como a API só retorna o ID da cidade, deixamos um fallback por enquanto */}
+        <MapPin
+          size={13}
+          color={colors.textSecondary}
+        />
+        <Text
+          style={styles.cardRowText}
+          numberOfLines={1}
+        >
           Cidade ID: {expedition.cidade_id}
         </Text>
       </View>
 
       <View style={styles.badge}>
-        <Text style={styles.badgeText}>{status}</Text>
+        <Text style={styles.badgeText}>
+          {status}
+        </Text>
       </View>
     </TouchableOpacity>
   )
@@ -154,6 +257,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -161,14 +265,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+
+  // Botão de navegação para lembretes
+  lembretesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceAlt,
+  },
+
+  lembretesButtonText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
   userName: {
     color: colors.textPrimary,
     fontSize: 14,
   },
+
   content: {
     paddingHorizontal: 16,
     paddingBottom: 100,
   },
+
   title: {
     color: colors.textPrimary,
     fontSize: 20,
@@ -176,9 +300,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 16,
   },
+
   row: {
     justifyContent: 'space-between',
   },
+
   card: {
     width: '48%',
     backgroundColor: colors.cardBackground,
@@ -188,22 +314,26 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
   },
+
   cardName: {
     color: colors.textPrimary,
     fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 8,
   },
+
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     marginBottom: 4,
   },
+
   cardRowText: {
     color: colors.textSecondary,
     fontSize: 12,
   },
+
   badge: {
     alignSelf: 'flex-start',
     backgroundColor: colors.surfaceAlt,
@@ -212,10 +342,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     marginTop: 6,
   },
+
   badgeText: {
     color: colors.accent,
     fontSize: 10,
   },
+
   fab: {
     position: 'absolute',
     bottom: 28,
@@ -227,18 +359,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
   },
+
   emptyText: {
     color: colors.textSecondary,
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 16,
   },
+
   retryButton: {
     backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 16,
@@ -247,10 +382,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderAlt,
   },
+
   retryButtonText: {
     color: colors.textPrimary,
     fontSize: 14,
   },
+
   paginationContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -259,14 +396,17 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     gap: 16,
   },
+
   pageButton: {
     backgroundColor: colors.surfaceAlt,
     padding: 8,
     borderRadius: 8,
   },
+
   pageButtonDisabled: {
     opacity: 0.5,
   },
+
   pageText: {
     color: colors.textPrimary,
     fontSize: 14,
