@@ -7,6 +7,9 @@ export type RootStackParamList = {
   Home: undefined
   ExpeditionList: undefined
   ExpeditionDetail: { expeditionId: string }
+  Synchronization: undefined
+  Reminders: undefined
+  UserProfile: undefined
   Formulario: {
     expeditionId?: string // Opcional (necessário na ExpeditionDetail, mas opcional na Home)
     mode?: EvidenceMode   // Opcional

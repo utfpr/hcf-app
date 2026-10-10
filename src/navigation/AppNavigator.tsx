@@ -5,6 +5,7 @@ import React from 'react'
 import { ExpeditionListScreen } from '@/features/expeditionList/ExpeditionListScreen'
 import { ExpeditionDetailScreen } from '@/features/expeditionDetail/ExpeditionDetailScreen'
 import { Formulario } from '@/features/evidenceForm/evidenceForm'
+import { PlaceholderScreen } from '@/features/navigation/PlaceholderScreen'
 
 import { RootStackParamList } from './types'
 
@@ -23,12 +24,27 @@ function FormularioScreen() {
   )
 }
 
+function SynchronizationScreen() {
+  return <PlaceholderScreen title="Sincronização" />
+}
+
+function RemindersScreen() {
+  return <PlaceholderScreen title="Lembretes" />
+}
+
+function UserProfileScreen() {
+  return <PlaceholderScreen title="Perfil do Usuário" />
+}
+
 export function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ExpeditionList" component={ExpeditionListScreen} />
       <Stack.Screen name="ExpeditionDetail" component={ExpeditionDetailScreen} />
       <Stack.Screen name="Formulario" component={FormularioScreen} />
+      <Stack.Screen name="Synchronization" component={SynchronizationScreen} />
+      <Stack.Screen name="Reminders" component={RemindersScreen} />
+      <Stack.Screen name="UserProfile" component={UserProfileScreen} />
     </Stack.Navigator>
   )
 }

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -10,7 +11,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { Calendar, Menu, MapPin, Plus, ChevronLeft, ChevronRight } from 'lucide-react-native'
+import {
+  Bell,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Compass,
+  MapPin,
+  Menu,
+  Plus,
+  RefreshCw,
+  UserRound,
+} from 'lucide-react-native'
 
 import { RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
@@ -24,6 +36,7 @@ type ExpeditionListNavigationProp = NativeStackNavigationProp<RootStackParamList
 
 export function ExpeditionListScreen() {
   const navigation = useNavigation<ExpeditionListNavigationProp>()
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   // 1. Chamando o hook do backend!
   const { data, error, loading, refresh, page, hasNextPage, nextPage, previousPage } = useExpeditions()
@@ -95,13 +108,57 @@ export function ExpeditionListScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity hitSlop={12}>
+        <TouchableOpacity hitSlop={12} onPress={() => setIsMenuOpen(open => !open)}>
           <Menu size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.userName}>Dr. Silva</Text>
       </View>
 
       {renderContent()}
+
+      {isMenuOpen && (
+        <>
+          <Pressable style={styles.menuBackdrop} onPress={() => setIsMenuOpen(false)} />
+          <View style={styles.navigationMenu}>
+            <View style={styles.menuHeader}>
+              <Text style={styles.menuTitle}>Navegação</Text>
+            </View>
+            <NavigationMenuItem
+              icon={<Compass size={19} color={colors.accent} />}
+              label="Expedições"
+              active
+              onPress={() => {
+                setIsMenuOpen(false)
+                navigation.navigate('ExpeditionList')
+              }}
+            />
+            <NavigationMenuItem
+              icon={<RefreshCw size={19} color={colors.accent} />}
+              label="Sincronização"
+              onPress={() => {
+                setIsMenuOpen(false)
+                navigation.navigate('Synchronization')
+              }}
+            />
+            <NavigationMenuItem
+              icon={<Bell size={19} color={colors.accent} />}
+              label="Lembretes"
+              onPress={() => {
+                setIsMenuOpen(false)
+                navigation.navigate('Reminders')
+              }}
+            />
+            <NavigationMenuItem
+              icon={<UserRound size={19} color={colors.accent} />}
+              label="Perfil do Usuário"
+              onPress={() => {
+                setIsMenuOpen(false)
+                navigation.navigate('UserProfile')
+              }}
+            />
+          </View>
+        </>
+      )}
 
       <TouchableOpacity
         style={styles.fab}
@@ -271,4 +328,84 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 14,
   },
+  menuBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.28)',
+    zIndex: 1,
+  },
+  navigationMenu: {
+    position: 'absolute',
+    top: 78,
+    left: 16,
+    zIndex: 2,
+    width: 252,
+    paddingVertical: 6,
+    backgroundColor: colors.cardBackground,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  menuHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderAlt,
+  },
+  menuTitle: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 48,
+    marginHorizontal: 6,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderAlt,
+    gap: 12,
+  },
+  menuItemActive: {
+    marginLeft: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent,
+    backgroundColor: colors.surfaceAlt,
+  },
+  menuIcon: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.9,
+  },
+  menuItemText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '400',
+  },
 })
+
+interface NavigationMenuItemProps {
+  icon: ReactNode
+  label: string
+  active?: boolean
+  onPress: () => void
+}
+
+function NavigationMenuItem({ icon, label, active = false, onPress }: NavigationMenuItemProps) {
+  return (
+    <TouchableOpacity style={[styles.menuItem, active && styles.menuItemActive]} onPress={onPress}>
+      <View style={styles.menuIcon}>{icon}</View>
+      <Text style={styles.menuItemText}>{label}</Text>
+    </TouchableOpacity>
+  )
+}
