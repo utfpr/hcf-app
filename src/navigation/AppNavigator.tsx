@@ -5,6 +5,7 @@ import React from 'react'
 import { ExpeditionListScreen } from '@/features/expeditionList/ExpeditionListScreen'
 import { ExpeditionDetailScreen } from '@/features/expeditionDetail/ExpeditionDetailScreen'
 import { Formulario } from '@/features/evidenceForm/evidenceForm'
+import { LembreteListScreen } from '@/features/lembrete/LembreteListScreen'
 
 import { RootStackParamList } from './types'
 
@@ -27,6 +28,7 @@ export function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ExpeditionList" component={ExpeditionListScreen} />
+      <Stack.Screen name="LembreteList" component={LembreteListScreen} />
       <Stack.Screen name="ExpeditionDetail" component={ExpeditionDetailScreen} />
       <Stack.Screen name="Formulario" component={FormularioScreen} />
     </Stack.Navigator>
