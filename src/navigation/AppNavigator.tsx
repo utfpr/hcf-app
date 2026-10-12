@@ -7,6 +7,7 @@ import { ExpeditionListScreen } from '@/features/expeditionList/ExpeditionListSc
 import { ExpeditionDetailScreen } from '@/features/expeditionDetail/ExpeditionDetailScreen'
 import { Formulario } from '@/features/evidenceForm/evidenceForm'
 import { LembreteForm } from '@/features/reminderForm/reminderForm'
+import { SyncScreen } from '@/features/sync/SyncScreen'
 
 import { RootStackParamList } from './types'
 
@@ -45,6 +46,7 @@ export function AppNavigator() {
       <Stack.Screen name="ExpeditionDetail" component={ExpeditionDetailScreen} />
       <Stack.Screen name="Formulario" component={FormularioScreen} />
       <Stack.Screen name="Lembrete" component={LembreteScreen} />
+      <Stack.Screen name="Sincronizar" component={SyncScreen} />    
     </Stack.Navigator>
   )
 }

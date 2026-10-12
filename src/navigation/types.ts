@@ -18,6 +18,7 @@ export type RootStackParamList = {
     latitude: number
     longitude: number
   }
+  Sincronizar: undefined
 }
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>
