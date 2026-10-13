@@ -12,6 +12,8 @@ import { RootStackParamList } from '@/navigation/types';
 import { colors } from '../../theme/colors';
 import { styles } from '../evidenceForm/styles';
 import { reminderStyles } from './styles';
+import { Multimidia } from '@/features/evento/components/Multimidia';
+import { useMultimidia } from '@/features/evento/hooks/useMultimidia';
 
 export interface LembreteFormProps {
   // Expedição de onde o lembrete foi aberto; usada só para voltar a ela depois de salvar.
@@ -30,9 +32,12 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
   const [scientificName, setScientificName] = useState('');
   const [localColeta, setLocalColeta] = useState('');
   const [dataColeta, setDataColeta] = useState('');
+  const multimidia = useMultimidia();
 
   const { trigger: criar, loading: isSaving } = useCriarLembrete();
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const isSaveDisabled = isSaving || multimidia.busy;
 
   const posicaoAtual = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
 
@@ -185,6 +190,9 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
             <Text style={reminderStyles.hint}>
               Quando a planta deve estar pronta para coletar (floração, frutificação...).
             </Text>
+
+            <Text style={styles.label}>Mídia</Text>
+            <Multimidia state={multimidia} disabled={isSaving} />
           </View>
         </ScrollView>
 
