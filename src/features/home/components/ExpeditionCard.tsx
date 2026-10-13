@@ -9,6 +9,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { Expedition, ExpeditionStatus } from '../types';
+import { SyncStatusIndicator } from '@/features/sync/components/SyncStatusIndicator';
 
 interface Props {
   expedition: Expedition;
@@ -64,11 +65,18 @@ export function ExpeditionCard({ expedition, onPress }: Props) {
         </View>
       </View>
 
-      {/* Badge de Status */}
-      <View style={[styles.badge, statusStyle.badge]}>
-        <Text style={[styles.badgeText, statusStyle.text]}>
-          {expedition.status}
-        </Text>
+      {/* Rodapé: Badge de Status e Indicador de Sincronização */}
+      <View style={styles.footerRow}>
+        <View style={[styles.badge, statusStyle.badge]}>
+          <Text style={[styles.badgeText, statusStyle.text]}>
+            {expedition.status}
+          </Text>
+        </View>
+        <SyncStatusIndicator
+          status={expedition.syncStatus ?? 'synced'}
+          size={12}
+          testID={`expedition-sync-${expedition.id}`}
+        />
       </View>
     </Pressable>
   );
@@ -126,5 +134,11 @@ const styles = StyleSheet.create({
     color: '#1FAD5A',
     fontSize: 11,
     fontWeight: '600',
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
   },
 });

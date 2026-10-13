@@ -1,6 +1,9 @@
 // Espelha as entidades Evento e Evidencia do hcf-api (/v2/eventos).
 // O diário é o evento "genérico"; a coleta é um evento com a ficha de coleta.
 
+import type { SyncStatus } from '@/features/sync/types'
+
+export type { SyncStatus }
 export type EventoTipo = 'DIARIO' | 'COLETA'
 
 export interface FichaColeta {
@@ -37,6 +40,7 @@ export interface Evento {
   updated_at: string
   created_by: number | null
   updated_by: number | null
+  syncStatus?: import('@/features/sync/types').SyncStatus
 }
 
 export interface CriarEventoPayload {
