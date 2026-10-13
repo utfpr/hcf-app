@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { ArrowLeft, Bell, BookOpen, Clock, Leaf, Plus, Users } from 'lucide-react-native'
+import { ArrowLeft, Bell, BookOpen, Calendar, Clock, Leaf, MapPin, Plus, Users } from 'lucide-react-native'
 import { useState } from 'react'
 
 import { EvidenceMode, RootStackParamList } from '@/navigation/types'
@@ -20,6 +20,9 @@ import { colors } from '@/theme/colors'
 import { useRegistrosExpedicao } from '../evento/hooks/useRegistrosExpedicao'
 import { useExpedition } from '../expedition/hooks/useExpedition'
 import { formatDate, getStatus } from '../expedition/utils'
+
+import { useLembretes } from '../lembrete/hooks/useLembretes'
+import type { Lembrete } from '../lembrete/types'
 
 import { EvidenciaViewer } from './components/EvidenciaViewer'
 import { RegistroCard } from './components/RegistroCard'
@@ -32,6 +35,15 @@ type ExpeditionDetailNavigationProp = NativeStackNavigationProp<RootStackParamLi
 
 const MOCK_COORDS = { latitude: -20.2508, longitude: -46.4167 }
 
+function formatarDataParaBr(dataIso: string) {
+  if (!dataIso) return ''
+  const partes = dataIso.split('-')
+  if (partes.length === 3) {
+    return `${partes[2]}/${partes[1]}/${partes[0]}`
+  }
+  return dataIso
+}
+
 export function ExpeditionDetailScreen() {
   const navigation = useNavigation<ExpeditionDetailNavigationProp>()
   const route = useRoute<ExpeditionDetailRouteProp>()
@@ -42,6 +54,7 @@ export function ExpeditionDetailScreen() {
   const [audioAtivoId, setAudioAtivoId] = useState<number | null>(null)
   const [registroParaEvidencia, setRegistroParaEvidencia] = useState<RegistroExpedicao | null>(null)
 
+  const [activeTab, setActiveTab] = useState<'registros' | 'lembretes'>('registros')
 
   function handleOpenEvidencia(evidencia: Evidencia) {
     // Para o áudio que estiver tocando antes de abrir a foto/vídeo
@@ -57,9 +70,12 @@ export function ExpeditionDetailScreen() {
   const { data, error, loading, refresh } = useExpedition(Number(expeditionId))
   const registros = useRegistrosExpedicao(Number(expeditionId))
 
+  const lembretes = useLembretes()
+
   function handleRefresh() {
     refresh()
     registros.refresh()
+    lembretes.refresh()
   }
 
   function handleOpenForm(mode: EvidenceMode) {
@@ -180,32 +196,103 @@ export function ExpeditionDetailScreen() {
 
         <View style={styles.divider} />
 
-        {registros.loading && !registros.data ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : registros.error && !registros.data ? (
-          <View>
-            <Text style={styles.emptyTeamText}>Não foi possível carregar os registros.</Text>
-            <TouchableOpacity onPress={() => registros.refresh()}>
-              <Text style={styles.retryLink}>Tentar novamente</Text>
-            </TouchableOpacity>
-          </View>
-        ) : registros.data?.length ? (
-          registros.data.map(registro => (
-            <RegistroCard
-              key={registro.id}
-              registro={registro}
-              onAddEvidencia={handleAddEvidencia}
-              onOpenEvidencia={handleOpenEvidencia}
-              audioAtivoId={audioAtivoId}
-              onActivateAudio={setAudioAtivoId}
-            />
-          ))
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'registros' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('registros')}
+          >
+            <Text style={[styles.tabText, activeTab === 'registros' && styles.tabTextActive]}>
+              Registros ({registros.data?.length ?? 0})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'lembretes' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('lembretes')}
+          >
+            <Text style={[styles.tabText, activeTab === 'lembretes' && styles.tabTextActive]}>
+              Lembretes ({lembretes.data?.length ?? 0})
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {activeTab === 'registros' ? (
+          /* Conteúdo da aba de Registros */
+          registros.loading && !registros.data ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : registros.error && !registros.data ? (
+            <View>
+              <Text style={styles.emptyTeamText}>Não foi possível carregar os registros.</Text>
+              <TouchableOpacity onPress={() => registros.refresh()}>
+                <Text style={styles.retryLink}>Tentar novamente</Text>
+              </TouchableOpacity>
+            </View>
+          ) : registros.data?.length ? (
+            registros.data.map(registro => (
+              <RegistroCard
+                key={registro.id}
+                registro={registro}
+                onAddEvidencia={handleAddEvidencia}
+                onOpenEvidencia={handleOpenEvidencia}
+                audioAtivoId={audioAtivoId}
+                onActivateAudio={setAudioAtivoId}
+              />
+            ))
+          ) : (
+            <Text style={styles.emptyTeamText}>
+              {isFinalizada
+                ? 'Nenhum registro nesta expedição.'
+                : 'Nenhum registro ainda. Use o botão + para adicionar uma coleta ou diário.'}
+            </Text>
+          )
         ) : (
-          <Text style={styles.emptyTeamText}>
-            {isFinalizada
-              ? 'Nenhum registro nesta expedição.'
-              : 'Nenhum registro ainda. Use o botão + para adicionar uma coleta ou diário.'}
-          </Text>
+          lembretes.loading && !lembretes.data ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : lembretes.error && !lembretes.data ? (
+            <View>
+              <Text style={styles.emptyTeamText}>Não foi possível carregar os lembretes.</Text>
+              <TouchableOpacity onPress={() => lembretes.refresh()}>
+                <Text style={styles.retryLink}>Tentar novamente</Text>
+              </TouchableOpacity>
+            </View>
+          ) : lembretes.data?.length ? (
+            lembretes.data.map((lembrete: Lembrete) => {
+              const nomeCientifico = lembrete.nome_cientifico ?? (lembrete as any).ficha?.nome_cientifico
+              const familia = lembrete.familia ?? (lembrete as any).ficha?.familia
+
+              return (
+                <View key={lembrete.id} style={styles.reminderCard}>
+                  <View style={styles.reminderBadge}>
+                    <Bell size={12} color={colors.bell} />
+                    <Text style={styles.reminderBadgeText}>Lembrete #{lembrete.id}</Text>
+                  </View>
+
+                  {nomeCientifico ? (
+                    <Text style={styles.reminderTitle}>{nomeCientifico}</Text>
+                  ) : null}
+
+                  {familia ? (
+                    <Text style={styles.reminderSubtitle}>{familia}</Text>
+                  ) : null}
+
+                  <View style={[styles.iconRow, { marginTop: 8 }]}>
+                    <MapPin size={13} color={colors.textSecondary} />
+                    <Text style={styles.reminderInfo}>{lembrete.local_coleta}</Text>
+                  </View>
+
+                  <View style={[styles.iconRow, { marginTop: 4 }]}>
+                    <Calendar size={13} color={colors.accent} />
+                    <Text style={[styles.reminderInfo, { color: colors.accent }]}>
+                      Voltar em: {formatarDataParaBr(lembrete.data_coleta)}
+                    </Text>
+                  </View>
+                </View>
+              )
+            })
+          ) : (
+            <Text style={styles.emptyTeamText}>
+              Nenhum lembrete cadastrado ainda. Use o botão + para criar um lembrete.
+            </Text>
+          )
         )}
       </ScrollView>
 
@@ -300,6 +387,68 @@ const styles = StyleSheet.create({
   memberTagText: { color: colors.textPrimary, fontSize: 12 },
   emptyTeamText: { color: colors.textSecondary, fontSize: 13 },
   retryLink: { color: colors.accent, fontSize: 13, marginTop: 6 },
+  tabContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+  },
+  tabButtonActive: {
+    backgroundColor: colors.accent,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  tabTextActive: {
+    color: colors.onAccent,
+  },
+  reminderCard: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+  },
+  reminderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    backgroundColor: colors.background,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  reminderBadgeText: {
+    color: colors.bell,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  reminderTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  reminderSubtitle: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  reminderInfo: {
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
   floatingButton: {
     position: 'absolute',
     bottom: 24,
