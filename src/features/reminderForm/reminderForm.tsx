@@ -23,7 +23,7 @@ export interface LembreteFormProps {
 const FAMILY_OPTIONS = ['Acanthaceae', 'Asteraceae', 'Bromeliaceae', 'Fabaceae', 'Myrtaceae', 'Orchidaceae', 'Rubiaceae'];
 
 export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormProps) {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Lembrete'>>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Reminders'>>();
 
   const [family, setFamily] = useState<string | null>(null);
   const [isFamilyListVisible, setIsFamilyListVisible] = useState(false);

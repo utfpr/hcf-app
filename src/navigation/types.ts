@@ -7,17 +7,19 @@ export type RootStackParamList = {
   Home: undefined
   ExpeditionList: undefined
   ExpeditionDetail: { expeditionId: string }
+  Synchronization: undefined
+  UserProfile: undefined
   Formulario: {
     expeditionId?: string // Opcional (necessário na ExpeditionDetail, mas opcional na Home)
     mode?: EvidenceMode   // Opcional
     latitude: number
     longitude: number
   }
-  Lembrete: {
+  Reminders: {
     expeditionId?: string // De onde o lembrete foi aberto, para voltar depois de salvar
-    latitude: number
-    longitude: number
-  }
+    latitude?: number
+    longitude?: number
+  } | undefined
 }
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>

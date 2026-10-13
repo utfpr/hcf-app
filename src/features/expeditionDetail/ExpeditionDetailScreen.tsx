@@ -70,7 +70,7 @@ export function ExpeditionDetailScreen() {
 
   function handleOpenLembrete() {
     setIsMenuOpen(false)
-    navigation.navigate('Lembrete', { expeditionId, ...MOCK_COORDS })
+    navigation.navigate('Reminders', { expeditionId, ...MOCK_COORDS })
   }
 
   function renderHeader() {
