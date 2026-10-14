@@ -8,6 +8,7 @@ import { ExpeditionDetailScreen } from '@/features/expeditionDetail/ExpeditionDe
 import { Formulario } from '@/features/evidenceForm/evidenceForm'
 import { LembreteForm } from '@/features/reminderForm/reminderForm'
 import { PlaceholderScreen } from '@/features/navigation/PlaceholderScreen'
+import { UserProfileScreen } from '@/features/userProfile/UserProfileScreen'
 
 import { RootStackParamList } from './types'
 
@@ -45,9 +46,7 @@ function RemindersScreen() {
   )
 }
 
-function UserProfileScreen() {
-  return <PlaceholderScreen title="Perfil do Usuário" />
-}
+
 
 export function AppNavigator() {
   return (
