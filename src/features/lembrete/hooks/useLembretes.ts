@@ -14,6 +14,7 @@ export function filtrarLembretes(lembretes: Lembrete[], filtros: FiltrosLembrete
   const sinal = direcao === 'asc' ? 1 : -1
 
   return lembretes
+    .filter(lembrete => !filtros.expedicao_id || lembrete.expedicao_id === filtros.expedicao_id)
     .filter(lembrete => !filtros.data_coleta_de || lembrete.data_coleta >= filtros.data_coleta_de)
     .filter(lembrete => !filtros.data_coleta_ate || lembrete.data_coleta <= filtros.data_coleta_ate)
     .sort((a, b) => {
