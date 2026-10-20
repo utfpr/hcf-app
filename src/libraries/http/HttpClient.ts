@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios'
+import axios, { AxiosInstance, isAxiosError } from 'axios'
 
 import type { AccessTokenSource } from './AccessTokenSource'
 
@@ -19,6 +19,8 @@ export class HttpClient {
 
   private readonly axios: AxiosInstance
 
+  private unauthorizedHandler?: () => void
+
   constructor(params: {
     baseUrl: string
     accessTokenSource?: AccessTokenSource
@@ -37,6 +39,19 @@ export class HttpClient {
       }
       return config
     })
+
+    // 401 num pedido que levava token: a sessão expirou ou foi invalidada no servidor.
+    // Sem token (ex.: credenciais erradas no login) o erro só segue para quem chamou.
+    this.axios.interceptors.response.use(undefined, error => {
+      if (isAxiosError(error) && error.response?.status === 401 && error.config?.headers?.Authorization) {
+        this.unauthorizedHandler?.()
+      }
+      return Promise.reject(error)
+    })
+  }
+
+  setUnauthorizedHandler(handler: (() => void) | undefined): void {
+    this.unauthorizedHandler = handler
   }
 
   async get<T>(
