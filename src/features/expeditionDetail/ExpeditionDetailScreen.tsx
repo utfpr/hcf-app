@@ -24,7 +24,6 @@ import { colors } from '@/theme/colors'
 import { useRegistrosExpedicao } from '../evento/hooks/useRegistrosExpedicao'
 import { useExpedition } from '../expedition/hooks/useExpedition'
 import { formatDate, getStatus } from '../expedition/utils'
-import { toApiDate } from '../home/mapExpeditions'
 
 import { useLembretes } from '../lembrete/hooks/useLembretes'
 import type { Lembrete } from '../lembrete/types'
@@ -96,8 +95,9 @@ export function ExpeditionDetailScreen() {
     && (!buscaRegistro.trim() || registroBate(registro, buscaRegistro))
   )), [registros.data, filtroTipo, buscaRegistro])
 
-  // A API não liga lembretes a expedições: mostramos os próximos de todas
-  const lembretes = useLembretes({ data_coleta_de: toApiDate(new Date()) })
+  // Só os lembretes criados nesta expedição, o mais próximo primeiro. Todos de uma vez,
+  // como os registros: a aba não pagina
+  const lembretes = useLembretes({ expedicao_id: Number(expeditionId), limite: 100 })
 
   function handleRefresh() {
     refresh()
@@ -238,7 +238,7 @@ export function ExpeditionDetailScreen() {
             onPress={() => setActiveTab('lembretes')}
           >
             <Text style={[styles.tabText, activeTab === 'lembretes' && styles.tabTextActive]}>
-              Próximos lembretes ({lembretes.data?.total ?? 0})
+              Lembretes ({lembretes.data?.total ?? 0})
             </Text>
           </TouchableOpacity>
         </View>
@@ -333,7 +333,7 @@ export function ExpeditionDetailScreen() {
             })
           ) : (
             <Text style={styles.emptyTeamText}>
-              Nenhum lembrete agendado a partir de hoje. Use o botão + para criar um lembrete.
+              Nenhum lembrete criado nesta expedição. Use o botão + para criar um lembrete.
             </Text>
           )
         )}
