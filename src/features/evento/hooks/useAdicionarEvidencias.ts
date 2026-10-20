@@ -1,21 +1,21 @@
-import { useMemo } from 'react'
-
-import { useContainer } from '@/contexts/Container/useContainer'
+import { useOffline } from '@/features/offline/OfflineContext'
 import { useMutation } from '@/hooks/query/useMutation'
 
-import { EventoService } from '../EventoService'
-import type { CriarEvidenciaPayload } from '../types'
+import type { CriarEvidenciaPayload, RegistroExpedicao } from '../types'
 
+// Salva no aparelho, ligada ao registro: pelo id da API se ele já subiu,
+// ou pelo id local se ele também ainda está só no aparelho
 export function useAdicionarEvidencias(expedicaoId: number | undefined) {
-  const { httpClient } = useContainer()
-  const service = useMemo(() => new EventoService(httpClient), [httpClient])
+  const { store } = useOffline()
 
-    return useMutation(
-    ( eventoId: number,
-      evidencias: CriarEvidenciaPayload[],
-      onEnviada?: (indice: number) => void,
-    ) => service.adicionarEvidencias(eventoId, evidencias, onEnviada),
+  return useMutation(
+    (registro: RegistroExpedicao, evidencias: CriarEvidenciaPayload[]) =>
+      store.adicionarMidias(
+        registro.local_id && registro.id < 0
+          ? { tipo: 'evento', expedicao_id: registro.expedicao_id, evento_local_id: registro.local_id }
+          : { tipo: 'evento', expedicao_id: registro.expedicao_id, evento_id: registro.id },
+        evidencias,
+      ),
     expedicaoId ? ['eventos', expedicaoId] : null,
-    { revalidate: expedicaoId ? [['eventos', expedicaoId]] : [] },
   )
 }

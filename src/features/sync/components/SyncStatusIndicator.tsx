@@ -5,7 +5,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native'
-import { AlertCircle, Check, Clock, RefreshCw } from 'lucide-react-native'
+import { AlertCircle, CheckCheck, RefreshCw } from 'lucide-react-native'
 
 import { colors } from '@/theme/colors'
 import type { SyncStatus } from '../types'
@@ -26,17 +26,19 @@ interface StatusConfig {
 }
 
 const STATUS_CONFIGS: Record<SyncStatus, StatusConfig> = {
+  // Check duplo, como mensagem lida: tudo já está na API
   synced: {
     label: 'Sincronizado',
     color: colors.accent,
     bgColor: 'rgba(31, 173, 90, 0.15)',
-    Icon: Check,
+    Icon: CheckCheck,
   },
+  // Coisa nova no aparelho esperando o "Sincronizar"
   pending: {
     label: 'Pendente',
     color: colors.bell,
     bgColor: 'rgba(242, 201, 76, 0.15)',
-    Icon: Clock,
+    Icon: RefreshCw,
   },
   syncing: {
     label: 'Sincronizando',
@@ -44,6 +46,7 @@ const STATUS_CONFIGS: Record<SyncStatus, StatusConfig> = {
     bgColor: 'rgba(48, 140, 232, 0.15)',
     Icon: RefreshCw,
   },
+  // A API recusou algum item ao sincronizar
   error: {
     label: 'Erro',
     color: colors.danger,

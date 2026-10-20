@@ -1,21 +1,16 @@
-import { useMemo } from 'react'
-
-import { useContainer } from '@/contexts/Container/useContainer'
 import type { CriarEvidenciaPayload } from '@/features/evento/types'
+import { useOffline } from '@/features/offline/OfflineContext'
 import { useMutation } from '@/hooks/query/useMutation'
 
-import { LembreteService } from '../LembreteService'
 import type { CriarLembretePayload } from '../types'
 
+// Salva no aparelho; o lembrete e a mídia só sobem no "Sincronizar"
 export function useCriarLembrete() {
-  const { httpClient } = useContainer()
-  const service = useMemo(() => new LembreteService(httpClient), [httpClient])
+  const { store } = useOffline()
 
   return useMutation(
     (payload: CriarLembretePayload, evidencias: CriarEvidenciaPayload[]) =>
-      service.registrar(payload, evidencias),
+      store.adicionarLembrete(payload, evidencias),
     ['lembretes'],
-    // Atualiza as telas que listarem os lembretes.
-    { revalidate: [['lembretes']] },
   )
 }

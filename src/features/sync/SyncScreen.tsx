@@ -1,38 +1,88 @@
 import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { BookOpen, ChevronRight, RefreshCw, X } from 'lucide-react-native'
-import React, { useState } from 'react'
+import { AlertCircle, BookOpen, ChevronRight, RefreshCw, Wifi, WifiOff, X } from 'lucide-react-native'
+import React, { useMemo, useState } from 'react'
 import {
-  ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View,
+  ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/contexts/Auth/useAuth'
 import { useHomeExpeditions } from '@/features/home/hooks/useHomeExpeditions'
+import { useOffline } from '@/features/offline/OfflineContext'
+import type { Pendencias } from '@/features/offline/types'
 import { useSync } from '@/features/sync/hooks/useSync'
+import { useTaxonomia } from '@/features/taxonomia/hooks/useTaxonomia'
+import { useConexao } from '@/libraries/network/conexao'
 import { RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
 
+import type { SyncResult } from './types'
+
 type Action = 'current' | 'taxonomy' | 'all'
+
+interface ItemComErro {
+  id: string
+  titulo: string
+  erro: string
+}
+
+// O que a API recusou na última sincronização, para o usuário saber o que corrigir
+function itensComErro(pendencias: Pendencias | null): ItemComErro[] {
+  if (!pendencias) return []
+  return [
+    ...pendencias.eventos.filter(item => item.status === 'error').map(item => ({
+      id: item.local_id,
+      titulo: item.payload.tipo === 'COLETA'
+        ? `Coleta${item.payload.coleta?.nome_cientifico ? `: ${item.payload.coleta.nome_cientifico}` : ''}`
+        : 'Diário',
+      erro: item.erro ?? '',
+    })),
+    ...pendencias.lembretes.filter(item => item.status === 'error').map(item => ({
+      id: item.local_id,
+      titulo: `Lembrete: ${item.payload.local_coleta}`,
+      erro: item.erro ?? '',
+    })),
+    ...pendencias.midias.filter(item => item.status === 'error').map(item => ({
+      id: item.local_id,
+      titulo: `Mídia: ${item.payload.nome}`,
+      erro: item.erro ?? '',
+    })),
+  ]
+}
+
+function mostrarResultado(titulo: string, resultado: SyncResult, sucesso: string) {
+  Alert.alert(titulo, resultado.success ? sucesso : resultado.message ?? 'Não foi possível concluir.')
+}
 
 export function SyncScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
-  const { active, loading, error, refresh } = useHomeExpeditions()
-  const { syncAll, lastSyncFormatted } = useSync()
+  const { active, loading, error } = useHomeExpeditions()
+  const { lastSyncFormatted } = useSync()
+  const { sincronizar, pendencias, pendentes } = useOffline()
+  const taxonomia = useTaxonomia()
+  const { wifi } = useConexao()
   const [busy, setBusy] = useState<Action | null>(null)
 
   // Expedição ativa da semana: a que está em andamento (ou a próxima planejada)
   const current = active.find(item => item.status === 'Em andamento') ?? active[0]
+  const erros = useMemo(() => itensComErro(pendencias), [pendencias])
 
   async function run(action: Action) {
     setBusy(action)
     try {
-      if (action === 'all') {
-        await syncAll(refresh)
+      if (action === 'taxonomy') {
+        mostrarResultado('Dados taxonômicos', await taxonomia.importar(), 'Famílias atualizadas no aparelho.')
+      } else if (action === 'current' && current) {
+        mostrarResultado(
+          'Sincronização',
+          await sincronizar({ expedicaoId: Number(current.id) }),
+          'Os registros da expedição foram sincronizados.',
+        )
       } else {
-        await new Promise<void>(resolve => setTimeout(resolve, 1000))
+        mostrarResultado('Sincronização', await sincronizar(), 'Todos os dados foram sincronizados com sucesso.')
       }
     } finally {
       setBusy(null)
@@ -52,6 +102,8 @@ export function SyncScreen() {
   }
 
   const disabled = busy !== null
+  // Enviar exige Wi-Fi; importar taxonomia (API → app) funciona em qualquer rede
+  const envioBloqueado = disabled || !wifi
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -65,10 +117,38 @@ export function SyncScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Sincronize seus dados</Text>
         <Text style={styles.subtitle}>
-          Colete dados em campo, mesmo offline. Ao restabelecer a conexão, sincronize
-          suas expedições com apenas um toque e mantenha todas as informações alinhadas.
+          Tudo o que você registra fica salvo no aparelho, mesmo offline. Conectado a um
+          Wi-Fi, sincronize para enviar à API e baixar as expedições criadas no web.
         </Text>
         <Text style={styles.lastSyncInfo}>Última sincronização: {lastSyncFormatted}</Text>
+
+        <View style={styles.statusRow}>
+          {wifi ? <Wifi size={16} color={colors.accent} /> : <WifiOff size={16} color={colors.danger} />}
+          <Text style={[styles.statusText, !wifi && styles.statusTextAlerta]}>
+            {wifi ? 'Conectado ao Wi-Fi' : 'Sem Wi-Fi: conecte-se para sincronizar'}
+          </Text>
+        </View>
+        <Text style={styles.pendentesText}>
+          {pendentes === 0
+            ? 'Nada pendente: tudo o que está no aparelho já foi enviado.'
+            : `${pendentes} item(ns) aguardando envio.`}
+        </Text>
+
+        {erros.length > 0 ? (
+          <View style={styles.errorBox}>
+            <View style={styles.statusRow}>
+              <AlertCircle size={16} color={colors.danger} />
+              <Text style={styles.errorTitle}>Itens recusados pela API ({erros.length})</Text>
+            </View>
+            {erros.map(item => (
+              <View key={item.id} style={styles.errorItem}>
+                <Text style={styles.errorItemTitle} numberOfLines={1}>{item.titulo}</Text>
+                <Text style={styles.errorItemText}>{item.erro}</Text>
+              </View>
+            ))}
+            <Text style={styles.errorHint}>Eles são tentados de novo a cada sincronização.</Text>
+          </View>
+        ) : null}
 
         <Text style={styles.sectionLabel}>Expedição atual</Text>
         <Pressable style={styles.currentCard} onPress={handleChooseExpedition}>
@@ -84,9 +164,9 @@ export function SyncScreen() {
         </Pressable>
 
         <Pressable
-          style={[styles.primaryButton, (disabled || !current) && styles.buttonDisabled]}
+          style={[styles.primaryButton, (envioBloqueado || !current) && styles.buttonDisabled]}
           onPress={() => run('current')}
-          disabled={disabled || !current}
+          disabled={envioBloqueado || !current}
         >
           {busy === 'current' ? (
             <ActivityIndicator color={colors.onAccent} />
@@ -94,7 +174,6 @@ export function SyncScreen() {
             <RefreshCw size={18} color={colors.onAccent} />
           )}
           <Text style={styles.primaryButtonText}>Sincronizar</Text>
-          
         </Pressable>
 
         <Pressable
@@ -109,13 +188,18 @@ export function SyncScreen() {
           )}
           <Text style={styles.secondaryButtonText}>Importar dados taxonômicos</Text>
         </Pressable>
+        <Text style={styles.taxonomiaInfo}>
+          {taxonomia.atualizadoEm
+            ? `${taxonomia.total} famílias no aparelho (atualizado em ${taxonomia.atualizadoEm})`
+            : 'Dados taxonômicos ainda não importados'}
+        </Text>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         <Pressable
-          style={[styles.primaryButton, styles.footerButton, disabled && styles.buttonDisabled]}
+          style={[styles.primaryButton, styles.footerButton, envioBloqueado && styles.buttonDisabled]}
           onPress={() => run('all')}
-          disabled={disabled}
+          disabled={envioBloqueado}
         >
           {busy === 'all' ? (
             <ActivityIndicator color={colors.onAccent} />
@@ -163,6 +247,22 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     fontWeight: '500',
   },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  statusText: { color: colors.textSecondary, fontSize: 13 },
+  statusTextAlerta: { color: colors.danger },
+  pendentesText: { color: colors.textPrimary, fontSize: 14, marginTop: 8, marginBottom: 20 },
+  errorBox: {
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
+  },
+  errorTitle: { color: colors.danger, fontSize: 14, fontWeight: '600' },
+  errorItem: { marginTop: 10 },
+  errorItemTitle: { color: colors.textPrimary, fontSize: 13, fontWeight: '600' },
+  errorItemText: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
+  errorHint: { color: colors.textSecondary, fontSize: 12, marginTop: 10 },
   sectionLabel: { color: colors.textSecondary, fontSize: 13, marginBottom: 8 },
   currentCard: {
     flexDirection: 'row',
@@ -189,13 +289,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   primaryButtonText: { color: colors.onAccent, fontSize: 16, fontWeight: '600' },
-  tag: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  tagText: { color: colors.onAccent, fontSize: 11 },
   secondaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -208,6 +301,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   secondaryButtonText: { color: colors.accent, fontSize: 16, fontWeight: '600' },
+  taxonomiaInfo: { color: colors.textSecondary, fontSize: 12, textAlign: 'center', marginTop: 8 },
   buttonDisabled: { opacity: 0.5 },
   footer: {
     paddingHorizontal: 20,

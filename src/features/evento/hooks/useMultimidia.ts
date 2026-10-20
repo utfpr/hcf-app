@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Alert, PermissionsAndroid, Platform, type Permission } from 'react-native'
 import { launchCamera } from 'react-native-image-picker'
-import { pick, types } from '@react-native-documents/picker'
+import { keepLocalCopy, pick, types } from '@react-native-documents/picker'
 import AudioRecorderPlayer from 'react-native-audio-recorder-player'
 
 import type { CriarEvidenciaPayload } from '../types'
@@ -145,8 +145,17 @@ export function useMultimidia() {
       for (const file of results) {
         const nome = file.name ?? file.uri.split('/').pop() ?? `upload_${Date.now()}`
         const type = file.type ?? 'application/octet-stream'
+        // O content:// do seletor perde a permissão depois; a cópia (file://) é o que vai para o aparelho
+        const [copia] = await keepLocalCopy({
+          files: [{ uri: file.uri, fileName: nome }],
+          destination: 'cachesDirectory',
+        })
+        if (copia.status !== 'success') {
+          setError(`Não foi possível ler o arquivo ${nome}.`)
+          continue
+        }
         adicionar(tipoPorMime(type), {
-          arquivo: { uri: file.uri, name: nome, type },
+          arquivo: { uri: copia.localUri, name: nome, type },
           nome,
           capturado_em: agora,
         }, formatFileSize(file.size))

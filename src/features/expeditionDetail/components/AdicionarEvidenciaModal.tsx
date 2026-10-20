@@ -6,7 +6,6 @@ import { Multimidia } from '@/features/evento/components/Multimidia'
 import { useAdicionarEvidencias } from '@/features/evento/hooks/useAdicionarEvidencias'
 import { useMultimidia } from '@/features/evento/hooks/useMultimidia'
 import type { RegistroExpedicao } from '@/features/evento/types'
-import { getUserFacingHttpError } from '@/libraries/http/httpError'
 import { colors } from '@/theme/colors'
 
 interface AdicionarEvidenciaModalProps {
@@ -36,29 +35,20 @@ interface ConteudoProps {
 
 function Conteudo({ registro, expedicaoId, onClose }: ConteudoProps) {
   const multimidia = useMultimidia()
-  const { pendentes, setPendentes, setError } = multimidia
+  const { pendentes, setError } = multimidia
 
   const { trigger: adicionar, loading: isSaving } = useAdicionarEvidencias(expedicaoId)
   const saveDisabled = pendentes.length === 0 || isSaving || multimidia.busy
 
+  // Fica no aparelho; sobe junto com o resto no "Sincronizar"
   async function handleSave() {
     if (saveDisabled) return
     setError(null)
 
-    const lote = pendentes
-    let enviadas = 0
     try {
-      await adicionar(
-        registro.id,
-        lote.map(p => p.payload),
-        indice => {
-          enviadas += 1
-          setPendentes(prev => prev.filter(p => p.id !== lote[indice].id))
-        },
-      )
-    } catch (e) {
-      const mensagem = getUserFacingHttpError(e, 'Não foi possível salvar as evidências. Tente novamente.')
-      setError(enviadas > 0 ? `${mensagem} Parte das evidências já foi enviada; as restantes continuam na lista.` : mensagem)
+      await adicionar(registro, pendentes.map(p => p.payload))
+    } catch {
+      setError('Não foi possível salvar as evidências no aparelho. Tente novamente.')
       return
     }
     onClose()

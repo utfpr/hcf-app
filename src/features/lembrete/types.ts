@@ -12,6 +12,8 @@ export interface Lembrete extends FichaColeta {
   updated_at: string
   created_by: number | null
   updated_by: number | null
+  client_uuid?: string | null
+  syncStatus?: import('@/features/sync/types').SyncStatus
 }
 
 // Multimídia do lembrete (/v2/lembretes/:id/evidencias); mesmo formato da evidência do evento.
@@ -27,12 +29,14 @@ export interface LembreteEvidencia {
   updated_at: string
   created_by: number | null
   updated_by: number | null
+  client_uuid?: string | null
   url: string
 }
 
 export interface CriarLembretePayload extends Partial<FichaColeta> {
   data_coleta: string // YYYY-MM-DD
   local_coleta: string
+  client_uuid?: string
 }
 
 export type OrdemLembrete =

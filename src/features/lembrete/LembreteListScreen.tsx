@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { ArrowLeft, CalendarDays, MapPin } from 'lucide-react-native'
 
+import { SyncStatusIndicator } from '@/features/sync/components/SyncStatusIndicator'
 import { colors } from '@/theme/colors'
 import { useLembretes } from './hooks/useLembretes'
 import type { Lembrete } from './types'
@@ -42,9 +43,12 @@ export function LembreteListScreen() {
   function renderLembrete({ item }: { item: Lembrete }) {
     return (
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>
-          Lembrete #{item.id}
-        </Text>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {item.nome_cientifico ?? item.familia ?? (item.id > 0 ? `Lembrete #${item.id}` : 'Lembrete')}
+          </Text>
+          <SyncStatusIndicator status={item.syncStatus ?? 'synced'} />
+        </View>
 
         <View style={styles.infoRow}>
           <CalendarDays
@@ -206,7 +210,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   cardTitle: {
+    flexShrink: 1,
     color: colors.textPrimary,
     fontSize: 17,
     fontWeight: 'bold',

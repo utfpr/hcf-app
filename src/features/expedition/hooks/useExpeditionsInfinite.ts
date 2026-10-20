@@ -1,54 +1,58 @@
-import { useCallback, useMemo } from 'react'
-import useSWRInfinite from 'swr/infinite'
+import { useCallback, useMemo, useState } from 'react'
 
-import { useContainer } from '@/contexts/Container/useContainer'
-
-import { ExpedicaoService } from '../ExpedicaoService'
-import type { ExpedicaoListItem, OrdemExpedicao, Paginacao } from '../types'
+import { statusDaExpedicao } from '@/features/offline/mesclagem'
+import { useOffline } from '@/features/offline/OfflineContext'
+import type { SyncStatus } from '@/features/sync/types'
+import { useQuery } from '@/hooks/query/useQuery'
 
 const LIMITE = 10
-const ORDEM: OrdemExpedicao = 'id:desc'
 
+// Todas as expedições salvas no aparelho, mais recentes primeiro. A lista já está
+// toda em memória: o "scroll infinito" só vai mostrando de LIMITE em LIMITE.
 export function useExpeditionsInfinite() {
-  const { httpClient } = useContainer()
-  const service = useMemo(() => new ExpedicaoService(httpClient), [httpClient])
+  const { store, baixar } = useOffline()
+  const [visiveis, setVisiveis] = useState(LIMITE)
 
-  const getKey = useCallback(
-    (index: number, previous: Paginacao<ExpedicaoListItem> | null) => {
-      if (previous && previous.itens.length === 0) return null
-      if (previous && previous.pagina * previous.limite >= previous.total) return null
-      return ['expeditions-infinite', index + 1, LIMITE, ORDEM] as const
-    },
-    [],
+  const fetcher = useCallback(async () => {
+    const [cache, pendencias] = await Promise.all([store.lerExpedicoes(), store.pendencias()])
+    return {
+      itens: [...cache.itens].sort((a, b) => b.id - a.id),
+      pendencias,
+    }
+  }, [store])
+
+  const query = useQuery(fetcher, ['expeditions-infinite', store.usuarioId])
+  const todas = useMemo(() => query.data?.itens ?? [], [query.data])
+  const itens = useMemo(() => todas.slice(0, visiveis), [todas, visiveis])
+  const hasMore = visiveis < todas.length
+
+  const loadMore = useCallback(() => {
+    if (hasMore) setVisiveis(atual => atual + LIMITE)
+  }, [hasMore])
+
+  const syncStatusDe = useCallback(
+    (expedicaoId: number): SyncStatus => (
+      query.data ? statusDaExpedicao(query.data.pendencias, expedicaoId) : 'synced'
+    ),
+    [query.data],
   )
 
-  const fetcher = useCallback(
-    ([, pagina, limite, order]: readonly [string, number, number, OrdemExpedicao]) =>
-      service.listar({ pagina, limite, order }),
-    [service],
-  )
+  const { refresh: reler } = query
+  const refresh = useCallback(async () => {
+    await baixar()
+    setVisiveis(LIMITE)
+    return reler()
+  }, [baixar, reler])
 
-  const { data, error, isLoading, isValidating, size, setSize, mutate } =
-    useSWRInfinite<Paginacao<ExpedicaoListItem>, Error>(getKey, fetcher, {
-      revalidateFirstPage: false,
-    })
-
-  const itens = useMemo(() => data?.flatMap(p => p.itens) ?? [], [data])
-  const total = data?.[0]?.total ?? 0
-  const loadingMore = size > 0 && !!data && data[size - 1] === undefined
-  const ultimaPagina = data?.[data.length - 1]
-
-  const hasMore = ultimaPagina
-    ? ultimaPagina.pagina * ultimaPagina.limite < ultimaPagina.total
-    : false
-
-      const loadMore = useCallback(() => {
-      if (isValidating || !hasMore || loadingMore) return
-
-      setSize(size + 1)
-    }, [isValidating, hasMore, loadingMore, setSize, size])
-
-  const refresh = useCallback(() => mutate(), [mutate])
-
-  return { itens, total, error, loading: isLoading, loadingMore, hasMore, loadMore, refresh }
+  return {
+    itens,
+    total: todas.length,
+    error: query.error,
+    loading: query.loading,
+    loadingMore: false,
+    hasMore,
+    loadMore,
+    refresh,
+    syncStatusDe,
+  }
 }

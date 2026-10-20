@@ -1,10 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { User, Mail, Shield, ChevronLeft } from 'lucide-react-native';
 
 import { useAuth } from '@/contexts/Auth/useAuth';
+import { useOffline } from '@/features/offline/OfflineContext';
+import { useConexao } from '@/libraries/network/conexao';
 import { TipoUsuario } from '@/types/usuario';
 import { colors } from '@/theme/colors';
 import { Button } from '@/components/forms/Button';
@@ -25,8 +27,37 @@ function getRoleName(tipo?: TipoUsuario) {
 export function UserProfileScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  // logOut() limpa token e sessão; a navegação volta sozinha para o login
+  // logOut() encerra a sessão e apaga os dados do aparelho; a navegação volta sozinha para o login
   const { user, logOut } = useAuth();
+  const { pendentes, sincronizando } = useOffline();
+  const { wifi } = useConexao();
+  const [saindo, setSaindo] = useState(false);
+
+  // Só sai com Wi-Fi e com tudo enviado (app → API); senão o que está no aparelho se perderia.
+  // Dados que só vêm da API (taxonomia, expedições) não bloqueiam: basta baixar de novo.
+  let motivoBloqueio: string | null = null;
+  if (sincronizando) motivoBloqueio = 'Aguarde a sincronização terminar.';
+  else if (pendentes > 0) motivoBloqueio = `Sincronize ${pendentes} item(ns) pendente(s) antes de sair.`;
+  else if (!wifi) motivoBloqueio = 'Conecte-se a uma rede Wi-Fi para sair.';
+
+  function handleLogout() {
+    if (motivoBloqueio) return;
+    Alert.alert(
+      'Sair do app',
+      'Tem certeza que deseja sair? Os dados baixados serão apagados deste aparelho.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sair',
+          style: 'destructive',
+          onPress: async () => {
+            setSaindo(true);
+            await logOut();
+          },
+        },
+      ],
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -84,8 +115,11 @@ export function UserProfileScreen() {
             title="Sair / Logout"
             variant="secondary"
             icon="logout" // MaterialDesignIcons
-            onPress={logOut}
+            onPress={handleLogout}
+            disabled={motivoBloqueio !== null}
+            loading={saindo}
           />
+          {motivoBloqueio ? <Text style={styles.logoutBloqueado}>{motivoBloqueio}</Text> : null}
         </View>
       </ScrollView>
     </View>
@@ -188,5 +222,11 @@ const styles = StyleSheet.create({
   /* ACTIONS */
   actionSection: {
     marginTop: 'auto',
+  },
+  logoutBloqueado: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });

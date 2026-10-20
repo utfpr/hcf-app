@@ -116,11 +116,11 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
 
     try {
       await registrar(eventoPayload, multimidia.pendentes.map(item => item.payload))
-      Alert.alert('Sucesso', isCollection ? 'Coleta salva!' : 'Diário salvo!', [
+      Alert.alert(isCollection ? 'Coleta salva' : 'Diário salvo', 'Salvo no aparelho. Será enviado no próximo "Sincronizar".', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ])
     } catch (error) {
-      setSaveError(getUserFacingHttpError(error, 'Erro ao salvar o registro.'))
+      setSaveError(getUserFacingHttpError(error, 'Erro ao salvar o registro no aparelho.'))
     }
   }
 

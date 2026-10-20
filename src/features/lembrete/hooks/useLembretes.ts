@@ -1,19 +1,40 @@
+import { useCallback, useEffect, useState } from 'react'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-
-import { useContainer } from '@/contexts/Container/useContainer'
+import { mesclarLembretes } from '@/features/offline/mesclagem'
+import { useOffline } from '@/features/offline/OfflineContext'
 import { useQuery } from '@/hooks/query/useQuery'
 
-import { LembreteListService } from '../LembreteListService'
-import type { FiltrosLembrete } from '../types'
+import type { FiltrosLembrete, Lembrete, PaginacaoLembretes } from '../types'
+
+const LIMITE_PADRAO = 20
+
+// Mesmos filtros e ordem da API (/v2/lembretes), aplicados sobre os dados do aparelho
+function filtrar(lembretes: Lembrete[], filtros: FiltrosLembrete, pagina: number): PaginacaoLembretes {
+  const [coluna, direcao] = (filtros.order ?? 'data_coleta:asc').split(':') as ['id' | 'data_coleta', 'asc' | 'desc']
+  const sinal = direcao === 'asc' ? 1 : -1
+
+  const filtrados = lembretes
+    .filter(lembrete => !filtros.data_coleta_de || lembrete.data_coleta >= filtros.data_coleta_de)
+    .filter(lembrete => !filtros.data_coleta_ate || lembrete.data_coleta <= filtros.data_coleta_ate)
+    .sort((a, b) => {
+      const comparacao = coluna === 'id'
+        ? a.id - b.id
+        : a.data_coleta.localeCompare(b.data_coleta) || a.id - b.id
+      return comparacao * sinal
+    })
+
+  const limite = filtros.limite && filtros.limite > 0 ? filtros.limite : LIMITE_PADRAO
+  const inicio = (pagina - 1) * limite
+  return {
+    itens: filtrados.slice(inicio, inicio + limite),
+    total: filtrados.length,
+    limite,
+    pagina,
+  }
+}
 
 export function useLembretes(filtros: FiltrosLembrete = {}) {
-  const { httpClient } = useContainer()
-
-  const service = useMemo(
-    () => new LembreteListService(httpClient),
-    [httpClient],
-  )
+  const { store } = useOffline()
 
   const filtersKey = JSON.stringify(filtros)
   const initialPage = filtros.pagina ?? 1
@@ -24,18 +45,10 @@ export function useLembretes(filtros: FiltrosLembrete = {}) {
     setPage(initialPage)
   }, [filtersKey, initialPage])
 
-  const requestFilters = useMemo(
-    () => ({
-      ...JSON.parse(filtersKey) as FiltrosLembrete,
-      pagina: page,
-    }),
-    [filtersKey, page],
-  )
-
-  const fetcher = useCallback(
-    () => service.listar(requestFilters),
-    [service, requestFilters],
-  )
+  const fetcher = useCallback(async () => {
+    const lembretes = mesclarLembretes(await store.lerLembretes(), await store.pendencias())
+    return filtrar(lembretes, JSON.parse(filtersKey) as FiltrosLembrete, page)
+  }, [store, filtersKey, page])
 
   const query = useQuery(
     fetcher,

@@ -1,7 +1,6 @@
 import React from 'react'
 import ReactTestRenderer from 'react-test-renderer'
 import { HomeScreen } from '../src/features/home/HomeScreen'
-import { syncService } from '../src/features/sync/SyncService'
 
 // Mocks dos contextos e hooks de navegação
 const mockNavigate = jest.fn()
@@ -18,6 +17,17 @@ jest.mock('../src/contexts/Auth/useAuth', () => ({
 }))
 
 const mockRefresh = jest.fn().mockResolvedValue(undefined)
+const mockSyncAll = jest.fn().mockResolvedValue({ success: true })
+jest.mock('../src/features/sync/hooks/useSync', () => ({
+  useSync: () => ({
+    isSyncing: false,
+    lastSyncDate: null,
+    lastSyncFormatted: 'Nunca',
+    pendentes: 0,
+    syncAll: mockSyncAll,
+  }),
+}))
+
 jest.mock('../src/features/home/hooks/useHomeExpeditions', () => ({
   useHomeExpeditions: () => ({
     active: [
@@ -40,7 +50,6 @@ jest.mock('../src/features/home/hooks/useHomeExpeditions', () => ({
 describe('HomeScreen Sincronização Geral', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    syncService.definirUltimaSincronizacao('')
   })
 
   it('renders general sync card and sync buttons on HomeScreen', () => {
@@ -78,7 +87,7 @@ describe('HomeScreen Sincronização Geral', () => {
       homeSyncAllBtn.props.onPress()
     })
 
-    expect(mockRefresh).toHaveBeenCalledTimes(1)
+    expect(mockSyncAll).toHaveBeenCalledTimes(1)
   })
 
   it('triggers sync when pressing the header sync button', async () => {
@@ -94,6 +103,6 @@ describe('HomeScreen Sincronização Geral', () => {
       headerSyncBtn.props.onPress()
     })
 
-    expect(mockRefresh).toHaveBeenCalledTimes(1)
+    expect(mockSyncAll).toHaveBeenCalledTimes(1)
   })
 })

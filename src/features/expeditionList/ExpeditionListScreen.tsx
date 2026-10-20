@@ -31,7 +31,7 @@ export function ExpeditionListScreen() {
   const { user } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-  const { itens, error, loading, loadingMore, loadMore, refresh } = useExpeditionsInfinite()
+  const { itens, error, loading, loadingMore, loadMore, refresh, syncStatusDe } = useExpeditionsInfinite()
   const today = toApiDate(new Date())
 
   // Componentes de Loading e Erro
@@ -77,7 +77,7 @@ export function ExpeditionListScreen() {
         onEndReachedThreshold={0.5}
         renderItem={({ item }) => (
           <ExpeditionCard
-            expedition={toExpedition(item, today)}
+            expedition={toExpedition(item, today, syncStatusDe(item.id))}
             onPress={expedition => navigation.navigate('ExpeditionDetail', { expeditionId: expedition.id })}
           />
         )}

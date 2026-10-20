@@ -24,6 +24,7 @@ export class LembreteService {
     const form = new FormData()
     form.append('nome', payload.nome)
     form.append('capturado_em', payload.capturado_em)
+    if (payload.client_uuid) form.append('client_uuid', payload.client_uuid)
     // O arquivo vai por último: o multer da API lê os campos de texto antes do arquivo.
     form.append('arquivo', payload.arquivo as unknown as Blob)
 

@@ -1,20 +1,15 @@
-import { useMemo } from 'react'
-
-import { useContainer } from '@/contexts/Container/useContainer'
+import { useOffline } from '@/features/offline/OfflineContext'
 import { useMutation } from '@/hooks/query/useMutation'
 
-import { EventoService } from '../EventoService'
 import type { CriarEventoPayload, CriarEvidenciaPayload } from '../types'
 
+// Salva no aparelho; a coleta/diário só sobe para a API no "Sincronizar"
 export function useRegistrarEvento(expedicaoId: number | undefined) {
-  const { httpClient } = useContainer()
-  const service = useMemo(() => new EventoService(httpClient), [httpClient])
+  const { store } = useOffline()
 
   return useMutation(
     (payload: CriarEventoPayload, evidencias: CriarEvidenciaPayload[]) =>
-      service.registrar(expedicaoId as number, payload, evidencias),
+      store.adicionarEvento(expedicaoId as number, payload, evidencias),
     expedicaoId ? ['eventos', expedicaoId] : null,
-    // Atualiza as telas que listarem os eventos da expedição.
-    { revalidate: expedicaoId ? [['eventos', expedicaoId]] : [] },
   )
 }

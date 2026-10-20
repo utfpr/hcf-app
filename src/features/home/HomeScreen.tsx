@@ -54,7 +54,7 @@ export function HomeScreen() {
 
   async function handleSyncAll() {
     try {
-      const result = await syncAll(refresh);
+      const result = await syncAll();
       if (result.success) {
         Alert.alert('Sincronização', 'Todos os dados foram sincronizados com sucesso.');
       } else {

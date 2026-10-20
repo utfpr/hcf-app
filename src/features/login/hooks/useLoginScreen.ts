@@ -5,15 +5,12 @@ import { useAuth } from '@/contexts/Auth/useAuth'
 import { useContainer } from '@/contexts/Container/useContainer'
 import { useMutation } from '@/hooks/query/useMutation'
 import {
-  getHttpErrorCode,
   getHttpErrorMessage,
+  getHttpStatus,
   isNetworkError,
 } from '@/libraries/http/httpError'
 
 import type { LoginResponse } from '../types'
-
-// Código de erro da API (HTTP 400) para e-mail ou senha inválidos
-const INVALID_CREDENTIALS_CODE = 100
 
 // algo@dominio.ext — sem espaços, um único @ e extensão com 2+ caracteres
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -38,8 +35,8 @@ export function useLoginScreen() {
   const [error, setError] = useState<string | undefined>()
 
   const { trigger: login, loading } = useMutation(
-    (credentials: LoginFormValues) => httpClient.post<LoginResponse>('/login', credentials),
-    ['/login'],
+    (credentials: LoginFormValues) => httpClient.post<LoginResponse>('/auth/login', credentials),
+    ['/auth/login'],
   )
 
   const defaultValues: LoginFormValues = {
@@ -56,15 +53,25 @@ export function useLoginScreen() {
         return
       }
 
-      logIn({ token: response.data.token, user: response.data.usuario })
+      logIn({
+        token: response.data.access_token,
+        refreshToken: response.data.refresh_token,
+        user: response.data.user,
+      })
     } catch (err) {
       if (isNetworkError(err)) {
         setError('Verifique sua internet e tente novamente.')
         return
       }
 
-      if (getHttpErrorCode(err) === INVALID_CREDENTIALS_CODE) {
+      // /auth/login responde 401 para e-mail ou senha inválidos
+      if (getHttpStatus(err) === 401) {
         setError('E-mail ou senha incorretos.')
+        return
+      }
+
+      if (getHttpStatus(err) === 429) {
+        setError(getHttpErrorMessage(err) ?? 'Muitas tentativas. Aguarde um pouco e tente de novo.')
         return
       }
 

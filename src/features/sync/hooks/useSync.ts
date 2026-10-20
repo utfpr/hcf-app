@@ -1,46 +1,36 @@
-import { useCallback, useState } from 'react'
-import { syncService } from '../SyncService'
+import { useCallback } from 'react'
+
+import { useOffline } from '@/features/offline/OfflineContext'
+
 import type { SyncResult } from '../types'
 
+export function formatarUltimaSincronizacao(isoString: string | null | undefined): string {
+  if (!isoString) return 'Nunca'
+
+  const date = new Date(isoString)
+  if (Number.isNaN(date.getTime())) return 'Nunca'
+
+  const dateStr = date.toLocaleDateString('pt-BR')
+  const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return `${dateStr} às ${timeStr}`
+}
+
+/** Botões de sincronizar: envia o que está no aparelho e baixa o que mudou na API */
 export function useSync() {
-  const [isSyncing, setIsSyncing] = useState(false)
-  const [lastSyncDate, setLastSyncDate] = useState<string | null>(() => syncService.obterUltimaSincronizacao())
-  const [syncError, setSyncError] = useState<string | null>(null)
-  const [syncSuccess, setSyncSuccess] = useState(false)
+  const { sincronizar, sincronizando, meta, pendentes } = useOffline()
 
-  const syncAll = useCallback(async (onRefreshRemote?: () => Promise<unknown>): Promise<SyncResult> => {
-    setIsSyncing(true)
-    setSyncError(null)
-    setSyncSuccess(false)
+  const syncAll = useCallback(
+    (): Promise<SyncResult> => sincronizar(),
+    [sincronizar],
+  )
 
-    try {
-      const result = await syncService.sincronizarGeral(onRefreshRemote)
-
-      if (result.success) {
-        setLastSyncDate(result.syncedAt ?? new Date().toISOString())
-        setSyncSuccess(true)
-      } else {
-        setSyncError(result.message ?? 'Erro ao sincronizar dados.')
-      }
-
-      return result
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Falha na sincronização dos dados.'
-      setSyncError(message)
-      return { success: false, message }
-    } finally {
-      setIsSyncing(false)
-    }
-  }, [])
-
-  const lastSyncFormatted = syncService.formatarUltimaSincronizacao(lastSyncDate)
+  const lastSyncDate = meta?.ultima_sincronizacao ?? null
 
   return {
-    isSyncing,
+    isSyncing: sincronizando,
     lastSyncDate,
-    lastSyncFormatted,
-    syncError,
-    syncSuccess,
+    lastSyncFormatted: formatarUltimaSincronizacao(lastSyncDate),
+    pendentes,
     syncAll,
   }
 }

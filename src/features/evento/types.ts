@@ -40,7 +40,11 @@ export interface Evento {
   updated_at: string
   created_by: number | null
   updated_by: number | null
+  // Chave de idempotência gerada no app; null no que foi criado pelo web
+  client_uuid?: string | null
   syncStatus?: import('@/features/sync/types').SyncStatus
+  // Só nos registros que ainda estão no aparelho (id negativo, sem id da API)
+  local_id?: string
 }
 
 export interface CriarEventoPayload {
@@ -52,6 +56,7 @@ export interface CriarEventoPayload {
   observacoes?: string | null
   // Obrigatória em COLETA e proibida em DIARIO. Campos omitidos viram null na API.
   coleta?: Partial<FichaColeta>
+  client_uuid?: string
 }
 
 export interface Evidencia {
@@ -66,7 +71,10 @@ export interface Evidencia {
   updated_at: string
   created_by: number | null
   updated_by: number | null
+  client_uuid?: string | null
+  // Na API, caminho relativo (/uploads/...); no aparelho, file://
   url: string
+  syncStatus?: import('@/features/sync/types').SyncStatus
 }
 
 // Arquivo local no formato que o FormData do React Native aceita.
@@ -80,6 +88,7 @@ export interface CriarEvidenciaPayload {
   arquivo: ArquivoLocal
   nome: string
   capturado_em: string
+  client_uuid?: string
 }
 
 // Evento já acompanhado das evidências dele, pronto para exibir na tela

@@ -1,6 +1,6 @@
 import type { ExpedicaoListItem } from '@/features/expedition/types';
 
-import { Expedition, ExpeditionStatus } from './types';
+import { Expedition, ExpeditionStatus, SyncStatus } from './types';
 
 export interface HomeExpeditions {
   active: Expedition[];
@@ -39,13 +39,14 @@ function formatLocation(item: ExpedicaoListItem): string {
 }
 
 /** Converte o item da API para o formato do card de expedição */
-export function toExpedition(item: ExpedicaoListItem, today: string): Expedition {
+export function toExpedition(item: ExpedicaoListItem, today: string, syncStatus?: SyncStatus): Expedition {
   return {
     id: String(item.id),
     name: item.descricao?.trim() || `Expedição #${item.id}`,
     date: formatDate(item.data_inicio),
     location: formatLocation(item),
     status: getStatus(item, today),
+    syncStatus,
   };
 }
 
@@ -53,7 +54,11 @@ export function toExpedition(item: ExpedicaoListItem, today: string): Expedition
  * Ativas: ainda não terminaram (em andamento e planejadas), da mais antiga para a mais nova.
  * Histórico: já terminaram, da que terminou mais recentemente para a mais antiga.
  */
-export function splitExpeditions(items: ExpedicaoListItem[], today: string): HomeExpeditions {
+export function splitExpeditions(
+  items: ExpedicaoListItem[],
+  today: string,
+  syncStatusDe?: (expedicaoId: number) => SyncStatus,
+): HomeExpeditions {
   const active = items
     .filter(item => item.data_fim >= today)
     .sort((a, b) => a.data_inicio.localeCompare(b.data_inicio));
@@ -63,7 +68,7 @@ export function splitExpeditions(items: ExpedicaoListItem[], today: string): Hom
     .sort((a, b) => b.data_fim.localeCompare(a.data_fim));
 
   return {
-    active: active.map(item => toExpedition(item, today)),
-    history: history.map(item => toExpedition(item, today)),
+    active: active.map(item => toExpedition(item, today, syncStatusDe?.(item.id))),
+    history: history.map(item => toExpedition(item, today, syncStatusDe?.(item.id))),
   };
 }

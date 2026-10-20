@@ -1,58 +1,64 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
 
-import { useAuth } from '@/contexts/Auth/useAuth';
-import { useContainer } from '@/contexts/Container/useContainer';
-import { ExpedicaoService } from '@/features/expedition/ExpedicaoService';
+import { statusDaExpedicao } from '@/features/offline/mesclagem';
+import { useOffline } from '@/features/offline/OfflineContext';
 import { useQuery } from '@/hooks/query/useQuery';
 
 import { HomeExpeditions, splitExpeditions, toApiDate } from '../mapExpeditions';
 
-// A home mostra tudo em uma tela só; acima disso será preciso paginar
-const HOME_EXPEDITIONS_LIMIT = 100;
-
 const EMPTY: HomeExpeditions = { active: [], history: [] };
 
-/** Expedições em que o usuário logado participa, separadas em ativas e histórico */
+/** Expedições em que o usuário logado participa (salvas no aparelho), separadas em ativas e histórico */
 export function useHomeExpeditions() {
-  const { httpClient } = useContainer();
-  const { user } = useAuth();
-  const service = useMemo(() => new ExpedicaoService(httpClient), [httpClient]);
-  const userId = user?.id;
+  const { store, baixar, baixando } = useOffline();
+  const [erroBaixa, setErroBaixa] = useState<Error | undefined>();
 
-  const fetcher = useCallback(
-    () => service.listar({
-      usuario_id: userId,
-      limite: HOME_EXPEDITIONS_LIMIT,
-    }),
-    [service, userId],
-  );
+  const fetcher = useCallback(async () => {
+    const [cache, pendencias] = await Promise.all([store.lerExpedicoes(), store.pendencias()]);
+    const minhas = new Set(cache.minhas);
+    return {
+      itens: cache.itens.filter(item => minhas.has(item.id)),
+      pendencias,
+    };
+  }, [store]);
 
-  const query = useQuery(fetcher, userId ? ['home-expeditions', userId] : null);
-  const { refresh } = query;
+  const query = useQuery(fetcher, ['home-expeditions', store.usuarioId]);
+  const { refresh: reler } = query;
 
   // Recalculado a cada render: se o app ficar aberto de um dia para o outro, a expedição
-  // que terminou ontem passa para o histórico mesmo que a API devolva os mesmos dados
+  // que terminou ontem passa para o histórico mesmo que os dados sejam os mesmos
   const today = toApiDate(new Date());
 
-  const expeditions = useMemo(
-    () => (query.data ? splitExpeditions(query.data.itens, today) : EMPTY),
-    [query.data, today],
-  );
+  const expeditions = useMemo(() => {
+    if (!query.data) return EMPTY;
+    const { itens, pendencias } = query.data;
+    return splitExpeditions(itens, today, id => statusDaExpedicao(pendencias, id));
+  }, [query.data, today]);
 
-  // Ao voltar do segundo plano, busca de novo (e re-renderiza com a data atual)
+  // Puxar para atualizar: baixa da API se houver conexão; sem conexão, só relê o aparelho
+  const refresh = useCallback(async () => {
+    const resultado = await baixar();
+    setErroBaixa(resultado.success || !resultado.message ? undefined : new Error(resultado.message));
+    return reler();
+  }, [baixar, reler]);
+
+  // Ao voltar do segundo plano, relê o aparelho (e re-renderiza com a data atual)
   useEffect(() => {
     const subscription = AppState.addEventListener('change', state => {
-      if (state === 'active') refresh();
+      if (state === 'active') reler();
     });
     return () => subscription.remove();
-  }, [refresh]);
+  }, [reler]);
+
+  const vazio = expeditions.active.length === 0 && expeditions.history.length === 0;
 
   return {
     ...expeditions,
-    loading: query.loading,
-    refreshing: query.validating && !query.loading,
-    error: query.error,
+    loading: query.loading || (baixando && vazio),
+    refreshing: baixando && !vazio,
+    // Sem nada no aparelho, o erro da baixa explica a tela vazia
+    error: vazio ? erroBaixa ?? query.error : query.error,
     refresh,
   };
 }

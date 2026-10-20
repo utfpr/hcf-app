@@ -265,7 +265,9 @@ export function ExpeditionDetailScreen() {
                 <View key={lembrete.id} style={styles.reminderCard}>
                   <View style={styles.reminderBadge}>
                     <Bell size={12} color={colors.bell} />
-                    <Text style={styles.reminderBadgeText}>Lembrete #{lembrete.id}</Text>
+                    <Text style={styles.reminderBadgeText}>
+                      {lembrete.id > 0 ? `Lembrete #${lembrete.id}` : 'Lembrete (no aparelho)'}
+                    </Text>
                   </View>
 
                   {nomeCientifico ? (

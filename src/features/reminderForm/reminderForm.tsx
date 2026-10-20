@@ -82,7 +82,7 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
 
     Alert.alert(
       'Lembrete salvo',
-      `Vamos lembrar de voltar em ${dataColeta}.`,
+      `Vamos lembrar de voltar em ${dataColeta}. Ele fica no aparelho até o próximo "Sincronizar".`,
       [{
         text: 'OK',
         onPress: () => (expedicaoId

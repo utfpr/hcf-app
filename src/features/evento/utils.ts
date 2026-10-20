@@ -6,6 +6,8 @@ import type { Evidencia } from './types'
 const API_ORIGIN = API_BASE_URL.match(/^https?:\/\/[^/]+/)?.[0] ?? ''
 
 export function arquivoUrl(evidencia: Evidencia): string {
+  // Evidência que ainda está só no aparelho já vem com o caminho completo (file://)
+  if (/^[a-z]+:\/\//i.test(evidencia.url)) return evidencia.url
   return `${API_ORIGIN}${evidencia.url}`
 }
 

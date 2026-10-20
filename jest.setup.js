@@ -30,6 +30,9 @@ jest.mock('react-native-image-picker', () => ({
 
 jest.mock('@react-native-documents/picker', () => ({
   pick: jest.fn(async () => []),
+  keepLocalCopy: jest.fn(async ({ files }) => files.map(file => ({
+    status: 'success', sourceUri: file.uri, localUri: file.uri,
+  }))),
   types: { audio: 'audio/*', images: 'image/*', video: 'video/*', allFiles: '*/*' },
 }))
 
@@ -54,3 +57,29 @@ jest.mock('react-native-video', () => ({
   __esModule: true,
   default: 'Video',
 }))
+
+// Armazenamento local (JSON e mídia): no Jest, um sistema de arquivos em memória
+jest.mock('@dr.pogodin/react-native-fs', () => {
+  const files = new Map()
+  return {
+    DocumentDirectoryPath: '/documents',
+    exists: jest.fn(async path => files.has(path)),
+    mkdir: jest.fn(async () => undefined),
+    readFile: jest.fn(async path => files.get(path)),
+    writeFile: jest.fn(async (path, contents) => {
+      files.set(path, contents)
+    }),
+    moveFile: jest.fn(async (from, to) => {
+      files.set(to, files.get(from))
+      files.delete(from)
+    }),
+    copyFile: jest.fn(async (from, to) => {
+      files.set(to, files.get(from) ?? '')
+    }),
+    unlink: jest.fn(async path => {
+      ;[...files.keys()].filter(key => key === path || key.startsWith(`${path}/`)).forEach(key => files.delete(key))
+    }),
+  }
+})
+
+jest.mock('@react-native-community/netinfo', () => require('@react-native-community/netinfo/jest/netinfo-mock.js'))
