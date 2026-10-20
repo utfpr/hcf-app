@@ -12,7 +12,9 @@ module.exports = {
     ],
     ['module:react-native-dotenv', {
       moduleName: '@env',
-      path: '.env',
+      // O .env não vai para o git; nos testes (Jest define NODE_ENV=test) usa o
+      // .env.example para que rodem num clone novo ou no CI
+      path: process.env.NODE_ENV === 'test' ? '.env.example' : '.env',
     }]
   ],
 };
