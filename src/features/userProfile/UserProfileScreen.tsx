@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { User, Mail, Shield, ChevronLeft } from 'lucide-react-native';
 
 import { useAuth } from '@/contexts/Auth/useAuth';
+import { useFeedback } from '@/components/feedback/FeedbackContext';
 import { useOffline } from '@/features/offline/OfflineContext';
 import { useConexao } from '@/libraries/network/conexao';
 import { TipoUsuario } from '@/types/usuario';
@@ -26,6 +27,7 @@ function getRoleName(tipo?: TipoUsuario) {
 
 export function UserProfileScreen() {
   const navigation = useNavigation();
+  const { dialogo } = useFeedback();
   const insets = useSafeAreaInsets();
   // logOut() encerra a sessão e apaga os dados do aparelho; a navegação volta sozinha para o login
   const { user, logOut } = useAuth();
@@ -42,21 +44,21 @@ export function UserProfileScreen() {
 
   function handleLogout() {
     if (motivoBloqueio) return;
-    Alert.alert(
-      'Sair do app',
-      'Tem certeza que deseja sair? Os dados baixados serão apagados deste aparelho.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
+    dialogo({
+      titulo: 'Sair do app',
+      mensagem: 'Tem certeza que deseja sair? Os dados baixados serão apagados deste aparelho.',
+      acoes: [
         {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: async () => {
+          texto: 'Sair',
+          estilo: 'destrutivo',
+          aoPressionar: async () => {
             setSaindo(true);
             await logOut();
           },
         },
+        { texto: 'Cancelar', estilo: 'cancelar' },
       ],
-    );
+    });
   }
 
   return (
