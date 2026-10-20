@@ -126,7 +126,7 @@ export function ExpeditionListScreen() {
               label="Lembretes"
               onPress={() => {
                 setIsMenuOpen(false)
-                navigation.navigate('Reminders')
+                navigation.navigate('LembreteList')
               }}
             />
             <NavigationMenuItem

@@ -8,6 +8,7 @@ import { ExpeditionDetailScreen } from '@/features/expeditionDetail/ExpeditionDe
 import { Formulario } from '@/features/evidenceForm/evidenceForm'
 import { LembreteForm } from '@/features/reminderForm/reminderForm'
 import { PlaceholderScreen } from '@/features/navigation/PlaceholderScreen'
+import { LembreteListScreen } from '@/features/lembrete/LembreteListScreen'
 
 import { RootStackParamList } from './types'
 
@@ -54,6 +55,7 @@ export function AppNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="ExpeditionList" component={ExpeditionListScreen} />
+      <Stack.Screen name="LembreteList" component={LembreteListScreen} />
       <Stack.Screen name="ExpeditionDetail" component={ExpeditionDetailScreen} />
       <Stack.Screen name="Formulario" component={FormularioScreen} />
       <Stack.Screen name="Synchronization" component={SynchronizationScreen} />
