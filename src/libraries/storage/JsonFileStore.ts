@@ -48,14 +48,19 @@ export class JsonFileStore {
   }
 
   /** Lê, aplica `alterar` e grava, sem outra operação do mesmo arquivo no meio */
-  async atualizar<T>(nome: string, padrao: T, alterar: (atual: T) => T): Promise<T> {
+  async atualizar<T>(
+    nome: string,
+    padrao: T,
+    alterar: (atual: T) => T,
+    opcoes: { silencioso?: boolean } = {},
+  ): Promise<T> {
     const novo = await this.enfileirar(nome, async () => {
       const atual = await this.lerArquivo(nome, padrao)
       const proximo = alterar(atual)
       await this.gravarArquivo(nome, proximo)
       return proximo
     })
-    this.avisar()
+    if (!opcoes.silencioso) this.avisar()
     return novo
   }
 
@@ -82,7 +87,8 @@ export class JsonFileStore {
     }
   }
 
-  private avisar() {
+  /** Avisa os ouvintes de uma vez, depois de uma série de gravações silenciosas */
+  avisar() {
     this.ouvintes.forEach(ouvinte => ouvinte())
   }
 
