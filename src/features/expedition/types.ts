@@ -37,7 +37,11 @@ export interface RotaExpedicao {
   cidade_id: number
   ordem: number
   nome_cidade: string
+  // id do estado
   estado: string | number | null
+  // Ausentes num detalhe salvo no aparelho antes da API devolvê-los
+  estado_nome?: string | null
+  estado_sigla?: string | null
   locais_coleta: LocalColeta[]
 }
 
