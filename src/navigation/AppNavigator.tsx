@@ -9,6 +9,7 @@ import { Formulario } from '@/features/evidenceForm/evidenceForm'
 import { LembreteForm } from '@/features/reminderForm/reminderForm'
 import { PlaceholderScreen } from '@/features/navigation/PlaceholderScreen'
 import { LembreteListScreen } from '@/features/lembrete/LembreteListScreen'
+import { SyncScreen } from '@/features/sync/SyncScreen'
 
 import { RootStackParamList } from './types'
 
@@ -28,10 +29,6 @@ function FormularioScreen() {
       longitude={longitude}
     />
   )
-}
-
-function SynchronizationScreen() {
-  return <PlaceholderScreen title="Sincronização" />
 }
 
 function RemindersScreen() {
@@ -58,7 +55,7 @@ export function AppNavigator() {
       <Stack.Screen name="LembreteList" component={LembreteListScreen} />
       <Stack.Screen name="ExpeditionDetail" component={ExpeditionDetailScreen} />
       <Stack.Screen name="Formulario" component={FormularioScreen} />
-      <Stack.Screen name="Synchronization" component={SynchronizationScreen} />
+      <Stack.Screen name="Synchronization" component={SyncScreen} />
       <Stack.Screen name="Reminders" component={RemindersScreen} />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} />
     </Stack.Navigator>

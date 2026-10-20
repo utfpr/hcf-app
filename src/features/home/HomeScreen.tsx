@@ -47,7 +47,7 @@ export function HomeScreen() {
   } = useHomeExpeditions();
 
   function handleMenuPress() {
-    // TODO: navegar para a página do menu
+    navigation.navigate('Synchronization')
   }
 
   function handleExpeditionPress(expedition: Expedition) {
