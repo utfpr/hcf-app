@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { ArrowLeft, Bell, Calendar, Check, ChevronDown, Crosshair, MapPin } from 'lucide-react-native';
+import { ArrowLeft, Bell, Calendar, Check, Crosshair, MapPin } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCriarLembrete } from '@/features/lembrete/hooks/useCriarLembrete';
+import { FamiliaInput } from '@/features/taxonomia/components/FamiliaInput';
 import type { CriarLembretePayload } from '@/features/lembrete/types';
 import { dataBrParaIso, hojeIso, maskDataBr } from '@/features/lembrete/utils';
 import { getUserFacingHttpError } from '@/libraries/http/httpError';
@@ -22,13 +23,10 @@ export interface LembreteFormProps {
   longitude: number;
 }
 
-const FAMILY_OPTIONS = ['Acanthaceae', 'Asteraceae', 'Bromeliaceae', 'Fabaceae', 'Myrtaceae', 'Orchidaceae', 'Rubiaceae'];
-
 export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Reminders'>>();
 
-  const [family, setFamily] = useState<string | null>(null);
-  const [isFamilyListVisible, setIsFamilyListVisible] = useState(false);
+  const [family, setFamily] = useState('');
   const [scientificName, setScientificName] = useState('');
   const [localColeta, setLocalColeta] = useState('');
   const [dataColeta, setDataColeta] = useState('');
@@ -60,7 +58,7 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
     return {
       data_coleta: dataBrParaIso(dataColeta) as string,
       local_coleta: localColeta.trim(),
-      familia: family,
+      familia: family.trim() || null,
       nome_cientifico: scientificName.trim() || null,
     };
   }
@@ -118,32 +116,7 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.formCard}>
             <Text style={styles.labelFirst}>Família</Text>
-            <TouchableOpacity
-              style={styles.selectInput}
-              onPress={() => setIsFamilyListVisible(v => !v)}
-              accessibilityRole="button"
-            >
-              <Text style={family ? styles.selectValue : styles.selectPlaceholder}>
-                {family ?? 'Selecione a família'}
-              </Text>
-              <ChevronDown color={colors.textSecondary} size={18} />
-            </TouchableOpacity>
-            {isFamilyListVisible && (
-              <View style={styles.optionsList}>
-                {FAMILY_OPTIONS.map(option => (
-                  <TouchableOpacity
-                    key={option}
-                    style={styles.option}
-                    onPress={() => {
-                      setFamily(option);
-                      setIsFamilyListVisible(false);
-                    }}
-                  >
-                    <Text style={styles.optionText}>{option}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            <FamiliaInput value={family} onChangeText={setFamily} disabled={isSaving} />
 
             <Text style={styles.label}>Nome científico</Text>
             <TextInput
