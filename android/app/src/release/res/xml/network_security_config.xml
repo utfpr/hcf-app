@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Só no build release. O release do React Native bloqueia HTTP sem criptografia,
+  mas a API roda no PC da equipe, sem HTTPS (ex.: http://10.42.0.1:3010 no hotspot
+  do PC). Libera HTTP para qualquer endereço, para que trocar o IP no .env.release
+  não exija mexer aqui. Quando a API tiver HTTPS, troque para "false".
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
