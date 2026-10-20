@@ -23,7 +23,8 @@ import { Multimidia } from '@/features/evento/components/Multimidia';
 import { type EvidenciaPendente, useMultimidia } from '@/features/evento/hooks/useMultimidia';
 
 export interface LembreteFormProps {
-  // Expedição de onde o lembrete foi aberto; usada só para voltar a ela depois de salvar.
+  // Expedição de onde o lembrete foi aberto: vai junto no lembrete (a aba da expedição
+  // filtra por ela) e é para onde o app volta depois de salvar.
   expedicaoId?: number;
 }
 
@@ -126,6 +127,7 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
       data_coleta: dataBrParaIso(dataColeta) as string,
       local_coleta: localColeta.trim(),
       familia: family.trim() || null,
+      ...(expedicaoId ? { expedicao_id: expedicaoId } : {}),
     };
   }
 
