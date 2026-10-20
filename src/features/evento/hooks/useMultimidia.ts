@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Alert, PermissionsAndroid, Platform, type Permission } from 'react-native'
+import { PermissionsAndroid, Platform, type Permission } from 'react-native'
 import { launchCamera } from 'react-native-image-picker'
 import { keepLocalCopy, pick, types } from '@react-native-documents/picker'
 import AudioRecorderPlayer from 'react-native-audio-recorder-player'
+
+import { useFeedback } from '@/components/feedback/FeedbackContext'
 
 import type { CriarEvidenciaPayload } from '../types'
 
@@ -46,6 +48,7 @@ async function requestPermissions(permissions: Permission[]) {
 // Estado e ações da seção "Multimídia": tirar foto, gravar vídeo/áudio e fazer upload.
 // Usado no formulário de coleta/diário e no modal de adicionar evidência do RegistroCard.
 export function useMultimidia() {
+  const { dialogo } = useFeedback()
   const [pendentes, setPendentes] = useState<EvidenciaPendente[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
@@ -117,11 +120,15 @@ export function useMultimidia() {
 
   function abrirCamera() {
     setError(null)
-    Alert.alert('Câmera', 'O que você deseja capturar?', [
-      { text: 'Tirar foto', onPress: () => capturar('photo') },
-      { text: 'Gravar vídeo', onPress: () => capturar('video') },
-      { text: 'Cancelar', style: 'cancel' },
-    ])
+    dialogo({
+      titulo: 'Câmera',
+      mensagem: 'O que você deseja capturar?',
+      acoes: [
+        { texto: 'Tirar foto', aoPressionar: () => capturar('photo') },
+        { texto: 'Gravar vídeo', aoPressionar: () => capturar('video') },
+        { texto: 'Cancelar', estilo: 'cancelar' },
+      ],
+    })
   }
 
   function capturarFoto() {
