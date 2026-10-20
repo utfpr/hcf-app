@@ -39,6 +39,7 @@ jest.mock('../src/features/home/hooks/useHomeExpeditions', () => ({
         status: 'Em andamento',
       },
     ],
+    future: [],
     history: [],
     loading: false,
     refreshing: false,

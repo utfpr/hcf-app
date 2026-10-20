@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -23,8 +22,8 @@ import { colors } from '@/theme/colors';
 import { useSync } from '@/features/sync/hooks/useSync';
 import { NavigationMenu } from '@/features/navigation/NavigationMenu';
 
-import { ExpeditionCard } from './components/ExpeditionCard';
 import { ActiveExpeditionsList } from './components/ActiveExpeditionsList';
+import { CollapsibleExpeditionSection } from './components/CollapsibleExpeditionSection';
 import { useHomeExpeditions } from './hooks/useHomeExpeditions';
 import { Expedition } from './types';
 
@@ -40,11 +39,11 @@ function getLoadErrorMessage(error: unknown): string {
 export function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const insets = useSafeAreaInsets();
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user } = useAuth();
   const {
     active,
+    future,
     history,
     loading,
     refreshing,
@@ -195,46 +194,24 @@ export function HomeScreen() {
           onPressExpedition={handleExpeditionPress}
         />
 
-        {/* Histórico de Expedições */}
+        {/* Expedições futuras e histórico */}
 
-        <View style={styles.historyContainer}>
-          <Pressable
-            style={styles.historyButton}
-            onPress={() => setIsHistoryOpen(prev => !prev)}
-          >
-            <Text style={styles.historyText}>
-              Histórico de Expedições
-            </Text>
+        <View style={styles.collapsibleSections}>
+          <CollapsibleExpeditionSection
+            title="Expedições Futuras"
+            expeditions={future}
+            loading={loading}
+            emptyText="Nenhuma expedição planejada."
+            onPressExpedition={handleExpeditionPress}
+          />
 
-            <View style={styles.chevronWrapper}>
-              <Image
-                source={require('../../assets/icons/chevron-down.png')}
-                style={[
-                  styles.chevronIcon,
-                  !isHistoryOpen && styles.chevronClosed,
-                ]}
-                resizeMode="contain"
-              />
-            </View>
-          </Pressable>
-
-          {isHistoryOpen && (
-            <View style={styles.historyList}>
-              {loading && history.length === 0 ? (
-                <ActivityIndicator style={styles.historyLoading} size="small" color={colors.accent} />
-              ) : null}
-
-              {!loading && history.length === 0 ? (
-                <Text style={styles.historyEmpty}>
-                  Nenhuma expedição finalizada.
-                </Text>
-              ) : null}
-
-              {history.map(item => (
-                <ExpeditionCard key={item.id} expedition={item} onPress={handleExpeditionPress} />
-              ))}
-            </View>
-          )}
+          <CollapsibleExpeditionSection
+            title="Histórico de Expedições"
+            expeditions={history}
+            loading={loading}
+            emptyText="Nenhuma expedição finalizada."
+            onPressExpedition={handleExpeditionPress}
+          />
         </View>
       </ScrollView>
 
@@ -439,65 +416,11 @@ const styles = StyleSheet.create({
   },
 
   /* =========================
-     HISTÓRICO
+     FUTURAS E HISTÓRICO
   ========================== */
 
-  historyContainer: {
-    borderRadius: 10,
-    backgroundColor: colors.cardBackground,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
-  historyButton: {
-    height: 48,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  historyText: {
-    color: colors.textPrimary,
-
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  chevronWrapper: {
-    width: 16,
-    height: 16,
-  },
-
-  chevronIcon: {
-    tintColor: colors.textPrimary,
-    width: 16,
-    height: 16,
-    transform: [{ rotate: '0deg' }],
-  },
-
-  chevronClosed: {
-    transform: [{ rotate: '-90deg' }],
-  },
-
-  historyList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 12,
+  collapsibleSections: {
     gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-
-  historyLoading: {
-    width: '100%',
-  },
-
-  historyEmpty: {
-    width: '100%',
-    color: colors.textSecondary,
-    fontSize: 14,
-    textAlign: 'center',
   },
 
   /* =========================
