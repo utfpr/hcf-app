@@ -1,6 +1,8 @@
 import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { AlertCircle, BookOpen, ChevronRight, RefreshCw, Wifi, WifiOff, X } from 'lucide-react-native'
+import {
+  AlertCircle, BookOpen, ChevronRight, CloudDownload, CloudUpload, RefreshCw, Wifi, WifiOff, X,
+} from 'lucide-react-native'
 import React, { useMemo, useState } from 'react'
 import {
   ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View,
@@ -19,7 +21,7 @@ import { colors } from '@/theme/colors'
 
 import type { SyncResult } from './types'
 
-type Action = 'current' | 'taxonomy' | 'all'
+type Action = 'current' | 'enviar' | 'baixar' | 'taxonomy' | 'all'
 
 interface ItemComErro {
   id: string
@@ -61,9 +63,9 @@ export function SyncScreen() {
   const { user } = useAuth()
   const { active, loading, error } = useHomeExpeditions()
   const { lastSyncFormatted, progressoTexto } = useSync()
-  const { sincronizar, pendencias, pendentes } = useOffline()
+  const { sincronizar, baixar, pendencias, pendentes } = useOffline()
   const taxonomia = useTaxonomia()
-  const { wifi } = useConexao()
+  const { wifi, online } = useConexao()
   const [busy, setBusy] = useState<Action | null>(null)
 
   // Expedição ativa da semana: a que está em andamento (ou a próxima planejada)
@@ -75,6 +77,18 @@ export function SyncScreen() {
     try {
       if (action === 'taxonomy') {
         mostrarResultado('Dados taxonômicos', await taxonomia.importar(), 'Famílias atualizadas no aparelho.')
+      } else if (action === 'enviar') {
+        mostrarResultado(
+          'Envio',
+          await sincronizar({ semBaixar: true }),
+          'Tudo o que estava no aparelho foi enviado para a API.',
+        )
+      } else if (action === 'baixar') {
+        mostrarResultado(
+          'Dados da API',
+          await baixar(),
+          'Expedições, registros e lembretes atualizados no aparelho.',
+        )
       } else if (action === 'current' && current) {
         mostrarResultado(
           'Sincronização',
@@ -178,10 +192,37 @@ export function SyncScreen() {
           <Text style={styles.primaryButtonText}>Sincronizar</Text>
         </Pressable>
 
+        <Text style={styles.sectionLabel}>Só enviar ou só baixar</Text>
         <Pressable
-          style={[styles.secondaryButton, disabled && styles.buttonDisabled]}
+          style={[styles.secondaryButton, styles.secondaryButtonSpaced, (envioBloqueado || pendentes === 0) && styles.buttonDisabled]}
+          onPress={() => run('enviar')}
+          disabled={envioBloqueado || pendentes === 0}
+        >
+          {busy === 'enviar' ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : (
+            <CloudUpload size={18} color={colors.accent} />
+          )}
+          <Text style={styles.secondaryButtonText}>Enviar tudo para a API</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.secondaryButton, styles.secondaryButtonSpaced, (disabled || !online) && styles.buttonDisabled]}
+          onPress={() => run('baixar')}
+          disabled={disabled || !online}
+        >
+          {busy === 'baixar' ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : (
+            <CloudDownload size={18} color={colors.accent} />
+          )}
+          <Text style={styles.secondaryButtonText}>Baixar expedições da API</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.secondaryButton, (disabled || !online) && styles.buttonDisabled]}
           onPress={() => run('taxonomy')}
-          disabled={disabled}
+          disabled={disabled || !online}
         >
           {busy === 'taxonomy' ? (
             <ActivityIndicator color={colors.accent} />
@@ -303,6 +344,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   secondaryButtonText: { color: colors.accent, fontSize: 16, fontWeight: '600' },
+  secondaryButtonSpaced: { marginBottom: 12 },
   taxonomiaInfo: { color: colors.textSecondary, fontSize: 12, textAlign: 'center', marginTop: 8 },
   buttonDisabled: { opacity: 0.5 },
   footer: {

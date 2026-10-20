@@ -33,13 +33,23 @@ export interface OfflineContextValue {
   // Durante o envio: quantos itens já foram de quantos (null fora da sincronização)
   progresso: ProgressoEnvio | null
   baixando: boolean
-  /** App → API e depois API → app. Só no Wi-Fi. */
-  sincronizar(filtro?: { expedicaoId?: number }): Promise<SyncResult>
+  /**
+   * App → API e depois API → app. Só no Wi-Fi. Com `semBaixar`, só envia
+   * (botão "Enviar tudo para a API").
+   */
+  sincronizar(filtro?: FiltroSincronizacao): Promise<SyncResult>
   /**
    * Só API → app (expedições do web, registros, lembretes; com `taxonomia`, também
    * as famílias). Qualquer conexão. Não envia nada.
    */
   baixar(opcoes?: { taxonomia?: boolean }): Promise<SyncResult>
+}
+
+export interface FiltroSincronizacao {
+  // Só o que é dessa expedição
+  expedicaoId?: number
+  // Só envia; não baixa nada da API
+  semBaixar?: boolean
 }
 
 const OfflineContext = createContext<OfflineContextValue | undefined>(undefined)
@@ -71,7 +81,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   // Sessão vencida no meio: guarda o que o usuário pediu para retomar depois da senha
   const [pedindoSenha, setPedindoSenha] = useState(false)
   const [retomar, setRetomar] = useState(false)
-  const filtroPendente = useRef<{ expedicaoId?: number }>({})
+  const filtroPendente = useRef<FiltroSincronizacao>({})
 
   useEffect(() => {
     let ativo = true
@@ -118,7 +128,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     }
   }, [sync, importarTaxonomia])
 
-  const sincronizar = useCallback(async (filtro: { expedicaoId?: number } = {}): Promise<SyncResult> => {
+  const sincronizar = useCallback(async (filtro: FiltroSincronizacao = {}): Promise<SyncResult> => {
     if (ocupado.current) return { success: false, message: 'Já existe uma sincronização em andamento.' }
     if (!(await estaNoWifi())) {
       return { success: false, message: 'Conecte-se a uma rede Wi-Fi para sincronizar.' }
@@ -132,11 +142,14 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     ocupado.current = true
     setSincronizando(true)
     try {
-      const envio = await sync.enviar(filtro, setProgresso)
-      await sync.baixar()
-      await sync.limparEnviados()
-      // "Sincronizar tudo": manda tudo e puxa tudo, inclusive a taxonomia
-      if (filtro.expedicaoId === undefined) await importarTaxonomia()
+      const envio = await sync.enviar({ expedicaoId: filtro.expedicaoId }, setProgresso)
+      // Sem baixar, o que subiu fica marcado como enviado (✓) até a próxima baixa
+      if (!filtro.semBaixar) {
+        await sync.baixar()
+        await sync.limparEnviados()
+        // "Sincronizar tudo": manda tudo e puxa tudo, inclusive a taxonomia
+        if (filtro.expedicaoId === undefined) await importarTaxonomia()
+      }
 
       const agora = new Date().toISOString()
       await store.atualizarMeta({ ultima_sincronizacao: agora })
