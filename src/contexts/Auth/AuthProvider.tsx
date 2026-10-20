@@ -2,9 +2,9 @@ import {
   ReactNode,
   useCallback, useEffect, useMemo, useRef, useState,
 } from 'react'
-import { Alert } from 'react-native'
 
 import { useContainer } from '@/contexts/Container/useContainer'
+import { useFeedback } from '@/components/feedback/FeedbackContext'
 import type { LoginResponse } from '@/features/login/types'
 import { contarPendentes, OfflineStore } from '@/features/offline/OfflineStore'
 import type { RefreshOutcome } from '@/libraries/http/HttpClient'
@@ -16,6 +16,7 @@ import { AuthContext } from './AuthContext'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { accessTokenSource, httpClient } = useContainer()
+  const { toast } = useFeedback()
   const session = useRef(new AsyncStorageSession()).current
 
   const [token, setToken] = useState<string | undefined>()
@@ -128,12 +129,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return
           }
           limparSessao(usuario)
-          Alert.alert('Sessão expirada', 'Faça login novamente para continuar.')
+          toast({ tipo: 'info', titulo: 'Sessão expirada', mensagem: 'Faça login novamente para continuar.' })
         })
         .catch(() => setSessaoExpirada(true))
     })
     return () => httpClient.setUnauthorizedHandler(undefined)
-  }, [httpClient, accessTokenSource, limparSessao])
+  }, [httpClient, accessTokenSource, limparSessao, toast])
 
   const contextValue = useMemo(() => ({
     token,
