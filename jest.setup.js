@@ -21,3 +21,24 @@ jest.mock('@react-native-async-storage/async-storage', () => {
     },
   }
 })
+
+jest.mock('react-native-image-picker', () => ({
+  launchCamera: jest.fn(),
+  launchImageLibrary: jest.fn(),
+}))
+
+jest.mock('@react-native-documents/picker', () => ({
+  pick: jest.fn(),
+  types: {},
+}))
+
+jest.mock('react-native-audio-recorder-player', () => {
+  return jest.fn().mockImplementation(() => ({
+    startRecorder: jest.fn(),
+    stopRecorder: jest.fn(),
+    addRecordBackListener: jest.fn(),
+    removeRecordBackListener: jest.fn(),
+    startPlayer: jest.fn(),
+    stopPlayer: jest.fn(),
+  }))
+})
