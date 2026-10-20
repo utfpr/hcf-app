@@ -4,6 +4,7 @@ import { ArrowLeft, Bell, Calendar, Check, ChevronDown, ChevronUp, Crosshair, Ma
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CampoData } from '@/components/CampoData';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { LocalizacaoChip } from '@/features/evento/components/LocalizacaoChip';
 import { EMPTY_FICHA, FICHA_FIELDS, fichaParaPayload, type FichaFieldName, type FichaValues } from '@/features/evento/fichaCampos';
@@ -13,7 +14,7 @@ import { RascunhoBanner } from '@/features/offline/RascunhoBanner';
 import { useRascunho } from '@/features/offline/useRascunho';
 import { FamiliaInput } from '@/features/taxonomia/components/FamiliaInput';
 import type { CriarLembretePayload } from '@/features/lembrete/types';
-import { dataBrParaIso, hojeIso, maskDataBr } from '@/features/lembrete/utils';
+import { dataBrParaIso, hojeIso } from '@/features/lembrete/utils';
 import { getUserFacingHttpError } from '@/libraries/http/httpError';
 import { formatarCoordenadas, useLocalizacao } from '@/libraries/location/useLocalizacao';
 import { RootStackParamList } from '@/navigation/types';
@@ -234,15 +235,7 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
               <Calendar size={14} color={colors.textSecondary} />
               <Text style={reminderStyles.labelInline}>Data para voltar *</Text>
             </View>
-            <TextInput
-              style={styles.input}
-              value={dataColeta}
-              onChangeText={value => setDataColeta(maskDataBr(value))}
-              placeholder="DD/MM/AAAA"
-              placeholderTextColor={colors.placeholder}
-              keyboardType="number-pad"
-              maxLength={10}
-            />
+            <CampoData value={dataColeta} onChange={setDataColeta} minimumDate={new Date()} />
             <Text style={reminderStyles.hint}>
               Quando a planta deve estar pronta para coletar (floração, frutificação...).
             </Text>

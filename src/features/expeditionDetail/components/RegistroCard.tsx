@@ -112,7 +112,7 @@ export function RegistroCard({ registro, onOpenEvidencia, onAddEvidencia, audioA
       <View style={styles.footer}>
         <View style={styles.metaItem}>
           <Clock size={12} color={colors.textSecondary} />
-          <Text style={styles.metaText}>{formatDateTime(registro.capturado_em)}</Text>
+          <Text style={styles.metaText}>{formatDateTime(registro.data_captura)}</Text>
         </View>
         {registro.latitude !== null && registro.longitude !== null ? (
           <View style={styles.metaItem}>

@@ -53,6 +53,12 @@ jest.mock('react-native-audio-recorder-player', () => ({
   })),
 }))
 
+jest.mock('@react-native-community/datetimepicker', () => ({
+  __esModule: true,
+  default: () => null,
+  DateTimePickerAndroid: { open: jest.fn(), dismiss: jest.fn() },
+}))
+
 jest.mock('react-native-video', () => ({
   __esModule: true,
   default: 'Video',

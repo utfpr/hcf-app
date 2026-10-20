@@ -14,7 +14,7 @@ export class LembreteListService {
   ): Promise<PaginacaoLembretes> {
     const response =
       await this.httpClient.get<PaginacaoLembretes>(
-        '/v2/lembretes',
+        '/v1/lembretes',
         filtros,
       )
 

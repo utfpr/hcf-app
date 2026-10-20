@@ -12,24 +12,24 @@ export class LembreteService {
   constructor(private readonly httpClient: HttpClient) {}
 
   async criar(payload: CriarLembretePayload): Promise<Lembrete> {
-    const response = await this.httpClient.post<Lembrete>('/v2/lembretes', payload)
+    const response = await this.httpClient.post<Lembrete>('/v1/lembretes', payload)
     return response.data
   }
 
   async excluir(lembreteId: number): Promise<void> {
-    await this.httpClient.delete<void>(`/v2/lembretes/${lembreteId}`)
+    await this.httpClient.delete<void>(`/v1/lembretes/${lembreteId}`)
   }
 
   async enviarEvidencia(lembreteId: number, payload: CriarEvidenciaPayload): Promise<LembreteEvidencia> {
     const form = new FormData()
     form.append('nome', payload.nome)
-    form.append('capturado_em', payload.capturado_em)
+    form.append('data_captura', payload.data_captura)
     if (payload.client_uuid) form.append('client_uuid', payload.client_uuid)
     // O arquivo vai por último: o multer da API lê os campos de texto antes do arquivo.
     form.append('arquivo', payload.arquivo as unknown as Blob)
 
     const response = await this.httpClient.postForm<LembreteEvidencia>(
-      `/v2/lembretes/${lembreteId}/evidencias`,
+      `/v1/lembretes/${lembreteId}/evidencias`,
       form,
     )
     return response.data

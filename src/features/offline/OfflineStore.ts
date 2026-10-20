@@ -48,6 +48,19 @@ function extensao(arquivo: ArquivoLocal): string {
   return match ? match[0].toLowerCase() : ''
 }
 
+// A API trocou capturado_em por data_captura; o que foi salvo antes no aparelho
+// ainda tem a chave antiga
+function renomearCapturadoEm<T>(valor: T): T {
+  if (Array.isArray(valor)) return valor.map(renomearCapturadoEm) as T
+  if (valor === null || typeof valor !== 'object') return valor
+  return Object.fromEntries(
+    Object.entries(valor).map(([chave, item]) => [
+      chave === 'capturado_em' ? 'data_captura' : chave,
+      renomearCapturadoEm(item),
+    ]),
+  ) as T
+}
+
 export function contarPendentes(pendencias: Pendencias): number {
   return [...pendencias.eventos, ...pendencias.midias, ...pendencias.lembretes]
     .filter(item => item.status !== 'sent')
@@ -77,11 +90,16 @@ export class OfflineStore {
   // ---------- Pendências ----------
 
   pendencias(): Promise<Pendencias> {
-    return this.arquivos.ler(PENDENCIAS, PENDENCIAS_VAZIAS)
+    return this.arquivos.ler(PENDENCIAS, PENDENCIAS_VAZIAS).then(renomearCapturadoEm)
   }
 
   atualizarPendencias(alterar: (atual: Pendencias) => Pendencias, opcoes?: OpcoesGravacao): Promise<Pendencias> {
-    return this.arquivos.atualizar(PENDENCIAS, PENDENCIAS_VAZIAS, alterar, opcoes)
+    return this.arquivos.atualizar(
+      PENDENCIAS,
+      PENDENCIAS_VAZIAS,
+      atual => alterar(renomearCapturadoEm(atual)),
+      opcoes,
+    )
   }
 
   async adicionarEvento(
@@ -217,7 +235,7 @@ export class OfflineStore {
   }
 
   lerRegistros(expedicaoId: number): Promise<RegistroExpedicao[] | null> {
-    return this.arquivos.ler<RegistroExpedicao[] | null>(registrosArquivo(expedicaoId), null)
+    return this.arquivos.ler<RegistroExpedicao[] | null>(registrosArquivo(expedicaoId), null).then(renomearCapturadoEm)
   }
 
   gravarRegistros(expedicaoId: number, registros: RegistroExpedicao[], opcoes?: OpcoesGravacao): Promise<void> {
@@ -230,7 +248,7 @@ export class OfflineStore {
   }
 
   lerLembretes(): Promise<Lembrete[]> {
-    return this.arquivos.ler<Lembrete[]>(LEMBRETES, [])
+    return this.arquivos.ler<Lembrete[]>(LEMBRETES, []).then(renomearCapturadoEm)
   }
 
   gravarLembretes(lembretes: Lembrete[], opcoes?: OpcoesGravacao): Promise<void> {
@@ -248,7 +266,7 @@ export class OfflineStore {
   // ---------- Rascunhos de formulário ----------
 
   lerRascunho<T>(chave: string): Promise<T | null> {
-    return this.arquivos.ler<T | null>(rascunhoArquivo(chave), null)
+    return this.arquivos.ler<T | null>(rascunhoArquivo(chave), null).then(renomearCapturadoEm)
   }
 
   gravarRascunho<T>(chave: string, valor: T): Promise<void> {

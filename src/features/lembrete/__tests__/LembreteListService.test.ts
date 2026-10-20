@@ -27,7 +27,7 @@ describe('LembreteListService', () => {
     const resultado = await service.listar(filtros)
 
     expect(get).toHaveBeenCalledWith(
-      '/v2/lembretes',
+      '/v1/lembretes',
       filtros,
     )
 

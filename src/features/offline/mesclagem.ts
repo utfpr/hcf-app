@@ -41,7 +41,7 @@ function midiaParaEvidencia(midia: MidiaPendente, eventoId: number): Evidencia {
     arquivo: midia.payload.arquivo.name,
     mime_type: midia.payload.arquivo.type,
     tamanho: 0,
-    capturado_em: midia.payload.capturado_em,
+    data_captura: midia.payload.data_captura,
     created_at: midia.criado_em,
     updated_at: midia.criado_em,
     created_by: null,
@@ -66,7 +66,7 @@ function eventoParaRegistro(evento: EventoPendente, midias: MidiaPendente[]): Re
     id,
     expedicao_id: evento.expedicao_id,
     tipo: evento.payload.tipo,
-    capturado_em: evento.payload.capturado_em,
+    data_captura: evento.payload.data_captura,
     latitude: evento.payload.latitude ?? null,
     longitude: evento.payload.longitude ?? null,
     altitude: evento.payload.altitude ?? null,
@@ -123,7 +123,7 @@ export function mesclarRegistros(
     ))
 
   return juntarPorNumero([...locais, ...remotos])
-    .sort((a, b) => b.capturado_em.localeCompare(a.capturado_em))
+    .sort((a, b) => b.data_captura.localeCompare(a.data_captura))
 }
 
 export function numeroDaColeta(registro: Pick<RegistroExpedicao, 'tipo' | 'numero_coleta'>): string | null {
@@ -155,14 +155,14 @@ function juntarPorNumero(registros: RegistroExpedicao[]): RegistroExpedicao[] {
     const base = grupo.find(registro => registro.id > 0) ?? grupo[0]
     const evidencias = grupo
       .flatMap(registro => registro.evidencias)
-      .sort((a, b) => a.capturado_em.localeCompare(b.capturado_em))
-    const capturadoEm = grupo
-      .map(registro => registro.capturado_em)
+      .sort((a, b) => a.data_captura.localeCompare(b.data_captura))
+    const dataCaptura = grupo
+      .map(registro => registro.data_captura)
       .reduce((menor, atual) => (atual < menor ? atual : menor))
 
     return {
       ...base,
-      capturado_em: capturadoEm,
+      data_captura: dataCaptura,
       evidencias,
       syncStatus: piorStatus(grupo.map(registro => registro.syncStatus ?? 'synced')),
     }

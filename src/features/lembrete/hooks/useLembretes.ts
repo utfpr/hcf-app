@@ -8,7 +8,7 @@ import type { FiltrosLembrete, Lembrete, PaginacaoLembretes } from '../types'
 
 const LIMITE_PADRAO = 20
 
-// Mesmos filtros e ordem da API (/v2/lembretes), aplicados sobre os dados do aparelho
+// Mesmos filtros e ordem da API (/v1/lembretes), aplicados sobre os dados do aparelho
 export function filtrarLembretes(lembretes: Lembrete[], filtros: FiltrosLembrete): Lembrete[] {
   const [coluna, direcao] = (filtros.order ?? 'data_coleta:asc').split(':') as ['id' | 'data_coleta', 'asc' | 'desc']
   const sinal = direcao === 'asc' ? 1 : -1

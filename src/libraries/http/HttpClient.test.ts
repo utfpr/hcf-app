@@ -26,7 +26,7 @@ describe('HttpClient', () => {
   it('avisa o handler quando um pedido autenticado recebe 401', async () => {
     const { client, onUnauthorized } = createClient(401, 'token-expirado')
 
-    await expect(client.get('/v2/expedicoes')).rejects.toBeInstanceOf(AxiosError)
+    await expect(client.get('/v1/expedicoes')).rejects.toBeInstanceOf(AxiosError)
     expect(onUnauthorized).toHaveBeenCalledTimes(1)
   })
 
@@ -40,7 +40,7 @@ describe('HttpClient', () => {
   it('não avisa o handler em 403 (sem permissão, mas a sessão continua válida)', async () => {
     const { client, onUnauthorized } = createClient(403, 'token-valido')
 
-    await expect(client.get('/v2/expedicoes')).rejects.toBeInstanceOf(AxiosError)
+    await expect(client.get('/v1/expedicoes')).rejects.toBeInstanceOf(AxiosError)
     expect(onUnauthorized).not.toHaveBeenCalled()
   })
 })
