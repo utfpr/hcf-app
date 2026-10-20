@@ -2,6 +2,7 @@ import React from 'react'
 import ReactTestRenderer from 'react-test-renderer'
 import { useSync } from '../src/features/sync/hooks/useSync'
 import { syncService } from '../src/features/sync/SyncService'
+import type { SyncResult } from '../src/features/sync/types'
 
 function HookTester({
   onHook,
@@ -46,7 +47,7 @@ describe('useSync hook', () => {
       )
     })
 
-    let result
+    let result: SyncResult | undefined
     await ReactTestRenderer.act(async () => {
       result = await hookState!.syncAll(onRefreshMock)
     })
@@ -70,7 +71,7 @@ describe('useSync hook', () => {
       )
     })
 
-    let result
+    let result: SyncResult | undefined
     await ReactTestRenderer.act(async () => {
       result = await hookState!.syncAll(onRefreshMock)
     })
