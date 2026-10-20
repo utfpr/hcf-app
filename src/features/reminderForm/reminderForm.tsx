@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { ArrowLeft, Bell, Calendar, Check, ChevronDown, ChevronUp, Crosshair, MapPin } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,6 +8,7 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { LocalizacaoChip } from '@/features/evento/components/LocalizacaoChip';
 import { EMPTY_FICHA, FICHA_FIELDS, fichaParaPayload, type FichaFieldName, type FichaValues } from '@/features/evento/fichaCampos';
 import { useCriarLembrete } from '@/features/lembrete/hooks/useCriarLembrete';
+import { useFeedback } from '@/components/feedback/FeedbackContext';
 import { RascunhoBanner } from '@/features/offline/RascunhoBanner';
 import { useRascunho } from '@/features/offline/useRascunho';
 import { FamiliaInput } from '@/features/taxonomia/components/FamiliaInput';
@@ -46,6 +47,7 @@ function rascunhoVazio(rascunho: Rascunho): boolean {
 
 export function LembreteForm({ expedicaoId }: LembreteFormProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Reminders'>>();
+  const { toast } = useFeedback();
 
   const [family, setFamily] = useState('');
   const [ficha, setFicha] = useState<FichaValues>(EMPTY_FICHA);
@@ -149,17 +151,16 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
       return;
     }
 
-    Alert.alert(
-      'Lembrete salvo',
-      `Vamos lembrar de voltar em ${dataColeta}. Ele fica no aparelho até o próximo "Sincronizar".`,
-      [{
-        text: 'OK',
-        onPress: () => (expedicaoId
-          ? navigation.popTo('ExpeditionDetail', { expeditionId: String(expedicaoId) })
-          : navigation.goBack()),
-      }],
-      { cancelable: false },
-    );
+    toast({
+      tipo: 'sucesso',
+      titulo: 'Lembrete salvo',
+      mensagem: `Vamos lembrar de voltar em ${dataColeta}. Ele fica no aparelho até o próximo "Sincronizar".`,
+    });
+    if (expedicaoId) {
+      navigation.popTo('ExpeditionDetail', { expeditionId: String(expedicaoId) });
+    } else {
+      navigation.goBack();
+    }
   }
 
   return (
