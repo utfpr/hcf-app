@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -15,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RefreshCw } from 'lucide-react-native';
 
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { useFeedback } from '@/components/feedback/FeedbackContext';
 import { useAuth } from '@/contexts/Auth/useAuth';
 import { getHttpErrorMessage, isNetworkError } from '@/libraries/http/httpError';
 import { RootStackParamList } from '@/navigation/types';
@@ -51,17 +51,18 @@ export function HomeScreen() {
     refresh,
   } = useHomeExpeditions();
   const { isSyncing, syncAll, lastSyncFormatted, pendentes, progressoTexto } = useSync();
+  const { toast } = useFeedback();
 
   async function handleSyncAll() {
     try {
       const result = await syncAll();
       if (result.success) {
-        Alert.alert('Sincronização', 'Todos os dados foram sincronizados com sucesso.');
+        toast({ tipo: 'sucesso', titulo: 'Sincronização concluída', mensagem: 'Todos os dados foram sincronizados com sucesso.' });
       } else {
-        Alert.alert('Sincronização', result.message ?? 'Não foi possível sincronizar os dados.');
+        toast({ tipo: 'erro', titulo: 'Sincronização', mensagem: result.message ?? 'Não foi possível sincronizar os dados.' });
       }
     } catch {
-      Alert.alert('Sincronização', 'Ocorreu um erro ao sincronizar os dados.');
+      toast({ tipo: 'erro', titulo: 'Sincronização', mensagem: 'Ocorreu um erro ao sincronizar os dados.' });
     }
   }
 

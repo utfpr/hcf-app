@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactTestRenderer from 'react-test-renderer'
+import { FeedbackProvider } from '../src/components/feedback/FeedbackProvider'
 import { HomeScreen } from '../src/features/home/HomeScreen'
 
 // Mocks dos contextos e hooks de navegação
@@ -56,7 +57,7 @@ describe('HomeScreen Sincronização Geral', () => {
   it('renders general sync card and sync buttons on HomeScreen', () => {
     let renderer: ReactTestRenderer.ReactTestRenderer | undefined
     ReactTestRenderer.act(() => {
-      renderer = ReactTestRenderer.create(<HomeScreen />)
+      renderer = ReactTestRenderer.create(<FeedbackProvider><HomeScreen /></FeedbackProvider>)
     })
 
     const root = renderer!.root
@@ -78,7 +79,7 @@ describe('HomeScreen Sincronização Geral', () => {
   it('triggers sync when pressing the home sync button', async () => {
     let renderer: ReactTestRenderer.ReactTestRenderer | undefined
     ReactTestRenderer.act(() => {
-      renderer = ReactTestRenderer.create(<HomeScreen />)
+      renderer = ReactTestRenderer.create(<FeedbackProvider><HomeScreen /></FeedbackProvider>)
     })
 
     const root = renderer!.root
@@ -89,12 +90,14 @@ describe('HomeScreen Sincronização Geral', () => {
     })
 
     expect(mockSyncAll).toHaveBeenCalledTimes(1)
+    // Resultado no aviso do app, não no diálogo nativo
+    expect(root.findByProps({ children: 'Sincronização concluída' })).toBeDefined()
   })
 
   it('triggers sync when pressing the header sync button', async () => {
     let renderer: ReactTestRenderer.ReactTestRenderer | undefined
     ReactTestRenderer.act(() => {
-      renderer = ReactTestRenderer.create(<HomeScreen />)
+      renderer = ReactTestRenderer.create(<FeedbackProvider><HomeScreen /></FeedbackProvider>)
     })
 
     const root = renderer!.root
