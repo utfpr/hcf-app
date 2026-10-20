@@ -10,6 +10,7 @@ import { getHttpStatus, getUserFacingHttpError, isNetworkError } from '@/librari
 
 // Página grande: a baixa percorre tudo de uma vez
 const LIMITE_PAGINA = 100
+const SILENCIOSO = { silencioso: true }
 
 export interface ResultadoEnvio {
   enviados: number
@@ -199,6 +200,10 @@ export class SyncService {
 
   // ---------- API → App ----------
 
+  // baixar() e limparEnviados() gravam vários arquivos em silêncio; quem chama
+  // avisa as telas uma vez no fim (store.avisarMudanca()), senão cada gravação
+  // faria a Home reler e re-renderizar no meio da baixa
+
   async baixar(): Promise<void> {
     const usuarioId = this.store.usuarioId
     const itens = await todasPaginas(pagina => this.expedicoes.listar({ pagina, limite: LIMITE_PAGINA, order: 'id:desc' }))
@@ -223,22 +228,22 @@ export class SyncService {
     for (const id of new Set([...minhas, ...comPendencia, ...anterior.detalhadas])) {
       if (!existentes.has(id)) {
         if (comPendencia.has(id)) detalhadas.push(id)
-        else await this.store.removerExpedicao(id)
+        else await this.store.removerExpedicao(id, SILENCIOSO)
         continue
       }
       const detalhe = await this.expedicoes.buscarPorId(id)
       const registros = await this.eventos.listarRegistros(id)
-      await this.store.gravarDetalhe(detalhe)
-      await this.store.gravarRegistros(id, registros)
+      await this.store.gravarDetalhe(detalhe, SILENCIOSO)
+      await this.store.gravarRegistros(id, registros, SILENCIOSO)
       detalhadas.push(id)
     }
 
-    await this.store.gravarExpedicoes({ itens: [...itens, ...orfas], minhas, detalhadas })
+    await this.store.gravarExpedicoes({ itens: [...itens, ...orfas], minhas, detalhadas }, SILENCIOSO)
 
     const lembretes = await todasPaginas(pagina => this.listaLembretes.listar({ pagina, limite: LIMITE_PAGINA }))
-    await this.store.gravarLembretes(lembretes)
+    await this.store.gravarLembretes(lembretes, SILENCIOSO)
 
-    await this.store.atualizarMeta({ ultima_baixa: new Date().toISOString() })
+    await this.store.atualizarMeta({ ultima_baixa: new Date().toISOString() }, SILENCIOSO)
   }
 
   /** Só depois de uma baixa bem-sucedida: o que foi enviado já está no cache */
@@ -251,7 +256,7 @@ export class SyncService {
       eventos: atual.eventos.filter(evento => evento.status !== 'sent'),
       midias: atual.midias.filter(midia => midia.status !== 'sent'),
       lembretes: atual.lembretes.filter(lembrete => lembrete.status !== 'sent'),
-    }))
+    }), SILENCIOSO)
 
     await Promise.all(enviadas.map(midia => this.store.apagarMidia(midia.payload.arquivo).catch(() => undefined)))
   }
