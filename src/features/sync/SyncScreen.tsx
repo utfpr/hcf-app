@@ -5,11 +5,12 @@ import {
 } from 'lucide-react-native'
 import React, { useMemo, useState } from 'react'
 import {
-  ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View,
+  ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/contexts/Auth/useAuth'
+import { useFeedback } from '@/components/feedback/FeedbackContext'
 import { useHomeExpeditions } from '@/features/home/hooks/useHomeExpeditions'
 import { useOffline } from '@/features/offline/OfflineContext'
 import type { Pendencias } from '@/features/offline/types'
@@ -53,11 +54,15 @@ function itensComErro(pendencias: Pendencias | null): ItemComErro[] {
   ]
 }
 
-function mostrarResultado(titulo: string, resultado: SyncResult, sucesso: string) {
-  Alert.alert(titulo, resultado.success ? sucesso : resultado.message ?? 'Não foi possível concluir.')
-}
-
 export function SyncScreen() {
+  const { toast } = useFeedback()
+
+  function mostrarResultado(titulo: string, resultado: SyncResult, sucesso: string) {
+    toast(resultado.success
+      ? { tipo: 'sucesso', titulo, mensagem: sucesso }
+      : { tipo: 'erro', titulo, mensagem: resultado.message ?? 'Não foi possível concluir.' })
+  }
+
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
