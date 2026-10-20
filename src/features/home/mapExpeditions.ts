@@ -4,6 +4,7 @@ import { Expedition, ExpeditionStatus, SyncStatus } from './types';
 
 export interface HomeExpeditions {
   active: Expedition[];
+  future: Expedition[];
   history: Expedition[];
 }
 
@@ -51,7 +52,8 @@ export function toExpedition(item: ExpedicaoListItem, today: string, syncStatus?
 }
 
 /**
- * Ativas: ainda não terminaram (em andamento e planejadas), da mais antiga para a mais nova.
+ * Ativas: em andamento hoje, da que começou primeiro para a mais nova.
+ * Futuras: ainda não começaram (planejadas), da mais próxima para a mais distante.
  * Histórico: já terminaram, da que terminou mais recentemente para a mais antiga.
  */
 export function splitExpeditions(
@@ -59,16 +61,25 @@ export function splitExpeditions(
   today: string,
   syncStatusDe?: (expedicaoId: number) => SyncStatus,
 ): HomeExpeditions {
+  const porInicio = (a: ExpedicaoListItem, b: ExpedicaoListItem) => a.data_inicio.localeCompare(b.data_inicio);
+
   const active = items
-    .filter(item => item.data_fim >= today)
-    .sort((a, b) => a.data_inicio.localeCompare(b.data_inicio));
+    .filter(item => item.data_inicio <= today && item.data_fim >= today)
+    .sort(porInicio);
+
+  const future = items
+    .filter(item => item.data_inicio > today)
+    .sort(porInicio);
 
   const history = items
     .filter(item => item.data_fim < today)
     .sort((a, b) => b.data_fim.localeCompare(a.data_fim));
 
+  const paraCard = (item: ExpedicaoListItem) => toExpedition(item, today, syncStatusDe?.(item.id));
+
   return {
-    active: active.map(item => toExpedition(item, today, syncStatusDe?.(item.id))),
-    history: history.map(item => toExpedition(item, today, syncStatusDe?.(item.id))),
+    active: active.map(paraCard),
+    future: future.map(paraCard),
+    history: history.map(paraCard),
   };
 }

@@ -7,9 +7,9 @@ import { useQuery } from '@/hooks/query/useQuery';
 
 import { HomeExpeditions, splitExpeditions, toApiDate } from '../mapExpeditions';
 
-const EMPTY: HomeExpeditions = { active: [], history: [] };
+const EMPTY: HomeExpeditions = { active: [], future: [], history: [] };
 
-/** Expedições em que o usuário logado participa (salvas no aparelho), separadas em ativas e histórico */
+/** Expedições em que o usuário logado participa (salvas no aparelho), separadas em ativas, futuras e histórico */
 export function useHomeExpeditions() {
   const { store, baixar, baixando } = useOffline();
   const [erroBaixa, setErroBaixa] = useState<Error | undefined>();
@@ -61,7 +61,9 @@ export function useHomeExpeditions() {
     return () => subscription.remove();
   }, [reler]);
 
-  const vazio = expeditions.active.length === 0 && expeditions.history.length === 0;
+  const vazio = expeditions.active.length === 0
+    && expeditions.future.length === 0
+    && expeditions.history.length === 0;
 
   return {
     ...expeditions,

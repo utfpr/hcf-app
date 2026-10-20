@@ -23,8 +23,8 @@ function item(overrides: Partial<ExpedicaoListItem>): ExpedicaoListItem {
 const TODAY = '2026-09-27';
 
 describe('splitExpeditions', () => {
-  it('separa ativas e histórico pela data de fim e define o status', () => {
-    const { active, history } = splitExpeditions(
+  it('separa ativas, futuras e histórico pelas datas e define o status', () => {
+    const { active, future, history } = splitExpeditions(
       [
         item({ id: 1, data_inicio: '2026-09-20', data_fim: '2026-10-05' }),
         item({ id: 2, data_inicio: '2026-10-12', data_fim: '2026-10-20' }),
@@ -33,10 +33,8 @@ describe('splitExpeditions', () => {
       TODAY,
     );
 
-    expect(active.map(e => [e.id, e.status])).toEqual([
-      ['1', 'Em andamento'],
-      ['2', 'Planejada'],
-    ]);
+    expect(active.map(e => [e.id, e.status])).toEqual([['1', 'Em andamento']]);
+    expect(future.map(e => [e.id, e.status])).toEqual([['2', 'Planejada']]);
     expect(history.map(e => [e.id, e.status])).toEqual([['3', 'Finalizada']]);
   });
 
@@ -65,28 +63,43 @@ describe('splitExpeditions', () => {
     expect(diaSeguinte.history.map(e => e.status)).toEqual(['Finalizada']);
   });
 
-  it('ordena ativas pelo início e histórico pelo fim mais recente', () => {
-    const { active, history } = splitExpeditions(
+  it('passa de futura para ativa no dia em que começa', () => {
+    const expedicao = item({ id: 1, data_inicio: '2026-10-12', data_fim: '2026-10-20' });
+
+    const vespera = splitExpeditions([expedicao], '2026-10-11');
+    expect(vespera.future.map(e => e.status)).toEqual(['Planejada']);
+    expect(vespera.active).toHaveLength(0);
+
+    const primeiroDia = splitExpeditions([expedicao], '2026-10-12');
+    expect(primeiroDia.future).toHaveLength(0);
+    expect(primeiroDia.active.map(e => e.status)).toEqual(['Em andamento']);
+  });
+
+  it('ordena ativas e futuras pelo início e histórico pelo fim mais recente', () => {
+    const { active, future, history } = splitExpeditions(
       [
         item({ id: 1, data_inicio: '2026-11-03', data_fim: '2026-11-10' }),
+        item({ id: 5, data_inicio: '2026-10-15', data_fim: '2026-10-18' }),
         item({ id: 2, data_inicio: '2026-09-25', data_fim: '2026-09-30' }),
+        item({ id: 6, data_inicio: '2026-09-21', data_fim: '2026-10-02' }),
         item({ id: 3, data_inicio: '2026-02-09', data_fim: '2026-02-13' }),
         item({ id: 4, data_inicio: '2026-08-10', data_fim: '2026-08-14' }),
       ],
       TODAY,
     );
 
-    expect(active.map(e => e.id)).toEqual(['2', '1']);
+    expect(active.map(e => e.id)).toEqual(['6', '2']);
+    expect(future.map(e => e.id)).toEqual(['5', '1']);
     expect(history.map(e => e.id)).toEqual(['4', '3']);
   });
 
   it('formata nome, data e local para o card', () => {
-    const { active } = splitExpeditions(
+    const { future } = splitExpeditions(
       [item({ id: 7, descricao: '  Pantanal Norte ', data_inicio: '2026-10-12', data_fim: '2026-10-20' })],
       TODAY,
     );
 
-    expect(active[0]).toEqual({
+    expect(future[0]).toEqual({
       id: '7',
       name: 'Pantanal Norte',
       date: '12/10/2026',
