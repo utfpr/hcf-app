@@ -1,3 +1,5 @@
+import type { RotaExpedicao } from '@/features/expedition/types'
+
 import type { FichaColeta } from './types'
 
 // Campos de texto da ficha, com rótulo e exemplo. Família fica de fora: tem campo
@@ -33,4 +35,21 @@ export function fichaParaPayload(ficha: FichaValues): Record<FichaFieldName, str
   return Object.fromEntries(
     FICHA_FIELDS.map(([key]) => [key, ficha[key].trim() || null]),
   ) as Record<FichaFieldName, string | null>
+}
+
+/**
+ * Município e estado da ficha a partir do local de coleta escolhido: a cidade da rota
+ * em que o local está (a API só aceita na rota locais daquela cidade). Sem o nome do
+ * estado (detalhe antigo salvo no aparelho), devolve só o município.
+ */
+export function municipioEEstadoDoLocal(
+  rotas: RotaExpedicao[],
+  localId: number,
+): Partial<Pick<FichaValues, 'municipio' | 'estado'>> | null {
+  const rota = rotas.find(r => (r.locais_coleta ?? []).some(local => local.id === localId))
+  if (!rota) return null
+  return {
+    municipio: rota.nome_cidade,
+    ...(rota.estado_nome ? { estado: rota.estado_nome } : {}),
+  }
 }
