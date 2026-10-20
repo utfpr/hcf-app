@@ -61,7 +61,7 @@ export function SyncScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
-  const { active, loading, error } = useHomeExpeditions()
+  const { active, future, loading, error } = useHomeExpeditions()
   const { lastSyncFormatted, progressoTexto } = useSync()
   const { sincronizar, baixar, pendencias, pendentes } = useOffline()
   const taxonomia = useTaxonomia()
@@ -69,7 +69,7 @@ export function SyncScreen() {
   const [busy, setBusy] = useState<Action | null>(null)
 
   // Expedição ativa da semana: a que está em andamento (ou a próxima planejada)
-  const current = active.find(item => item.status === 'Em andamento') ?? active[0]
+  const current = active[0] ?? future[0]
   const erros = useMemo(() => itensComErro(pendencias), [pendencias])
 
   async function run(action: Action) {
