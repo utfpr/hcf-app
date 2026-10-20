@@ -107,6 +107,17 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     [httpClient],
   )
 
+  // A baixa grava vários arquivos em silêncio: as telas releem uma vez só, no fim
+  // (também se falhar no meio, para mostrar o que chegou a ser gravado)
+  const baixarCache = useCallback(async () => {
+    try {
+      await sync.baixar()
+      await sync.limparEnviados()
+    } finally {
+      store.avisarMudanca()
+    }
+  }, [sync, store])
+
   const baixar = useCallback(async (opcoes: { taxonomia?: boolean } = {}): Promise<SyncResult> => {
     if (ocupado.current) return { success: false, message: 'Já existe uma sincronização em andamento.' }
     if (!(await temInternet())) {
@@ -116,8 +127,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     ocupado.current = true
     setBaixando(true)
     try {
-      await sync.baixar()
-      await sync.limparEnviados()
+      await baixarCache()
       if (opcoes.taxonomia) await importarTaxonomia()
       return { success: true, syncedAt: new Date().toISOString() }
     } catch (error) {
@@ -126,7 +136,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       ocupado.current = false
       setBaixando(false)
     }
-  }, [sync, importarTaxonomia])
+  }, [baixarCache, importarTaxonomia])
 
   const sincronizar = useCallback(async (filtro: FiltroSincronizacao = {}): Promise<SyncResult> => {
     if (ocupado.current) return { success: false, message: 'Já existe uma sincronização em andamento.' }
@@ -145,8 +155,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       const envio = await sync.enviar({ expedicaoId: filtro.expedicaoId }, setProgresso)
       // Sem baixar, o que subiu fica marcado como enviado (✓) até a próxima baixa
       if (!filtro.semBaixar) {
-        await sync.baixar()
-        await sync.limparEnviados()
+        await baixarCache()
         // "Sincronizar tudo": manda tudo e puxa tudo, inclusive a taxonomia
         if (filtro.expedicaoId === undefined) await importarTaxonomia()
       }
@@ -176,7 +185,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       setSincronizando(false)
       setProgresso(null)
     }
-  }, [store, sync, sessaoExpirada, importarTaxonomia])
+  }, [store, sync, sessaoExpirada, importarTaxonomia, baixarCache])
 
   // Senha aceita: quando a sessão nova chegar, retoma a sincronização interrompida
   useEffect(() => {
