@@ -31,7 +31,7 @@ describe('ExpedicaoService', () => {
     httpClient.get.mockResolvedValue({ data: response })
 
     await expect(service.listar({ cidade_id: 7, pagina: 1, limite: 20 })).resolves.toEqual(response)
-    expect(httpClient.get).toHaveBeenCalledWith('/v2/expedicoes', { cidade_id: 7, pagina: 1, limite: 20 })
+    expect(httpClient.get).toHaveBeenCalledWith('/v1/expedicoes', { cidade_id: 7, pagina: 1, limite: 20 })
   })
 
   it('uses the correct routes for detail and CRUD operations', async () => {
@@ -47,10 +47,10 @@ describe('ExpedicaoService', () => {
     await service.atualizar(4, update)
     await service.excluir(4)
 
-    expect(httpClient.get).toHaveBeenCalledWith('/v2/expedicoes/4')
-    expect(httpClient.post).toHaveBeenCalledWith('/v2/expedicoes', create)
-    expect(httpClient.put).toHaveBeenCalledWith('/v2/expedicoes/4', update)
-    expect(httpClient.delete).toHaveBeenCalledWith('/v2/expedicoes/4')
+    expect(httpClient.get).toHaveBeenCalledWith('/v1/expedicoes/4')
+    expect(httpClient.post).toHaveBeenCalledWith('/v1/expedicoes', create)
+    expect(httpClient.put).toHaveBeenCalledWith('/v1/expedicoes/4', update)
+    expect(httpClient.delete).toHaveBeenCalledWith('/v1/expedicoes/4')
   })
 })
 

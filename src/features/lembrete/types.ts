@@ -1,4 +1,4 @@
-// Espelha a entidade Lembrete do hcf-api (/v2/lembretes): a mesma ficha da
+// Espelha a entidade Lembrete do hcf-api (/v1/lembretes): a mesma ficha da
 // coleta, mais a data e o local para voltar a coletar numa expedição futura.
 
 import type { FichaColeta } from '@/features/evento/types'
@@ -18,7 +18,7 @@ export interface Lembrete extends FichaColeta {
   syncStatus?: import('@/features/sync/types').SyncStatus
 }
 
-// Multimídia do lembrete (/v2/lembretes/:id/evidencias); mesmo formato da evidência do evento.
+// Multimídia do lembrete (/v1/lembretes/:id/evidencias); mesmo formato da evidência do evento.
 export interface LembreteEvidencia {
   id: number
   lembrete_id: number
@@ -26,7 +26,7 @@ export interface LembreteEvidencia {
   arquivo: string
   mime_type: string
   tamanho: number
-  capturado_em: string
+  data_captura: string
   created_at: string
   updated_at: string
   created_by: number | null

@@ -108,7 +108,7 @@ export function useMultimidia() {
       adicionar(isPhoto ? 'imagem' : 'video', {
         arquivo: { uri: asset.uri, name: nome, type },
         nome,
-        capturado_em: new Date().toISOString(),
+        data_captura: new Date().toISOString(),
       }, formatFileSize(asset.fileSize))
     } finally {
       setIsCapturing(false)
@@ -157,7 +157,7 @@ export function useMultimidia() {
         adicionar(tipoPorMime(type), {
           arquivo: { uri: copia.localUri, name: nome, type },
           nome,
-          capturado_em: agora,
+          data_captura: agora,
         }, formatFileSize(file.size))
       }
     } catch (err: any) {
@@ -181,7 +181,7 @@ export function useMultimidia() {
       adicionar('audio', {
         arquivo: { uri, name: nome, type: 'audio/mp4' },
         nome,
-        capturado_em: new Date().toISOString(),
+        data_captura: new Date().toISOString(),
       }, recordTime)
       return
     }

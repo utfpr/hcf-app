@@ -4,7 +4,7 @@ const evento = {
   id: 10,
   expedicao_id: 4,
   tipo: 'COLETA',
-  capturado_em: '2026-09-28T12:00:00.000Z',
+  data_captura: '2026-09-28T12:00:00.000Z',
   latitude: -25.4284,
   longitude: -49.2733,
   altitude: null,
@@ -18,7 +18,7 @@ const evento = {
 
 const payload = {
   tipo: 'COLETA' as const,
-  capturado_em: '2026-09-28T12:00:00.000Z',
+  data_captura: '2026-09-28T12:00:00.000Z',
   latitude: -25.4284,
   longitude: -49.2733,
   observacoes: 'Próximo ao rio',
@@ -28,7 +28,7 @@ const payload = {
 const imagem = {
   arquivo: { uri: 'file:///foto.jpg', name: 'foto.jpg', type: 'image/jpeg' },
   nome: 'foto.jpg',
-  capturado_em: '2026-09-28T12:01:00.000Z',
+  data_captura: '2026-09-28T12:01:00.000Z',
 }
 
 describe('EventoService', () => {
@@ -50,8 +50,8 @@ describe('EventoService', () => {
 
     const result = await service.registrar(4, payload, [imagem])
 
-    expect(httpClient.post).toHaveBeenCalledWith('/v2/expedicoes/4/eventos', payload)
-    expect(httpClient.postForm).toHaveBeenCalledWith('/v2/eventos/10/evidencias', expect.any(FormData))
+    expect(httpClient.post).toHaveBeenCalledWith('/v1/expedicoes/4/eventos', payload)
+    expect(httpClient.postForm).toHaveBeenCalledWith('/v1/eventos/10/evidencias', expect.any(FormData))
     expect(result).toEqual({ evento, evidencias: [{ id: 1, evento_id: 10 }] })
   })
 
@@ -62,8 +62,8 @@ describe('EventoService', () => {
       .mockResolvedValueOnce({ data: [evidencia] })
 
     await expect(service.listarRegistros(4)).resolves.toEqual([{ ...evento, evidencias: [evidencia] }])
-    expect(httpClient.get).toHaveBeenCalledWith('/v2/expedicoes/4/eventos', { limite: 100 })
-    expect(httpClient.get).toHaveBeenCalledWith('/v2/eventos/10/evidencias')
+    expect(httpClient.get).toHaveBeenCalledWith('/v1/expedicoes/4/eventos', { limite: 100 })
+    expect(httpClient.get).toHaveBeenCalledWith('/v1/eventos/10/evidencias')
   })
 
   it('removes the event when an evidence upload fails, so retrying does not duplicate it', async () => {
@@ -73,6 +73,6 @@ describe('EventoService', () => {
     httpClient.delete.mockResolvedValue({ data: undefined })
 
     await expect(service.registrar(4, payload, [imagem])).rejects.toBe(uploadError)
-    expect(httpClient.delete).toHaveBeenCalledWith('/v2/eventos/10')
+    expect(httpClient.delete).toHaveBeenCalledWith('/v1/eventos/10')
   })
 })

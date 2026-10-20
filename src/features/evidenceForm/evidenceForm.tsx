@@ -150,7 +150,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
     setSaveError(null)
 
     const base = {
-      capturado_em: agora.toISOString(),
+      data_captura: agora.toISOString(),
       latitude: localizacao.coords?.latitude ?? null,
       longitude: localizacao.coords?.longitude ?? null,
       altitude: localizacao.coords?.altitude ?? null,

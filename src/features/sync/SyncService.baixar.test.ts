@@ -7,11 +7,11 @@ const pagina = <T>(itens: T[]) => ({ itens, total: itens.length, limite: 100, pa
 function criarHttpClient() {
   return {
     get: jest.fn(async (url: string) => {
-      if (url === '/v2/expedicoes') return { data: pagina([expedicao]) }
-      if (url === '/v2/expedicoes/3') return { data: { ...expedicao, participantes: [], rotas: [] } }
-      if (url === '/v2/expedicoes/3/eventos') return { data: pagina([{ id: 7, expedicao_id: 3 }]) }
-      if (url === '/v2/eventos/7/evidencias') return { data: [] }
-      if (url === '/v2/lembretes') return { data: pagina([]) }
+      if (url === '/v1/expedicoes') return { data: pagina([expedicao]) }
+      if (url === '/v1/expedicoes/3') return { data: { ...expedicao, participantes: [], rotas: [] } }
+      if (url === '/v1/expedicoes/3/eventos') return { data: pagina([{ id: 7, expedicao_id: 3 }]) }
+      if (url === '/v1/eventos/7/evidencias') return { data: [] }
+      if (url === '/v1/lembretes') return { data: pagina([]) }
       throw new Error(`rota inesperada: ${url}`)
     }),
   }

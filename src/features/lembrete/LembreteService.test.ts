@@ -25,7 +25,7 @@ describe('LembreteService', () => {
 
     const result = await service.criar(payload)
 
-    expect(httpClient.post).toHaveBeenCalledWith('/v2/lembretes', payload)
+    expect(httpClient.post).toHaveBeenCalledWith('/v1/lembretes', payload)
     expect(result).toEqual(lembrete)
   })
 })

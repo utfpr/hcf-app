@@ -1,4 +1,4 @@
-// Espelha as entidades Evento e Evidencia do hcf-api (/v2/eventos).
+// Espelha as entidades Evento e Evidencia do hcf-api (/v1/eventos).
 // O diário é o evento "genérico"; a coleta é um evento com a ficha de coleta.
 
 import type { SyncStatus } from '@/features/sync/types'
@@ -30,7 +30,7 @@ export interface Evento {
   id: number
   expedicao_id: number
   tipo: EventoTipo
-  capturado_em: string
+  data_captura: string
   latitude: number | null
   longitude: number | null
   altitude: number | null
@@ -51,7 +51,7 @@ export interface Evento {
 
 export interface CriarEventoPayload {
   tipo: EventoTipo
-  capturado_em: string
+  data_captura: string
   latitude?: number | null
   longitude?: number | null
   altitude?: number | null
@@ -70,7 +70,7 @@ export interface Evidencia {
   arquivo: string
   mime_type: string
   tamanho: number
-  capturado_em: string
+  data_captura: string
   created_at: string
   updated_at: string
   created_by: number | null
@@ -91,7 +91,7 @@ export interface ArquivoLocal {
 export interface CriarEvidenciaPayload {
   arquivo: ArquivoLocal
   nome: string
-  capturado_em: string
+  data_captura: string
   client_uuid?: string
 }
 

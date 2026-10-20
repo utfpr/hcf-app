@@ -9,7 +9,7 @@ describe('RegistroCard Sync Status', () => {
     id: 42,
     expedicao_id: 10,
     tipo: 'COLETA',
-    capturado_em: '2026-10-13T10:00:00.000Z',
+    data_captura: '2026-10-13T10:00:00.000Z',
     latitude: -24.04,
     longitude: -52.38,
     altitude: 600,
