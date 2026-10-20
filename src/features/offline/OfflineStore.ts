@@ -30,6 +30,11 @@ const PENDENCIAS_VAZIAS: Pendencias = { proximo_seq: 1, eventos: [], midias: [],
 const EXPEDICOES_VAZIAS: CacheExpedicoes = { itens: [], minhas: [], detalhadas: [] }
 const META_VAZIA: MetaOffline = { ultima_sincronizacao: null, ultima_baixa: null }
 
+// `silencioso`: grava sem avisar as telas; quem chamou avisa depois com avisarMudanca()
+export interface OpcoesGravacao {
+  silencioso?: boolean
+}
+
 const detalheArquivo = (expedicaoId: number) => `cache/expedicao-${expedicaoId}.json`
 const rascunhoArquivo = (chave: string) => `rascunhos/${chave}.json`
 const registrosArquivo = (expedicaoId: number) => `cache/registros-${expedicaoId}.json`
@@ -64,14 +69,19 @@ export class OfflineStore {
     return this.arquivos.aoMudar(ouvinte)
   }
 
+  /** Um aviso só depois de várias gravações com `silencioso` (ex.: a baixa da API) */
+  avisarMudanca(): void {
+    this.arquivos.avisar()
+  }
+
   // ---------- Pendências ----------
 
   pendencias(): Promise<Pendencias> {
     return this.arquivos.ler(PENDENCIAS, PENDENCIAS_VAZIAS)
   }
 
-  atualizarPendencias(alterar: (atual: Pendencias) => Pendencias): Promise<Pendencias> {
-    return this.arquivos.atualizar(PENDENCIAS, PENDENCIAS_VAZIAS, alterar)
+  atualizarPendencias(alterar: (atual: Pendencias) => Pendencias, opcoes?: OpcoesGravacao): Promise<Pendencias> {
+    return this.arquivos.atualizar(PENDENCIAS, PENDENCIAS_VAZIAS, alterar, opcoes)
   }
 
   async adicionarEvento(
@@ -194,45 +204,45 @@ export class OfflineStore {
     return this.arquivos.ler(EXPEDICOES, EXPEDICOES_VAZIAS)
   }
 
-  gravarExpedicoes(cache: CacheExpedicoes): Promise<void> {
-    return this.arquivos.gravar(EXPEDICOES, cache)
+  gravarExpedicoes(cache: CacheExpedicoes, opcoes?: OpcoesGravacao): Promise<void> {
+    return this.arquivos.gravar(EXPEDICOES, cache, opcoes)
   }
 
   lerDetalhe(expedicaoId: number): Promise<ExpedicaoDetalhe | null> {
     return this.arquivos.ler<ExpedicaoDetalhe | null>(detalheArquivo(expedicaoId), null)
   }
 
-  gravarDetalhe(detalhe: ExpedicaoDetalhe): Promise<void> {
-    return this.arquivos.gravar(detalheArquivo(detalhe.id), detalhe)
+  gravarDetalhe(detalhe: ExpedicaoDetalhe, opcoes?: OpcoesGravacao): Promise<void> {
+    return this.arquivos.gravar(detalheArquivo(detalhe.id), detalhe, opcoes)
   }
 
   lerRegistros(expedicaoId: number): Promise<RegistroExpedicao[] | null> {
     return this.arquivos.ler<RegistroExpedicao[] | null>(registrosArquivo(expedicaoId), null)
   }
 
-  gravarRegistros(expedicaoId: number, registros: RegistroExpedicao[]): Promise<void> {
-    return this.arquivos.gravar(registrosArquivo(expedicaoId), registros)
+  gravarRegistros(expedicaoId: number, registros: RegistroExpedicao[], opcoes?: OpcoesGravacao): Promise<void> {
+    return this.arquivos.gravar(registrosArquivo(expedicaoId), registros, opcoes)
   }
 
-  async removerExpedicao(expedicaoId: number): Promise<void> {
-    await this.arquivos.remover(detalheArquivo(expedicaoId))
-    await this.arquivos.remover(registrosArquivo(expedicaoId))
+  async removerExpedicao(expedicaoId: number, opcoes?: OpcoesGravacao): Promise<void> {
+    await this.arquivos.remover(detalheArquivo(expedicaoId), opcoes)
+    await this.arquivos.remover(registrosArquivo(expedicaoId), opcoes)
   }
 
   lerLembretes(): Promise<Lembrete[]> {
     return this.arquivos.ler<Lembrete[]>(LEMBRETES, [])
   }
 
-  gravarLembretes(lembretes: Lembrete[]): Promise<void> {
-    return this.arquivos.gravar(LEMBRETES, lembretes)
+  gravarLembretes(lembretes: Lembrete[], opcoes?: OpcoesGravacao): Promise<void> {
+    return this.arquivos.gravar(LEMBRETES, lembretes, opcoes)
   }
 
   lerMeta(): Promise<MetaOffline> {
     return this.arquivos.ler(META, META_VAZIA)
   }
 
-  async atualizarMeta(parcial: Partial<MetaOffline>): Promise<void> {
-    await this.arquivos.atualizar(META, META_VAZIA, atual => ({ ...atual, ...parcial }))
+  async atualizarMeta(parcial: Partial<MetaOffline>, opcoes?: OpcoesGravacao): Promise<void> {
+    await this.arquivos.atualizar(META, META_VAZIA, atual => ({ ...atual, ...parcial }), opcoes)
   }
 
   // ---------- Rascunhos de formulário ----------
