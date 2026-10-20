@@ -83,3 +83,12 @@ jest.mock('@dr.pogodin/react-native-fs', () => {
 })
 
 jest.mock('@react-native-community/netinfo', () => require('@react-native-community/netinfo/jest/netinfo-mock.js'))
+
+// GPS: no Jest não há localização; o formulário mostra "Sem GPS"
+jest.mock('@react-native-community/geolocation', () => ({
+  __esModule: true,
+  default: {
+    getCurrentPosition: jest.fn((_success, error) => error?.({ code: 2, message: 'indisponível' })),
+    requestAuthorization: jest.fn(),
+  },
+}))

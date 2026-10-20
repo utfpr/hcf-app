@@ -60,7 +60,7 @@ export function SyncScreen() {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
   const { active, loading, error } = useHomeExpeditions()
-  const { lastSyncFormatted } = useSync()
+  const { lastSyncFormatted, progressoTexto } = useSync()
   const { sincronizar, pendencias, pendentes } = useOffline()
   const taxonomia = useTaxonomia()
   const { wifi } = useConexao()
@@ -129,9 +129,10 @@ export function SyncScreen() {
           </Text>
         </View>
         <Text style={styles.pendentesText}>
-          {pendentes === 0
-            ? 'Nada pendente: tudo o que está no aparelho já foi enviado.'
-            : `${pendentes} item(ns) aguardando envio.`}
+          {progressoTexto
+            ?? (pendentes === 0
+              ? 'Nada pendente: tudo o que está no aparelho já foi enviado.'
+              : `${pendentes} item(ns) aguardando envio.`)}
         </Text>
 
         {erros.length > 0 ? (

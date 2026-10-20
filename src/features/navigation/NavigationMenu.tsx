@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { Bell, Compass, House, RefreshCw, UserRound } from 'lucide-react-native'
 
+import { useOfflineOpcional } from '@/features/offline/OfflineContext'
 import { RootNavigationProp, RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
 
@@ -45,6 +46,7 @@ interface NavigationMenuProps {
 export function NavigationMenu({ visible, onClose, current, headerHeight }: NavigationMenuProps) {
   const navigation = useNavigation<RootNavigationProp>()
   const insets = useSafeAreaInsets()
+  const pendentes = useOfflineOpcional()?.pendentes ?? 0
 
   function handlePress(route: MenuRoute) {
     onClose()
@@ -74,6 +76,11 @@ export function NavigationMenu({ visible, onClose, current, headerHeight }: Navi
           >
             <View style={styles.menuIcon}>{item.icon}</View>
             <Text style={styles.menuItemText}>{item.label}</Text>
+            {item.route === 'Synchronization' && pendentes > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{pendentes > 99 ? '99+' : pendentes}</Text>
+              </View>
+            ) : null}
           </TouchableOpacity>
         ))}
       </View>
@@ -142,5 +149,20 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '400',
+  },
+  badge: {
+    marginLeft: 'auto',
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: colors.bell,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: colors.background,
+    fontSize: 11,
+    fontWeight: '700',
   },
 })

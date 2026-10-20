@@ -12,7 +12,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { ArrowLeft, Bell, BookOpen, Calendar, Clock, Leaf, MapPin, Plus, Users } from 'lucide-react-native'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { CampoBusca } from '@/components/CampoBusca'
+import { FiltroChips, type OpcaoFiltro } from '@/components/FiltroChips'
+import { OfflineBanner } from '@/components/OfflineBanner'
+import { contemTermo } from '@/libraries/text/normalizar'
 
 import { EvidenceMode, RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
@@ -30,6 +34,22 @@ import { RegistroCard } from './components/RegistroCard'
 
 import type { Evidencia, RegistroExpedicao } from '../evento/types'
 import { AdicionarEvidenciaModal } from './components/AdicionarEvidenciaModal'
+
+type FiltroTipo = 'todos' | 'COLETA' | 'DIARIO'
+
+const OPCOES_TIPO: ReadonlyArray<OpcaoFiltro<FiltroTipo>> = [
+  { valor: 'todos', rotulo: 'Todos' },
+  { valor: 'COLETA', rotulo: 'Coletas' },
+  { valor: 'DIARIO', rotulo: 'Diários' },
+]
+
+// Nome científico, família ou nº da coleta
+function registroBate(registro: RegistroExpedicao, busca: string): boolean {
+  return contemTermo(registro.coleta?.nome_cientifico, busca)
+    || contemTermo(registro.coleta?.familia, busca)
+    || contemTermo(registro.numero_coleta, busca)
+    || contemTermo(registro.observacoes, busca)
+}
 
 type ExpeditionDetailRouteProp = RouteProp<RootStackParamList, 'ExpeditionDetail'>
 type ExpeditionDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionDetail'>
@@ -55,6 +75,8 @@ export function ExpeditionDetailScreen() {
   const [registroParaEvidencia, setRegistroParaEvidencia] = useState<RegistroExpedicao | null>(null)
 
   const [activeTab, setActiveTab] = useState<'registros' | 'lembretes'>('registros')
+  const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('todos')
+  const [buscaRegistro, setBuscaRegistro] = useState('')
 
   function handleOpenEvidencia(evidencia: Evidencia) {
     // Para o áudio que estiver tocando antes de abrir a foto/vídeo
@@ -69,6 +91,10 @@ export function ExpeditionDetailScreen() {
 
   const { data, error, loading, refresh } = useExpedition(Number(expeditionId))
   const registros = useRegistrosExpedicao(Number(expeditionId))
+  const registrosFiltrados = useMemo(() => (registros.data ?? []).filter(registro => (
+    (filtroTipo === 'todos' || registro.tipo === filtroTipo)
+    && (!buscaRegistro.trim() || registroBate(registro, buscaRegistro))
+  )), [registros.data, filtroTipo, buscaRegistro])
 
   // A API não liga lembretes a expedições: mostramos os próximos de todas
   const lembretes = useLembretes({ data_coleta_de: toApiDate(new Date()) })
@@ -152,6 +178,7 @@ export function ExpeditionDetailScreen() {
     <SafeAreaView style={styles.wrapper}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       {renderHeader()}
+      <OfflineBanner />
 
       <ScrollView
         contentContainerStyle={styles.container}
@@ -228,7 +255,19 @@ export function ExpeditionDetailScreen() {
               </TouchableOpacity>
             </View>
           ) : registros.data?.length ? (
-            registros.data.map(registro => (
+            <View>
+              <View style={styles.filtrosRegistros}>
+                <FiltroChips opcoes={OPCOES_TIPO} selecionado={filtroTipo} onSelecionar={setFiltroTipo} />
+                <CampoBusca
+                  value={buscaRegistro}
+                  onChangeText={setBuscaRegistro}
+                  placeholder="Nome científico, família ou nº da coleta"
+                />
+              </View>
+              {registrosFiltrados.length === 0 ? (
+                <Text style={styles.emptyTeamText}>Nenhum registro com esse filtro.</Text>
+              ) : null}
+              {registrosFiltrados.map(registro => (
               <RegistroCard
                 key={registro.id}
                 registro={registro}
@@ -237,7 +276,8 @@ export function ExpeditionDetailScreen() {
                 audioAtivoId={audioAtivoId}
                 onActivateAudio={setAudioAtivoId}
               />
-            ))
+              ))}
+            </View>
           ) : (
             <Text style={styles.emptyTeamText}>
               {isFinalizada
@@ -339,6 +379,10 @@ export function ExpeditionDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  filtrosRegistros: {
+    gap: 8,
+    marginBottom: 12,
+  },
   wrapper: {
     flex: 1,
     backgroundColor: colors.background,

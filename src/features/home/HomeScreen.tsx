@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RefreshCw } from 'lucide-react-native';
 
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { useAuth } from '@/contexts/Auth/useAuth';
 import { getHttpErrorMessage, isNetworkError } from '@/libraries/http/httpError';
 import { RootStackParamList } from '@/navigation/types';
@@ -50,7 +51,7 @@ export function HomeScreen() {
     error,
     refresh,
   } = useHomeExpeditions();
-  const { isSyncing, syncAll, lastSyncFormatted } = useSync();
+  const { isSyncing, syncAll, lastSyncFormatted, pendentes, progressoTexto } = useSync();
 
   async function handleSyncAll() {
     try {
@@ -109,8 +110,16 @@ export function HomeScreen() {
           ) : (
             <RefreshCw size={20} color={colors.textPrimary} />
           )}
+          {/* Quantos itens do aparelho ainda não subiram */}
+          {pendentes > 0 && !isSyncing ? (
+            <View style={styles.badge} testID="header-sync-badge">
+              <Text style={styles.badgeText}>{pendentes > 99 ? '99+' : pendentes}</Text>
+            </View>
+          ) : null}
         </Pressable>
       </View>
+
+      <OfflineBanner />
 
       {/* =========================
           CONTEÚDO
@@ -135,8 +144,10 @@ export function HomeScreen() {
             <Text style={styles.syncTitle}>Sincronização Geral</Text>
             <Text style={styles.syncSubtitle}>
               {isSyncing
-                ? 'Sincronizando dados com o servidor...'
-                : `Última sincronização: ${lastSyncFormatted}`}
+                ? progressoTexto ?? 'Sincronizando dados com o servidor...'
+                : pendentes > 0
+                  ? `${pendentes} item(ns) aguardando envio · Última: ${lastSyncFormatted}`
+                  : `Última sincronização: ${lastSyncFormatted}`}
             </Text>
           </View>
 
@@ -271,6 +282,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
+  },
+
+  badge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: colors.bell,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  badgeText: {
+    color: colors.background,
+    fontSize: 10,
+    fontWeight: '700',
   },
 
   menuButton: {

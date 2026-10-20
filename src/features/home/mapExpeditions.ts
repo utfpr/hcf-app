@@ -21,7 +21,7 @@ function formatDate(apiDate: string): string {
 }
 
 // Datas em YYYY-MM-DD podem ser comparadas como texto
-function getStatus(item: ExpedicaoListItem, today: string): ExpeditionStatus {
+export function getStatus(item: ExpedicaoListItem, today: string): ExpeditionStatus {
   if (item.data_fim < today) {
     return 'Finalizada';
   }

@@ -1,5 +1,6 @@
 import type { HttpClient } from '@/libraries/http/HttpClient'
 import { JsonFileStore } from '@/libraries/storage/JsonFileStore'
+import { normalizar } from '@/libraries/text/normalizar'
 
 import { FamiliaService } from './FamiliaService'
 import type { Familia } from './types'
@@ -32,10 +33,6 @@ export const taxonomiaStore = {
     await arquivos.gravar(FAMILIAS, cache)
     return cache
   },
-}
-
-function normalizar(texto: string): string {
-  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
 /** Mesmo critério da API (trecho do nome, sem diferenciar maiúsculas), e também ignora acentos */

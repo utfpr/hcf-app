@@ -13,7 +13,7 @@ import { mutate } from 'swr'
 
 import { useAuth } from '@/contexts/Auth/useAuth'
 import { useContainer } from '@/contexts/Container/useContainer'
-import { EnvioInterrompidoError, SyncService } from '@/features/sync/SyncService'
+import { EnvioInterrompidoError, type ProgressoEnvio, SyncService } from '@/features/sync/SyncService'
 import type { SyncResult } from '@/features/sync/types'
 import { taxonomiaStore } from '@/features/taxonomia/TaxonomiaStore'
 import { getUserFacingHttpError } from '@/libraries/http/httpError'
@@ -30,6 +30,8 @@ export interface OfflineContextValue {
   pendentes: number
   meta: MetaOffline | null
   sincronizando: boolean
+  // Durante o envio: quantos itens já foram de quantos (null fora da sincronização)
+  progresso: ProgressoEnvio | null
   baixando: boolean
   /** App → API e depois API → app. Só no Wi-Fi. */
   sincronizar(filtro?: { expedicaoId?: number }): Promise<SyncResult>
@@ -56,6 +58,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const [pendencias, setPendencias] = useState<Pendencias | null>(null)
   const [meta, setMeta] = useState<MetaOffline | null>(null)
   const [sincronizando, setSincronizando] = useState(false)
+  const [progresso, setProgresso] = useState<ProgressoEnvio | null>(null)
   const [baixando, setBaixando] = useState(false)
   // Evita duas sincronizações ao mesmo tempo (botão da Home + tela de Sync)
   const ocupado = useRef(false)
@@ -116,7 +119,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     ocupado.current = true
     setSincronizando(true)
     try {
-      const envio = await sync.enviar(filtro)
+      const envio = await sync.enviar(filtro, setProgresso)
       await sync.baixar()
       await sync.limparEnviados()
 
@@ -143,6 +146,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     } finally {
       ocupado.current = false
       setSincronizando(false)
+      setProgresso(null)
     }
   }, [store, sync, sessaoExpirada])
 
@@ -175,10 +179,11 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     pendentes: pendencias ? contarPendentes(pendencias) : 0,
     meta,
     sincronizando,
+    progresso,
     baixando,
     sincronizar,
     baixar,
-  }), [store, pendencias, meta, sincronizando, baixando, sincronizar, baixar])
+  }), [store, pendencias, meta, sincronizando, progresso, baixando, sincronizar, baixar])
 
   return (
     <OfflineContext.Provider value={value}>
@@ -193,6 +198,11 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       />
     </OfflineContext.Provider>
   )
+}
+
+/** Para componentes que também aparecem fora da área logada (ou em testes) */
+export function useOfflineOpcional(): OfflineContextValue | undefined {
+  return useContext(OfflineContext)
 }
 
 export function useOffline(): OfflineContextValue {

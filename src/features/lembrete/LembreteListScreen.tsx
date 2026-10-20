@@ -1,4 +1,4 @@
-
+import { useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -11,14 +11,57 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { ArrowLeft, CalendarDays, MapPin } from 'lucide-react-native'
 
+import { FiltroChips, type OpcaoFiltro } from '@/components/FiltroChips'
+import { OfflineBanner } from '@/components/OfflineBanner'
+import { toApiDate } from '@/features/home/mapExpeditions'
+import { useOffline } from '@/features/offline/OfflineContext'
 import { SyncStatusIndicator } from '@/features/sync/components/SyncStatusIndicator'
 import { colors } from '@/theme/colors'
 import { useLembretes } from './hooks/useLembretes'
-import type { Lembrete } from './types'
+import type { FiltrosLembrete, Lembrete } from './types'
 
-const filtros = {
-  limite: 10,
-  order: 'data_coleta:asc' as const,
+const LIMITE = 10
+const UM_DIA_MS = 24 * 60 * 60 * 1000
+
+type Periodo = 'proximos' | 'semana' | 'vencidos' | 'todos'
+
+const OPCOES_PERIODO: ReadonlyArray<OpcaoFiltro<Periodo>> = [
+  { valor: 'proximos', rotulo: 'Próximos' },
+  { valor: 'semana', rotulo: 'Próximos 7 dias' },
+  { valor: 'vencidos', rotulo: 'Vencidos' },
+  { valor: 'todos', rotulo: 'Todos' },
+]
+
+// Datas locais (YYYY-MM-DD), no mesmo formato de data_coleta
+function filtrosDoPeriodo(periodo: Periodo): FiltrosLembrete {
+  const hoje = toApiDate(new Date())
+  switch (periodo) {
+    case 'proximos':
+      return { limite: LIMITE, order: 'data_coleta:asc', data_coleta_de: hoje }
+    case 'semana':
+      return {
+        limite: LIMITE,
+        order: 'data_coleta:asc',
+        data_coleta_de: hoje,
+        data_coleta_ate: toApiDate(new Date(Date.now() + 7 * UM_DIA_MS)),
+      }
+    case 'vencidos':
+      // O que passou da data, do mais recente para o mais antigo
+      return {
+        limite: LIMITE,
+        order: 'data_coleta:desc',
+        data_coleta_ate: toApiDate(new Date(Date.now() - UM_DIA_MS)),
+      }
+    default:
+      return { limite: LIMITE, order: 'data_coleta:asc' }
+  }
+}
+
+const VAZIO_POR_PERIODO: Record<Periodo, string> = {
+  proximos: 'Nenhum lembrete a partir de hoje.',
+  semana: 'Nenhum lembrete nos próximos 7 dias.',
+  vencidos: 'Nenhum lembrete vencido.',
+  todos: 'Nenhum lembrete encontrado.',
 }
 
 function formatarData(data: string): string {
@@ -28,6 +71,9 @@ function formatarData(data: string): string {
 
 export function LembreteListScreen() {
   const navigation = useNavigation()
+  const { baixar } = useOffline()
+  const [periodo, setPeriodo] = useState<Periodo>('proximos')
+  const filtros = useMemo(() => filtrosDoPeriodo(periodo), [periodo])
 
   const {
     data,
@@ -93,6 +139,12 @@ export function LembreteListScreen() {
         <View style={{ width: 24 }} />
       </View>
 
+      <OfflineBanner />
+
+      <View style={styles.filtros}>
+        <FiltroChips opcoes={OPCOES_PERIODO} selecionado={periodo} onSelecionar={setPeriodo} />
+      </View>
+
       {loading && !data ? (
         <View style={styles.center}>
           <ActivityIndicator
@@ -125,7 +177,11 @@ export function LembreteListScreen() {
             keyExtractor={item => String(item.id)}
             renderItem={renderLembrete}
             contentContainerStyle={styles.list}
-            onRefresh={() => refresh()}
+            onRefresh={async () => {
+              // Com conexão, traz o que mudou na API; sem conexão, só relê o aparelho
+              await baixar()
+              refresh()
+            }}
             refreshing={loading}
             ListEmptyComponent={
               <View style={styles.center}>
@@ -134,7 +190,7 @@ export function LembreteListScreen() {
                   color={colors.textSecondary}
                 />
                 <Text style={styles.message}>
-                  Nenhum lembrete encontrado.
+                  {VAZIO_POR_PERIODO[periodo]}
                 </Text>
               </View>
             }
@@ -182,6 +238,10 @@ export function LembreteListScreen() {
 }
 
 const styles = StyleSheet.create({
+  filtros: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,

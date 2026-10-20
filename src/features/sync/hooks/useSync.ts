@@ -17,7 +17,7 @@ export function formatarUltimaSincronizacao(isoString: string | null | undefined
 
 /** Botões de sincronizar: envia o que está no aparelho e baixa o que mudou na API */
 export function useSync() {
-  const { sincronizar, sincronizando, meta, pendentes } = useOffline()
+  const { sincronizar, sincronizando, meta, pendentes, progresso } = useOffline()
 
   const syncAll = useCallback(
     (): Promise<SyncResult> => sincronizar(),
@@ -31,6 +31,8 @@ export function useSync() {
     lastSyncDate,
     lastSyncFormatted: formatarUltimaSincronizacao(lastSyncDate),
     pendentes,
+    // "Enviando 3 de 12…" enquanto sobe; null fora da sincronização
+    progressoTexto: progresso && progresso.total > 0 ? `Enviando ${Math.min(progresso.feitos + 1, progresso.total)} de ${progresso.total}…` : null,
     syncAll,
   }
 }

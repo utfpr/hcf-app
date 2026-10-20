@@ -12,7 +12,11 @@ import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Menu } from 'lucide-react-native'
 
+import { CampoBusca } from '@/components/CampoBusca'
+import { FiltroChips, type OpcaoFiltro } from '@/components/FiltroChips'
+import { OfflineBanner } from '@/components/OfflineBanner'
 import { useAuth } from '@/contexts/Auth/useAuth'
+import type { ExpeditionStatus } from '@/features/home/types'
 import { RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
 
@@ -26,12 +30,27 @@ type ExpeditionListNavigationProp = NativeStackNavigationProp<RootStackParamList
 // paddingVertical (12 + 12) + ícone do menu (24)
 const HEADER_HEIGHT = 48
 
+type FiltroStatus = 'todas' | ExpeditionStatus
+
+const OPCOES_STATUS: ReadonlyArray<OpcaoFiltro<FiltroStatus>> = [
+  { valor: 'todas', rotulo: 'Todas' },
+  { valor: 'Em andamento', rotulo: 'Em andamento' },
+  { valor: 'Planejada', rotulo: 'Planejadas' },
+  { valor: 'Finalizada', rotulo: 'Finalizadas' },
+]
+
 export function ExpeditionListScreen() {
   const navigation = useNavigation<ExpeditionListNavigationProp>()
   const { user } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-  const { itens, error, loading, loadingMore, loadMore, refresh, syncStatusDe } = useExpeditionsInfinite()
+  const [busca, setBusca] = useState('')
+  const [status, setStatus] = useState<FiltroStatus>('todas')
+  const filtrando = busca.trim() !== '' || status !== 'todas'
+  const { itens, error, loading, loadingMore, loadMore, refresh, syncStatusDe } = useExpeditionsInfinite({
+    busca,
+    status: status === 'todas' ? null : status,
+  })
   const today = toApiDate(new Date())
 
   // Componentes de Loading e Erro
@@ -58,7 +77,9 @@ export function ExpeditionListScreen() {
     if (!loading && itens.length === 0) {
       return (
         <View style={styles.centerContainer}>
-          <Text style={styles.emptyText}>Nenhuma expedição encontrada.</Text>
+          <Text style={styles.emptyText}>
+            {filtrando ? 'Nenhuma expedição com esse filtro.' : 'Nenhuma expedição encontrada.'}
+          </Text>
         </View>
       )
     }
@@ -98,6 +119,13 @@ export function ExpeditionListScreen() {
         <Text style={styles.userName} numberOfLines={1}>{user?.nome}</Text>
       </View>
 
+      <OfflineBanner />
+
+      <View style={styles.filtros}>
+        <CampoBusca value={busca} onChangeText={setBusca} placeholder="Buscar por nome ou cidade" />
+        <FiltroChips opcoes={OPCOES_STATUS} selecionado={status} onSelecionar={setStatus} />
+      </View>
+
       {renderContent()}
 
       <NavigationMenu
@@ -127,6 +155,11 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     color: colors.textPrimary,
     fontSize: 14,
+  },
+  filtros: {
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   content: {
     paddingHorizontal: 16,
