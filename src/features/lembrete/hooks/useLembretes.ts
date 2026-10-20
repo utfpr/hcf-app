@@ -9,11 +9,11 @@ import type { FiltrosLembrete, Lembrete, PaginacaoLembretes } from '../types'
 const LIMITE_PADRAO = 20
 
 // Mesmos filtros e ordem da API (/v2/lembretes), aplicados sobre os dados do aparelho
-function filtrar(lembretes: Lembrete[], filtros: FiltrosLembrete, pagina: number): PaginacaoLembretes {
+export function filtrarLembretes(lembretes: Lembrete[], filtros: FiltrosLembrete): Lembrete[] {
   const [coluna, direcao] = (filtros.order ?? 'data_coleta:asc').split(':') as ['id' | 'data_coleta', 'asc' | 'desc']
   const sinal = direcao === 'asc' ? 1 : -1
 
-  const filtrados = lembretes
+  return lembretes
     .filter(lembrete => !filtros.data_coleta_de || lembrete.data_coleta >= filtros.data_coleta_de)
     .filter(lembrete => !filtros.data_coleta_ate || lembrete.data_coleta <= filtros.data_coleta_ate)
     .sort((a, b) => {
@@ -22,7 +22,10 @@ function filtrar(lembretes: Lembrete[], filtros: FiltrosLembrete, pagina: number
         : a.data_coleta.localeCompare(b.data_coleta) || a.id - b.id
       return comparacao * sinal
     })
+}
 
+function paginar(lembretes: Lembrete[], filtros: FiltrosLembrete, pagina: number): PaginacaoLembretes {
+  const filtrados = filtrarLembretes(lembretes, filtros)
   const limite = filtros.limite && filtros.limite > 0 ? filtros.limite : LIMITE_PADRAO
   const inicio = (pagina - 1) * limite
   return {
@@ -47,7 +50,7 @@ export function useLembretes(filtros: FiltrosLembrete = {}) {
 
   const fetcher = useCallback(async () => {
     const lembretes = mesclarLembretes(await store.lerLembretes(), await store.pendencias())
-    return filtrar(lembretes, JSON.parse(filtersKey) as FiltrosLembrete, page)
+    return paginar(lembretes, JSON.parse(filtersKey) as FiltrosLembrete, page)
   }, [store, filtersKey, page])
 
   const query = useQuery(
