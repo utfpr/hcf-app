@@ -8,6 +8,8 @@ export interface Lembrete extends FichaColeta {
   id: number
   data_coleta: string // YYYY-MM-DD
   local_coleta: string
+  // Expedição de onde o lembrete foi criado; null quando não veio de uma
+  expedicao_id?: number | null
   created_at: string
   updated_at: string
   created_by: number | null
@@ -36,6 +38,7 @@ export interface LembreteEvidencia {
 export interface CriarLembretePayload extends Partial<FichaColeta> {
   data_coleta: string // YYYY-MM-DD
   local_coleta: string
+  expedicao_id?: number
   client_uuid?: string
 }
 
@@ -47,6 +50,7 @@ export type OrdemLembrete =
 
 export interface FiltrosLembrete
   extends Record<string, string | number | undefined> {
+  expedicao_id?: number
   data_coleta_de?: string
   data_coleta_ate?: string
   order?: OrdemLembrete
