@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Libera HTTP para a API sem HTTPS: ver res/xml/network_security_config.xml -->
+
+    <!-- Release: HTTP sem TLS só para o back rodando no próprio PC (cabo + adb reverse,
+         emulador ou hotspot do PC). Qualquer outro endereço continua exigindo HTTPS. -->
     <application android:networkSecurityConfig="@xml/network_security_config" />
 </manifest>

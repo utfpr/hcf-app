@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Só no build release. O release do React Native bloqueia HTTP sem criptografia,
-  mas a API roda no PC da equipe, sem HTTPS (ex.: http://10.42.0.1:3010 no hotspot
-  do PC). Libera HTTP para qualquer endereço, para que trocar o IP no .env.release
-  não exija mexer aqui. Quando a API tiver HTTPS, troque para "false".
--->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true">
-        <trust-anchors>
-            <certificates src="system" />
-        </trust-anchors>
-    </base-config>
+    <base-config cleartextTrafficPermitted="false" />
+
+    <!-- Endereços do back rodando no PC da equipe, sem HTTPS. Para outro endereço,
+         inclua-o aqui além de mudar o API_BASE_URL (ver README). -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Back no PC com o celular no cabo: adb reverse tcp:3010 tcp:3010 -->
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <!-- O PC visto de dentro do emulador -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- O PC quando cria um hotspot Wi-Fi (NetworkManager): celulares sem cabo -->
+        <domain includeSubdomains="false">10.42.0.1</domain>
+    </domain-config>
 </network-security-config>
