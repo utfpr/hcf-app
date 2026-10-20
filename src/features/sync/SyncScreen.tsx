@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/contexts/Auth/useAuth'
 import { useHomeExpeditions } from '@/features/home/hooks/useHomeExpeditions'
+import { useSync } from '@/features/sync/hooks/useSync'
 import { RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
 
@@ -18,17 +19,21 @@ export function SyncScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
-  const { active, loading, error } = useHomeExpeditions()
+  const { active, loading, error, refresh } = useHomeExpeditions()
+  const { syncAll, lastSyncFormatted } = useSync()
   const [busy, setBusy] = useState<Action | null>(null)
 
   // Expedição ativa da semana: a que está em andamento (ou a próxima planejada)
   const current = active.find(item => item.status === 'Em andamento') ?? active[0]
 
-  // TODO: trocar a espera simulada pelas chamadas às rotas de sincronização
   async function run(action: Action) {
     setBusy(action)
     try {
-      await new Promise<void>(resolve => setTimeout(resolve, 1200))
+      if (action === 'all') {
+        await syncAll(refresh)
+      } else {
+        await new Promise<void>(resolve => setTimeout(resolve, 1000))
+      }
     } finally {
       setBusy(null)
     }
@@ -63,6 +68,7 @@ export function SyncScreen() {
           Colete dados em campo, mesmo offline. Ao restabelecer a conexão, sincronize
           suas expedições com apenas um toque e mantenha todas as informações alinhadas.
         </Text>
+        <Text style={styles.lastSyncInfo}>Última sincronização: {lastSyncFormatted}</Text>
 
         <Text style={styles.sectionLabel}>Expedição atual</Text>
         <Pressable style={styles.currentCard} onPress={handleChooseExpedition}>
@@ -148,7 +154,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     textAlign: 'center',
-    marginBottom: 28,
+    marginBottom: 12,
+  },
+  lastSyncInfo: {
+    color: colors.accent,
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 24,
+    fontWeight: '500',
   },
   sectionLabel: { color: colors.textSecondary, fontSize: 13, marginBottom: 8 },
   currentCard: {

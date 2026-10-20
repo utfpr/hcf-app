@@ -7,6 +7,7 @@ import { arquivoUrl, tipoEvidencia } from '@/features/evento/utils'
 import { colors } from '@/theme/colors'
 
 import { AudioPlayer } from './AudioPlayer'
+import { SyncStatusIndicator } from '@/features/sync/components/SyncStatusIndicator'
 
 function formatDateTime(iso: string): string {
   const date = new Date(iso)
@@ -42,6 +43,12 @@ export function RegistroCard({ registro, onOpenEvidencia, onAddEvidencia, audioA
             : <BookOpen size={12} color={colors.diary} />}
           <Text style={[styles.tipoText, isColeta ? styles.tipoTextColeta : styles.tipoTextDiario]}>{isColeta ? 'Coleta' : 'Diário'}</Text>
         </View>
+
+        <SyncStatusIndicator
+          status={registro.syncStatus ?? 'synced'}
+          size={12}
+          testID={`registro-sync-${registro.id}`}
+        />
       </View>
 
       {isColeta && registro.coleta ? (
