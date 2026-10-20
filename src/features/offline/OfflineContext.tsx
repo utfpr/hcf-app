@@ -8,9 +8,10 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Alert, AppState } from 'react-native'
+import { AppState } from 'react-native'
 import { mutate } from 'swr'
 
+import { useFeedback } from '@/components/feedback/FeedbackContext'
 import { useAuth } from '@/contexts/Auth/useAuth'
 import { useContainer } from '@/contexts/Container/useContainer'
 import { EnvioInterrompidoError, type ProgressoEnvio, SyncService } from '@/features/sync/SyncService'
@@ -66,6 +67,7 @@ function revalidarTelas() {
 export function OfflineProvider({ children }: { children: ReactNode }) {
   const { httpClient } = useContainer()
   const { user, sessaoExpirada } = useAuth()
+  const { toast } = useFeedback()
   const usuarioId = user?.id as number
 
   const store = useMemo(() => new OfflineStore(usuarioId), [usuarioId])
@@ -192,12 +194,11 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     if (!retomar || sessaoExpirada) return
     setRetomar(false)
     sincronizar(filtroPendente.current).then(resultado => {
-      Alert.alert(
-        'Sincronização',
-        resultado.success ? 'Todos os dados foram sincronizados com sucesso.' : resultado.message ?? 'Não foi possível sincronizar.',
-      )
+      toast(resultado.success
+        ? { tipo: 'sucesso', titulo: 'Sincronização concluída', mensagem: 'Todos os dados foram sincronizados com sucesso.' }
+        : { tipo: 'erro', titulo: 'Sincronização', mensagem: resultado.message ?? 'Não foi possível sincronizar.' })
     })
-  }, [retomar, sessaoExpirada, sincronizar])
+  }, [retomar, sessaoExpirada, sincronizar, toast])
 
   // Ao abrir o app (e ao voltar para ele) no Wi-Fi: puxa sozinho tudo da API
   // (expedições do web, registros, lembretes e taxonomia). Não envia nada: subir o
