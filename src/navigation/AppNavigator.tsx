@@ -7,9 +7,9 @@ import { ExpeditionListScreen } from '@/features/expeditionList/ExpeditionListSc
 import { ExpeditionDetailScreen } from '@/features/expeditionDetail/ExpeditionDetailScreen'
 import { Formulario } from '@/features/evidenceForm/evidenceForm'
 import { LembreteForm } from '@/features/reminderForm/reminderForm'
-import { PlaceholderScreen } from '@/features/navigation/PlaceholderScreen'
 import { LembreteListScreen } from '@/features/lembrete/LembreteListScreen'
 import { SyncScreen } from '@/features/sync/SyncScreen'
+import { UserProfileScreen } from '@/features/userProfile/UserProfileScreen'
 
 import { RootStackParamList } from './types'
 
@@ -41,10 +41,6 @@ function RemindersScreen() {
       longitude={longitude ?? DEFAULT_COORDS.longitude}
     />
   )
-}
-
-function UserProfileScreen() {
-  return <PlaceholderScreen title="Perfil do Usuário" />
 }
 
 export function AppNavigator() {

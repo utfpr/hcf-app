@@ -20,6 +20,7 @@ import { getHttpErrorMessage, isNetworkError } from '@/libraries/http/httpError'
 import { RootStackParamList } from '@/navigation/types';
 import { colors } from '@/theme/colors';
 import { useSync } from '@/features/sync/hooks/useSync';
+import { NavigationMenu } from '@/features/navigation/NavigationMenu';
 
 import { ExpeditionCard } from './components/ExpeditionCard';
 import { ActiveExpeditionsList } from './components/ActiveExpeditionsList';
@@ -39,6 +40,7 @@ export function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const insets = useSafeAreaInsets();
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user } = useAuth();
   const {
     active,
@@ -49,10 +51,6 @@ export function HomeScreen() {
     refresh,
   } = useHomeExpeditions();
   const { isSyncing, syncAll, lastSyncFormatted } = useSync();
-
-  function handleMenuPress() {
-    navigation.navigate('Synchronization')
-  }
 
   async function handleSyncAll() {
     try {
@@ -82,10 +80,10 @@ export function HomeScreen() {
         <View style={styles.headerLeft}>
           <Pressable
             style={styles.menuButton}
-            onPress={handleMenuPress}
+            onPress={() => setIsMenuOpen(true)}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="Abrir menu de sincronização"
+            accessibilityLabel="Abrir menu de navegação"
           >
             <View style={styles.menuLine} />
             <View style={styles.menuLine} />
@@ -228,6 +226,13 @@ export function HomeScreen() {
           )}
         </View>
       </ScrollView>
+
+      <NavigationMenu
+        visible={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        current="Home"
+        headerHeight={styles.header.height}
+      />
     </View>
   );
 }
