@@ -64,7 +64,7 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
   }
 
   async function handleSave() {
-    if (isSaving) return;
+    if (isSaveDisabled) return;
 
     const problema = validar();
     if (problema) {
@@ -74,7 +74,7 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
 
     setSaveError(null);
     try {
-      await criar(buildPayload());
+      await criar(buildPayload(), multimidia.pendentes.map(p => p.payload));
     } catch (error) {
       setSaveError(getUserFacingHttpError(error, 'Não foi possível salvar o lembrete. Tente novamente.'));
       return;
@@ -172,9 +172,9 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
         {saveError ? <Text style={styles.saveError}>{saveError}</Text> : null}
 
         <TouchableOpacity
-          style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+          style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]}
           onPress={handleSave}
-          disabled={isSaving}
+          disabled={isSaveDisabled}
         >
           {isSaving ? (
             <ActivityIndicator color={colors.onAccent} />

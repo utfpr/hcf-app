@@ -14,6 +14,22 @@ export interface Lembrete extends FichaColeta {
   updated_by: number | null
 }
 
+// Multimídia do lembrete (/v2/lembretes/:id/evidencias); mesmo formato da evidência do evento.
+export interface LembreteEvidencia {
+  id: number
+  lembrete_id: number
+  nome: string
+  arquivo: string
+  mime_type: string
+  tamanho: number
+  capturado_em: string
+  created_at: string
+  updated_at: string
+  created_by: number | null
+  updated_by: number | null
+  url: string
+}
+
 export interface CriarLembretePayload extends Partial<FichaColeta> {
   data_coleta: string // YYYY-MM-DD
   local_coleta: string
