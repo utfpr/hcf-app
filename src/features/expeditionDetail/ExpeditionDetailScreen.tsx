@@ -34,7 +34,6 @@ import { AdicionarEvidenciaModal } from './components/AdicionarEvidenciaModal'
 type ExpeditionDetailRouteProp = RouteProp<RootStackParamList, 'ExpeditionDetail'>
 type ExpeditionDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionDetail'>
 
-const MOCK_COORDS = { latitude: -20.2508, longitude: -46.4167 }
 
 function formatarDataParaBr(dataIso: string) {
   if (!dataIso) return ''
@@ -83,12 +82,12 @@ export function ExpeditionDetailScreen() {
   function handleOpenForm(mode: EvidenceMode) {
     setIsMenuOpen(false)
     setAudioAtivoId(null)
-    navigation.navigate('Formulario', { expeditionId, mode, ...MOCK_COORDS })
+    navigation.navigate('Formulario', { expeditionId, mode })
   }
 
   function handleOpenLembrete() {
     setIsMenuOpen(false)
-    navigation.navigate('Reminders', { expeditionId, ...MOCK_COORDS })
+    navigation.navigate('Reminders', { expeditionId })
   }
 
   function renderHeader() {

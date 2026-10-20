@@ -72,6 +72,7 @@ function eventoParaRegistro(evento: EventoPendente, midias: MidiaPendente[]): Re
     altitude: evento.payload.altitude ?? null,
     observacoes: evento.payload.observacoes ?? null,
     coleta: evento.payload.tipo === 'COLETA' ? fichaCompleta(evento.payload.coleta) : null,
+    numero_coleta: evento.payload.numero_coleta ?? null,
     created_at: evento.criado_em,
     updated_at: evento.criado_em,
     created_by: null,
@@ -121,7 +122,59 @@ export function mesclarRegistros(
         .filter(midia => !uuidsNoCache.has(midia.local_id)),
     ))
 
-  return [...locais, ...remotos].sort((a, b) => b.capturado_em.localeCompare(a.capturado_em))
+  return juntarPorNumero([...locais, ...remotos])
+    .sort((a, b) => b.capturado_em.localeCompare(a.capturado_em))
+}
+
+export function numeroDaColeta(registro: Pick<RegistroExpedicao, 'tipo' | 'numero_coleta'>): string | null {
+  if (registro.tipo !== 'COLETA') return null
+  return registro.numero_coleta?.trim() || null
+}
+
+/**
+ * Coletas com o mesmo número são a mesma coleta física (registrada por várias
+ * pessoas): viram um card só, como a API faz ao sincronizar. A base é a que já
+ * está na API (se houver); as evidências de todas ficam juntas, em ordem de captura.
+ */
+function juntarPorNumero(registros: RegistroExpedicao[]): RegistroExpedicao[] {
+  const grupos = new Map<string, RegistroExpedicao[]>()
+  const avulsos: RegistroExpedicao[] = []
+
+  registros.forEach(registro => {
+    const numero = numeroDaColeta(registro)
+    if (!numero) {
+      avulsos.push(registro)
+      return
+    }
+    grupos.set(numero, [...(grupos.get(numero) ?? []), registro])
+  })
+
+  const juntados = [...grupos.values()].map(grupo => {
+    if (grupo.length === 1) return grupo[0]
+
+    const base = grupo.find(registro => registro.id > 0) ?? grupo[0]
+    const evidencias = grupo
+      .flatMap(registro => registro.evidencias)
+      .sort((a, b) => a.capturado_em.localeCompare(b.capturado_em))
+    const capturadoEm = grupo
+      .map(registro => registro.capturado_em)
+      .reduce((menor, atual) => (atual < menor ? atual : menor))
+
+    return {
+      ...base,
+      capturado_em: capturadoEm,
+      evidencias,
+      syncStatus: piorStatus(grupo.map(registro => registro.syncStatus ?? 'synced')),
+    }
+  })
+
+  return [...avulsos, ...juntados]
+}
+
+/** Já existe coleta com esse número na expedição (na API ou só no aparelho)? */
+export function existeColetaComNumero(registros: RegistroExpedicao[], numero: string): boolean {
+  const procurado = numero.trim()
+  return procurado !== '' && registros.some(registro => numeroDaColeta(registro) === procurado)
 }
 
 /** Status do card da expedição: só conta o que ainda não subiu */

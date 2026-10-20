@@ -125,6 +125,11 @@ export const styles = StyleSheet.create({
   diaryTextArea: {
     minHeight: 230,
   },
+  fieldHint: {
+    color: colors.bell,
+    fontSize: 12,
+    marginTop: 6,
+  },
   mediaError: {
     color: colors.danger,
     fontSize: 12,

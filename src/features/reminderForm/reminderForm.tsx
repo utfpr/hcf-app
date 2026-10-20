@@ -1,46 +1,112 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { ArrowLeft, Bell, Calendar, Check, Crosshair, MapPin } from 'lucide-react-native';
+import { ArrowLeft, Bell, Calendar, Check, ChevronDown, ChevronUp, Crosshair, MapPin } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { OfflineBanner } from '@/components/OfflineBanner';
+import { LocalizacaoChip } from '@/features/evento/components/LocalizacaoChip';
+import { EMPTY_FICHA, FICHA_FIELDS, fichaParaPayload, type FichaFieldName, type FichaValues } from '@/features/evento/fichaCampos';
 import { useCriarLembrete } from '@/features/lembrete/hooks/useCriarLembrete';
+import { RascunhoBanner } from '@/features/offline/RascunhoBanner';
+import { useRascunho } from '@/features/offline/useRascunho';
 import { FamiliaInput } from '@/features/taxonomia/components/FamiliaInput';
 import type { CriarLembretePayload } from '@/features/lembrete/types';
 import { dataBrParaIso, hojeIso, maskDataBr } from '@/features/lembrete/utils';
 import { getUserFacingHttpError } from '@/libraries/http/httpError';
+import { formatarCoordenadas, useLocalizacao } from '@/libraries/location/useLocalizacao';
 import { RootStackParamList } from '@/navigation/types';
 import { colors } from '../../theme/colors';
 import { styles } from '../evidenceForm/styles';
 import { reminderStyles } from './styles';
 import { Multimidia } from '@/features/evento/components/Multimidia';
-import { useMultimidia } from '@/features/evento/hooks/useMultimidia';
+import { type EvidenciaPendente, useMultimidia } from '@/features/evento/hooks/useMultimidia';
 
 export interface LembreteFormProps {
   // Expedição de onde o lembrete foi aberto; usada só para voltar a ela depois de salvar.
   expedicaoId?: number;
-  latitude: number;
-  longitude: number;
 }
 
-export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormProps) {
+// Nome científico tem campo próprio no topo; o resto da ficha fica em "Mais detalhes"
+const CAMPOS_DETALHE = FICHA_FIELDS.filter(([campo]) => campo !== 'nome_cientifico');
+
+interface Rascunho {
+  familia: string;
+  local: string;
+  data: string;
+  ficha: FichaValues;
+  midias: EvidenciaPendente[];
+}
+
+function rascunhoVazio(rascunho: Rascunho): boolean {
+  return !rascunho.familia && !rascunho.local && !rascunho.data && rascunho.midias.length === 0
+    && Object.values(rascunho.ficha).every(valor => !valor);
+}
+
+export function LembreteForm({ expedicaoId }: LembreteFormProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Reminders'>>();
 
   const [family, setFamily] = useState('');
-  const [scientificName, setScientificName] = useState('');
+  const [ficha, setFicha] = useState<FichaValues>(EMPTY_FICHA);
   const [localColeta, setLocalColeta] = useState('');
   const [dataColeta, setDataColeta] = useState('');
+  const [detalhesAbertos, setDetalhesAbertos] = useState(false);
   const multimidia = useMultimidia();
+  const { pendentes, setPendentes } = multimidia;
+  const localizacao = useLocalizacao();
 
   const { trigger: criar, loading: isSaving } = useCriarLembrete();
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const isSaveDisabled = isSaving || multimidia.busy;
 
-  const posicaoAtual = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+  const rascunho = useRascunho<Rascunho>('lembrete');
+  const [recuperado, setRecuperado] = useState(false);
+  const restaurou = useRef(false);
+
+  // Abriu com um rascunho salvo: devolve o formulário como estava
+  useEffect(() => {
+    if (restaurou.current || !rascunho.pronto) return;
+    restaurou.current = true;
+    const salvo = rascunho.restaurado;
+    if (!salvo || rascunhoVazio(salvo)) return;
+
+    setFamily(salvo.familia);
+    setLocalColeta(salvo.local);
+    setDataColeta(salvo.data);
+    setFicha({ ...EMPTY_FICHA, ...salvo.ficha });
+    setPendentes(salvo.midias);
+    setRecuperado(true);
+  }, [rascunho.pronto, rascunho.restaurado, setPendentes]);
+
+  const { salvar: salvarRascunho } = rascunho;
+  useEffect(() => {
+    if (!restaurou.current) return;
+    const atual: Rascunho = { familia: family, local: localColeta, data: dataColeta, ficha, midias: pendentes };
+    if (!rascunhoVazio(atual)) salvarRascunho(atual);
+  }, [family, localColeta, dataColeta, ficha, pendentes, salvarRascunho]);
+
+  async function handleDescartarRascunho() {
+    await rascunho.descartar();
+    setFamily('');
+    setLocalColeta('');
+    setDataColeta('');
+    setFicha(EMPTY_FICHA);
+    setPendentes([]);
+    setRecuperado(false);
+  }
+
+  function updateFicha(field: FichaFieldName, value: string) {
+    setFicha(current => ({ ...current, [field]: value }));
+  }
 
   function handleUsarPosicaoAtual() {
-    setLocalColeta(current => (current.trim() ? `${current.trim()} (${posicaoAtual})` : posicaoAtual));
+    if (!localizacao.coords) {
+      localizacao.atualizar();
+      return;
+    }
+    const posicao = formatarCoordenadas(localizacao.coords);
+    setLocalColeta(current => (current.trim() ? `${current.trim()} (${posicao})` : posicao));
   }
 
   // Devolve a mensagem do primeiro problema, ou null se dá para salvar.
@@ -56,10 +122,10 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
 
   function buildPayload(): CriarLembretePayload {
     return {
+      ...fichaParaPayload(ficha),
       data_coleta: dataBrParaIso(dataColeta) as string,
       local_coleta: localColeta.trim(),
       familia: family.trim() || null,
-      nome_cientifico: scientificName.trim() || null,
     };
   }
 
@@ -74,7 +140,8 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
 
     setSaveError(null);
     try {
-      await criar(buildPayload(), multimidia.pendentes.map(p => p.payload));
+      await criar(buildPayload(), pendentes.map(p => p.payload));
+      await rascunho.descartar();
     } catch (error) {
       setSaveError(getUserFacingHttpError(error, 'Não foi possível salvar o lembrete. Tente novamente.'));
       return;
@@ -106,12 +173,17 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
           <View style={{ width: 22 }} />
         </View>
 
+        <OfflineBanner />
+
         <View style={styles.metaRow}>
           <View style={styles.metaChip}>
             <Bell size={14} color={colors.textSecondary} />
             <Text style={styles.metaText}>Para uma próxima expedição</Text>
           </View>
+          <LocalizacaoChip localizacao={localizacao} />
         </View>
+
+        {recuperado ? <RascunhoBanner onDescartar={handleDescartarRascunho} /> : null}
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.formCard}>
@@ -121,8 +193,8 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
             <Text style={styles.label}>Nome científico</Text>
             <TextInput
               style={styles.input}
-              value={scientificName}
-              onChangeText={setScientificName}
+              value={ficha.nome_cientifico}
+              onChangeText={value => updateFicha('nome_cientifico', value)}
               placeholder="Ex.: Euterpe edulis"
               placeholderTextColor={colors.placeholder}
               autoCapitalize="none"
@@ -142,9 +214,17 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
               multiline
               numberOfLines={3}
             />
-            <TouchableOpacity style={reminderStyles.secondaryButton} onPress={handleUsarPosicaoAtual}>
+            <TouchableOpacity
+              style={reminderStyles.secondaryButton}
+              onPress={handleUsarPosicaoAtual}
+              disabled={localizacao.carregando}
+            >
               <Crosshair size={14} color={colors.accent} />
-              <Text style={reminderStyles.secondaryButtonText}>Usar posição atual ({posicaoAtual})</Text>
+              <Text style={reminderStyles.secondaryButtonText}>
+                {localizacao.coords
+                  ? `Usar posição atual (${formatarCoordenadas(localizacao.coords)})`
+                  : localizacao.carregando ? 'Obtendo posição…' : 'Sem GPS — toque para tentar'}
+              </Text>
             </TouchableOpacity>
 
             <View style={reminderStyles.labelRow}>
@@ -166,6 +246,29 @@ export function LembreteForm({ expedicaoId, latitude, longitude }: LembreteFormP
 
             <Text style={styles.label}>Mídia</Text>
             <Multimidia state={multimidia} disabled={isSaving} />
+
+            <TouchableOpacity
+              style={reminderStyles.detalhesToggle}
+              onPress={() => setDetalhesAbertos(aberto => !aberto)}
+            >
+              <Text style={reminderStyles.detalhesToggleText}>Mais detalhes da planta</Text>
+              {detalhesAbertos
+                ? <ChevronUp size={18} color={colors.accent} />
+                : <ChevronDown size={18} color={colors.accent} />}
+            </TouchableOpacity>
+
+            {detalhesAbertos ? CAMPOS_DETALHE.map(([field, label, placeholder]) => (
+              <View key={field}>
+                <Text style={styles.label}>{label}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={ficha[field]}
+                  onChangeText={value => updateFicha(field, value)}
+                  placeholder={placeholder}
+                  placeholderTextColor={colors.placeholder}
+                />
+              </View>
+            )) : null}
           </View>
         </ScrollView>
 

@@ -31,6 +31,7 @@ const EXPEDICOES_VAZIAS: CacheExpedicoes = { itens: [], minhas: [], detalhadas: 
 const META_VAZIA: MetaOffline = { ultima_sincronizacao: null, ultima_baixa: null }
 
 const detalheArquivo = (expedicaoId: number) => `cache/expedicao-${expedicaoId}.json`
+const rascunhoArquivo = (chave: string) => `rascunhos/${chave}.json`
 const registrosArquivo = (expedicaoId: number) => `cache/registros-${expedicaoId}.json`
 
 function semEsquema(uri: string): string {
@@ -232,6 +233,20 @@ export class OfflineStore {
 
   async atualizarMeta(parcial: Partial<MetaOffline>): Promise<void> {
     await this.arquivos.atualizar(META, META_VAZIA, atual => ({ ...atual, ...parcial }))
+  }
+
+  // ---------- Rascunhos de formulário ----------
+
+  lerRascunho<T>(chave: string): Promise<T | null> {
+    return this.arquivos.ler<T | null>(rascunhoArquivo(chave), null)
+  }
+
+  gravarRascunho<T>(chave: string, valor: T): Promise<void> {
+    return this.arquivos.gravar(rascunhoArquivo(chave), valor, { silencioso: true })
+  }
+
+  removerRascunho(chave: string): Promise<void> {
+    return this.arquivos.remover(rascunhoArquivo(chave), { silencioso: true })
   }
 
   /** Logout: apaga pendências, cache e mídia do usuário */

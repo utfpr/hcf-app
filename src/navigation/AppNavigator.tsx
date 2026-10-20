@@ -15,31 +15,22 @@ import { RootStackParamList } from './types'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 
-// Coordenadas provisórias enquanto a localização real não é obtida
-const DEFAULT_COORDS = { latitude: -25.4284, longitude: -49.2733 }
-
 function FormularioScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Formulario'>>()
-  const { expeditionId, mode, latitude, longitude } = route.params
+  const { expeditionId, mode } = route.params
   return (
     <Formulario
       expedicaoId={expeditionId ? Number(expeditionId) : undefined}
       mode={mode ?? 'collection'}
-      latitude={latitude}
-      longitude={longitude}
     />
   )
 }
 
 function RemindersScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Reminders'>>()
-  const { expeditionId, latitude, longitude } = route.params ?? {}
+  const { expeditionId } = route.params ?? {}
   return (
-    <LembreteForm
-      expedicaoId={expeditionId ? Number(expeditionId) : undefined}
-      latitude={latitude ?? DEFAULT_COORDS.latitude}
-      longitude={longitude ?? DEFAULT_COORDS.longitude}
-    />
+    <LembreteForm expedicaoId={expeditionId ? Number(expeditionId) : undefined} />
   )
 }
 

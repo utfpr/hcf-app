@@ -40,6 +40,8 @@ export interface Evento {
   updated_at: string
   created_by: number | null
   updated_by: number | null
+  // Mesma coleta física registrada por várias pessoas: a API junta tudo num evento só
+  numero_coleta?: string | null
   // Chave de idempotência gerada no app; null no que foi criado pelo web
   client_uuid?: string | null
   syncStatus?: import('@/features/sync/types').SyncStatus
@@ -56,6 +58,8 @@ export interface CriarEventoPayload {
   observacoes?: string | null
   // Obrigatória em COLETA e proibida em DIARIO. Campos omitidos viram null na API.
   coleta?: Partial<FichaColeta>
+  // Só em COLETA. Mesmo número na mesma expedição = mesma coleta (a API junta)
+  numero_coleta?: string | null
   client_uuid?: string
 }
 

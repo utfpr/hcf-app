@@ -40,9 +40,11 @@ export class JsonFileStore {
     return this.enfileirar(nome, () => this.lerArquivo(nome, padrao))
   }
 
-  async gravar<T>(nome: string, valor: T): Promise<void> {
+  // `silencioso`: não avisa os ouvintes (ex.: rascunho gravado a cada tecla não
+  // deve fazer as outras telas relerem tudo)
+  async gravar<T>(nome: string, valor: T, opcoes: { silencioso?: boolean } = {}): Promise<void> {
     await this.enfileirar(nome, () => this.gravarArquivo(nome, valor))
-    this.avisar()
+    if (!opcoes.silencioso) this.avisar()
   }
 
   /** Lê, aplica `alterar` e grava, sem outra operação do mesmo arquivo no meio */
@@ -57,12 +59,12 @@ export class JsonFileStore {
     return novo
   }
 
-  async remover(nome: string): Promise<void> {
+  async remover(nome: string, opcoes: { silencioso?: boolean } = {}): Promise<void> {
     await this.enfileirar(nome, async () => {
       const caminho = this.caminho(nome)
       if (await exists(caminho)) await unlink(caminho)
     })
-    this.avisar()
+    if (!opcoes.silencioso) this.avisar()
   }
 
   /** Apaga a pasta inteira (logout) */

@@ -41,7 +41,9 @@ export function RegistroCard({ registro, onOpenEvidencia, onAddEvidencia, audioA
           {isColeta
             ? <Leaf size={12} color={colors.accent} />
             : <BookOpen size={12} color={colors.diary} />}
-          <Text style={[styles.tipoText, isColeta ? styles.tipoTextColeta : styles.tipoTextDiario]}>{isColeta ? 'Coleta' : 'Diário'}</Text>
+          <Text style={[styles.tipoText, isColeta ? styles.tipoTextColeta : styles.tipoTextDiario]}>
+            {isColeta ? (registro.numero_coleta ? `Coleta Nº ${registro.numero_coleta}` : 'Coleta') : 'Diário'}
+          </Text>
         </View>
 
         <SyncStatusIndicator
