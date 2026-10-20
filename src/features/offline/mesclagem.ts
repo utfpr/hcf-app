@@ -191,6 +191,7 @@ function lembretePendenteParaLembrete(lembrete: LembretePendente, midias: MidiaP
     id: lembrete.remote_id ?? -lembrete.seq,
     data_coleta: lembrete.payload.data_coleta,
     local_coleta: lembrete.payload.local_coleta,
+    expedicao_id: lembrete.payload.expedicao_id ?? null,
     created_at: lembrete.criado_em,
     updated_at: lembrete.criado_em,
     created_by: null,
