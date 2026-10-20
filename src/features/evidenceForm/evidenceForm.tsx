@@ -1,12 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { ArrowLeft, Check, ChevronDown, Clock } from 'lucide-react-native'
 import { useNavigation } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { LocalizacaoChip } from '@/features/evento/components/LocalizacaoChip'
 import { Multimidia } from '@/features/evento/components/Multimidia'
-import { EMPTY_FICHA, FICHA_FIELDS, fichaParaPayload, type FichaFieldName, type FichaValues } from '@/features/evento/fichaCampos'
+import { useFeedback } from '@/components/feedback/FeedbackContext'
+import {
+  EMPTY_FICHA,
+  FICHA_FIELDS,
+  fichaParaPayload,
+  municipioEEstadoDoLocal,
+  type FichaFieldName,
+  type FichaValues,
+} from '@/features/evento/fichaCampos'
 import { type EvidenciaPendente, useMultimidia } from '@/features/evento/hooks/useMultimidia'
 import { useRegistrosExpedicao } from '@/features/evento/hooks/useRegistrosExpedicao'
 import type { CriarEventoPayload } from '@/features/evento/types'
@@ -64,6 +72,7 @@ function rascunhoVazio(rascunho: Rascunho): boolean {
 
 export function Formulario({ expedicaoId, mode }: FormularioProps) {
   const navigation = useNavigation()
+  const { toast } = useFeedback()
   const config = MODE_CONFIG[mode]
   const isCollection = mode === 'collection'
 
@@ -145,6 +154,15 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
     setFicha(current => ({ ...current, [field]: value }))
   }
 
+  // Escolher o local preenche município e estado com a cidade dele; os campos
+  // continuam editáveis
+  function handleSelectLocal(localId: number) {
+    setSelectedLocalId(localId)
+    setIsLocalListVisible(false)
+    const cidade = municipioEEstadoDoLocal(expedition.data?.rotas ?? [], localId)
+    if (cidade) setFicha(current => ({ ...current, ...cidade }))
+  }
+
   async function handleSave() {
     if (saveDisabled) return
     setSaveError(null)
@@ -173,9 +191,12 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
     try {
       await registrar(eventoPayload, pendentes.map(item => item.payload))
       await rascunho.descartar()
-      Alert.alert(isCollection ? 'Coleta salva' : 'Diário salvo', 'Salvo no aparelho. Será enviado no próximo "Sincronizar".', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ])
+      toast({
+        tipo: 'sucesso',
+        titulo: isCollection ? 'Coleta salva' : 'Diário salvo',
+        mensagem: 'Salvo no aparelho. Será enviado no próximo "Sincronizar".',
+      })
+      navigation.goBack()
     } catch (error) {
       setSaveError(getUserFacingHttpError(error, 'Erro ao salvar o registro no aparelho.'))
     }
@@ -241,7 +262,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
                 {isLocalListVisible && (
                   <View style={styles.optionsList}>
                     {locaisColeta.length ? locaisColeta.map(local => (
-                      <TouchableOpacity key={local.id} style={styles.option} onPress={() => { setSelectedLocalId(local.id); setIsLocalListVisible(false) }}>
+                      <TouchableOpacity key={local.id} style={styles.option} onPress={() => handleSelectLocal(local.id)}>
                         <Text style={styles.optionText}>{local.descricao ?? `Local #${local.id}`}</Text>
                       </TouchableOpacity>
                     )) : <Text style={styles.emptyOption}>Nenhum local vinculado às rotas desta expedição.</Text>}
