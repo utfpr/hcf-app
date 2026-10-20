@@ -9,6 +9,7 @@ import { useMultimidia } from '@/features/evento/hooks/useMultimidia'
 import type { CriarEventoPayload } from '@/features/evento/types'
 import { useRegistrarEvento } from '@/features/evento/hooks/useRegistrarEvento'
 import { useExpedition } from '@/features/expedition/hooks/useExpedition'
+import { FamiliaInput } from '@/features/taxonomia/components/FamiliaInput'
 import { getUserFacingHttpError } from '@/libraries/http/httpError'
 import { EvidenceMode } from '@/navigation/types'
 import { colors } from '@/theme/colors'
@@ -40,8 +41,6 @@ const MODE_CONFIG: Record<EvidenceMode, ModeConfig> = {
     saveLabel: 'Salvar Diário',
   },
 }
-
-const FAMILY_OPTIONS = ['Acanthaceae', 'Asteraceae', 'Bromeliaceae', 'Fabaceae', 'Myrtaceae', 'Orchidaceae', 'Rubiaceae']
 
 const FICHA_FIELDS = [
   ['nome_popular', 'Nome popular', 'Ex.: Palmito-juçara'],
@@ -75,8 +74,7 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
   const [agora] = useState(() => new Date())
   const dataHora = `${agora.toLocaleDateString('pt-BR')} ${agora.toLocaleTimeString('pt-BR')}`
   const [collectionIdentifier, setCollectionIdentifier] = useState('')
-  const [family, setFamily] = useState<string | null>(null)
-  const [isFamilyListVisible, setIsFamilyListVisible] = useState(false)
+  const [family, setFamily] = useState('')
   const [isLocalListVisible, setIsLocalListVisible] = useState(false)
   const [selectedLocalId, setSelectedLocalId] = useState<number | null>(null)
   const [ficha, setFicha] = useState<FichaValues>(EMPTY_FICHA)
@@ -110,7 +108,7 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
           tipo: 'COLETA',
           coleta: {
             ...ficha,
-            familia: family,
+            familia: family.trim() || null,
             referencia_local: selectedLocal?.descricao ?? null,
           },
         }
@@ -193,19 +191,7 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
             {isCollection ? (
               <>
                 <Text style={styles.label}>Família</Text>
-                <TouchableOpacity style={styles.selectInput} onPress={() => setIsFamilyListVisible(current => !current)}>
-                  <Text style={family ? styles.selectValue : styles.selectPlaceholder}>{family ?? 'Selecione a família'}</Text>
-                  <ChevronDown color={colors.textSecondary} size={18} />
-                </TouchableOpacity>
-                {isFamilyListVisible && (
-                  <View style={styles.optionsList}>
-                    {FAMILY_OPTIONS.map(option => (
-                      <TouchableOpacity key={option} style={styles.option} onPress={() => { setFamily(option); setIsFamilyListVisible(false) }}>
-                        <Text style={styles.optionText}>{option}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+                <FamiliaInput value={family} onChangeText={setFamily} disabled={isSaving} />
 
                 {FICHA_FIELDS.map(([field, label, placeholder]) => (
                   <View key={field}>
