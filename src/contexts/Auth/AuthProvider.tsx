@@ -2,6 +2,7 @@ import {
   ReactNode,
   useCallback, useEffect, useMemo, useRef, useState,
 } from 'react'
+import { Alert } from 'react-native'
 
 import { useContainer } from '@/contexts/Container/useContainer'
 import { AsyncStorageSession } from '@/libraries/session/AsyncStorageSession'
@@ -10,7 +11,7 @@ import type { Usuario } from '@/types/usuario'
 import { AuthContext } from './AuthContext'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { accessTokenSource } = useContainer()
+  const { accessTokenSource, httpClient } = useContainer()
   const session = useRef(new AsyncStorageSession()).current
 
   const [token, setToken] = useState<string | undefined>()
@@ -54,6 +55,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(undefined)
     session.clear()
   }, [accessTokenSource, session])
+
+  // Token expirado ou revogado: volta para o login. Vários pedidos podem falhar ao
+  // mesmo tempo; só o primeiro encontra o token ainda definido e avisa o usuário.
+  useEffect(() => {
+    httpClient.setUnauthorizedHandler(() => {
+      if (!accessTokenSource.getAccessToken()) return
+      logOut()
+      Alert.alert('Sessão expirada', 'Faça login novamente para continuar.')
+    })
+    return () => httpClient.setUnauthorizedHandler(undefined)
+  }, [httpClient, accessTokenSource, logOut])
 
   const contextValue = useMemo(() => ({
     token,
