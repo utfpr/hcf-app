@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Alert } from 'react-native'
+import { Alert, AppState } from 'react-native'
 import { mutate } from 'swr'
 
 import { useAuth } from '@/contexts/Auth/useAuth'
@@ -35,11 +35,17 @@ export interface OfflineContextValue {
   baixando: boolean
   /** App → API e depois API → app. Só no Wi-Fi. */
   sincronizar(filtro?: { expedicaoId?: number }): Promise<SyncResult>
-  /** Só API → app (expedições do web, registros, lembretes). Qualquer conexão. */
-  baixar(): Promise<SyncResult>
+  /**
+   * Só API → app (expedições do web, registros, lembretes; com `taxonomia`, também
+   * as famílias). Qualquer conexão. Não envia nada.
+   */
+  baixar(opcoes?: { taxonomia?: boolean }): Promise<SyncResult>
 }
 
 const OfflineContext = createContext<OfflineContextValue | undefined>(undefined)
+
+// Abrir/voltar ao app várias vezes seguidas não baixa tudo de novo a cada vez
+const INTERVALO_BAIXA_AUTOMATICA_MS = 5 * 60 * 1000
 
 // As telas leem os dados locais pelas queries do SWR: qualquer gravação local
 // revalida todas, e cada tela relê o JSON
@@ -85,7 +91,13 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     }
   }, [store])
 
-  const baixar = useCallback(async (): Promise<SyncResult> => {
+  // Falha na taxonomia não derruba o resto: ela é só apoio para o autocompletar
+  const importarTaxonomia = useCallback(
+    () => taxonomiaStore.importar(httpClient).then(() => undefined, () => undefined),
+    [httpClient],
+  )
+
+  const baixar = useCallback(async (opcoes: { taxonomia?: boolean } = {}): Promise<SyncResult> => {
     if (ocupado.current) return { success: false, message: 'Já existe uma sincronização em andamento.' }
     if (!(await temInternet())) {
       return { success: false, message: 'Sem conexão: mostrando os dados salvos no aparelho.' }
@@ -96,6 +108,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     try {
       await sync.baixar()
       await sync.limparEnviados()
+      if (opcoes.taxonomia) await importarTaxonomia()
       return { success: true, syncedAt: new Date().toISOString() }
     } catch (error) {
       return { success: false, message: getUserFacingHttpError(error, 'Não foi possível atualizar os dados.') }
@@ -103,7 +116,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       ocupado.current = false
       setBaixando(false)
     }
-  }, [sync])
+  }, [sync, importarTaxonomia])
 
   const sincronizar = useCallback(async (filtro: { expedicaoId?: number } = {}): Promise<SyncResult> => {
     if (ocupado.current) return { success: false, message: 'Já existe uma sincronização em andamento.' }
@@ -122,6 +135,8 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       const envio = await sync.enviar(filtro, setProgresso)
       await sync.baixar()
       await sync.limparEnviados()
+      // "Sincronizar tudo": manda tudo e puxa tudo, inclusive a taxonomia
+      if (filtro.expedicaoId === undefined) await importarTaxonomia()
 
       const agora = new Date().toISOString()
       await store.atualizarMeta({ ultima_sincronizacao: agora })
@@ -148,7 +163,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       setSincronizando(false)
       setProgresso(null)
     }
-  }, [store, sync, sessaoExpirada])
+  }, [store, sync, sessaoExpirada, importarTaxonomia])
 
   // Senha aceita: quando a sessão nova chegar, retoma a sincronização interrompida
   useEffect(() => {
@@ -162,16 +177,32 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     })
   }, [retomar, sessaoExpirada, sincronizar])
 
-  // Primeira vez deste usuário no aparelho: traz as expedições e a taxonomia para não começar vazio
+  // Ao abrir o app (e ao voltar para ele) no Wi-Fi: puxa sozinho tudo da API
+  // (expedições do web, registros, lembretes e taxonomia). Não envia nada: subir o
+  // que está no aparelho continua sendo só no "Sincronizar".
+  const ultimaBaixaAutomatica = useRef(0)
   useEffect(() => {
-    store.lerMeta().then(atual => {
-      if (!atual.ultima_baixa) baixar()
+    const tentar = async () => {
+      if (Date.now() - ultimaBaixaAutomatica.current < INTERVALO_BAIXA_AUTOMATICA_MS) return
+
+      if (await estaNoWifi()) {
+        ultimaBaixaAutomatica.current = Date.now()
+        await baixar({ taxonomia: true })
+        return
+      }
+
+      // Sem Wi-Fi, mas com internet: na primeira vez do usuário no aparelho, traz o
+      // mínimo para não começar vazio
+      const [atual, familias] = await Promise.all([store.lerMeta(), taxonomiaStore.lerFamilias()])
+      if (!atual.ultima_baixa) await baixar({ taxonomia: !familias.atualizado_em })
+    }
+
+    tentar()
+    const subscription = AppState.addEventListener('change', estado => {
+      if (estado === 'active') tentar()
     })
-    taxonomiaStore.lerFamilias().then(async cache => {
-      if (cache.atualizado_em || !(await temInternet())) return
-      await taxonomiaStore.importar(httpClient).catch(() => undefined)
-    })
-  }, [store, baixar, httpClient])
+    return () => subscription.remove()
+  }, [store, baixar])
 
   const value = useMemo<OfflineContextValue>(() => ({
     store,

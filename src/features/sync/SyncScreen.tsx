@@ -117,8 +117,9 @@ export function SyncScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Sincronize seus dados</Text>
         <Text style={styles.subtitle}>
-          Tudo o que você registra fica salvo no aparelho, mesmo offline. Conectado a um
-          Wi-Fi, sincronize para enviar à API e baixar as expedições criadas no web.
+          Tudo o que você registra fica salvo no aparelho, mesmo offline. Ao abrir o app no
+          Wi-Fi, as expedições do web e a taxonomia são baixadas sozinhas. "Sincronizar tudo"
+          envia o que está no aparelho e baixa tudo de novo.
         </Text>
         <Text style={styles.lastSyncInfo}>Última sincronização: {lastSyncFormatted}</Text>
 
