@@ -73,6 +73,29 @@ When you want to forcefully reload, for example to reset the state of your app, 
 - **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
 - **iOS**: Press <kbd>R</kbd> in iOS Simulator.
 
+## APK de release com o back no PC (cabo USB)
+
+O APK de release só aceita HTTP sem TLS para `localhost`, `127.0.0.1` e `10.0.2.2` (ver `android/app/src/release/res/xml/network_security_config.xml`); qualquer outro endereço precisa de HTTPS.
+
+1. No `.env` do app: `API_BASE_URL=http://localhost:3010/api`
+2. Gere o APK (a URL fica fixa dentro dele):
+
+   ```sh
+   cd android
+   ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a
+   ```
+
+   O APK sai em `android/app/build/outputs/apk/release/app-release.apk`. Sem o `-PreactNativeArchitectures` ele compila para 4 arquiteturas e demora bem mais (e ocupa vários GB).
+3. Suba o `hcf-api` no PC na porta `3010`.
+4. Com o celular no cabo e a depuração USB ligada:
+
+   ```sh
+   adb reverse tcp:3010 tcp:3010
+   adb install -r android/app/build/outputs/apk/release/app-release.apk
+   ```
+
+   O `adb reverse` precisa ser refeito sempre que o cabo for desconectado.
+
 ## Congratulations! :tada:
 
 You've successfully run and modified your React Native App. :partying_face:
