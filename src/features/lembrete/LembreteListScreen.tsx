@@ -14,13 +14,11 @@ import { ArrowLeft, CalendarDays, MapPin } from 'lucide-react-native'
 import { FiltroChips, type OpcaoFiltro } from '@/components/FiltroChips'
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { toApiDate } from '@/features/home/mapExpeditions'
-import { useOffline } from '@/features/offline/OfflineContext'
 import { SyncStatusIndicator } from '@/features/sync/components/SyncStatusIndicator'
 import { colors } from '@/theme/colors'
-import { useLembretes } from './hooks/useLembretes'
+import { useLembretesInfinite } from './hooks/useLembretesInfinite'
 import type { FiltrosLembrete, Lembrete } from './types'
 
-const LIMITE = 10
 const UM_DIA_MS = 24 * 60 * 60 * 1000
 
 type Periodo = 'proximos' | 'semana' | 'vencidos' | 'todos'
@@ -37,10 +35,9 @@ function filtrosDoPeriodo(periodo: Periodo): FiltrosLembrete {
   const hoje = toApiDate(new Date())
   switch (periodo) {
     case 'proximos':
-      return { limite: LIMITE, order: 'data_coleta:asc', data_coleta_de: hoje }
+      return { order: 'data_coleta:asc', data_coleta_de: hoje }
     case 'semana':
       return {
-        limite: LIMITE,
         order: 'data_coleta:asc',
         data_coleta_de: hoje,
         data_coleta_ate: toApiDate(new Date(Date.now() + 7 * UM_DIA_MS)),
@@ -48,12 +45,11 @@ function filtrosDoPeriodo(periodo: Periodo): FiltrosLembrete {
     case 'vencidos':
       // O que passou da data, do mais recente para o mais antigo
       return {
-        limite: LIMITE,
         order: 'data_coleta:desc',
         data_coleta_ate: toApiDate(new Date(Date.now() - UM_DIA_MS)),
       }
     default:
-      return { limite: LIMITE, order: 'data_coleta:asc' }
+      return { order: 'data_coleta:asc' }
   }
 }
 
@@ -71,20 +67,17 @@ function formatarData(data: string): string {
 
 export function LembreteListScreen() {
   const navigation = useNavigation()
-  const { baixar } = useOffline()
   const [periodo, setPeriodo] = useState<Periodo>('proximos')
   const filtros = useMemo(() => filtrosDoPeriodo(periodo), [periodo])
 
   const {
-    data,
+    itens,
     loading,
     error,
+    refreshing,
     refresh,
-    page,
-    hasNextPage,
-    nextPage,
-    previousPage,
-  } = useLembretes(filtros)
+    loadMore,
+  } = useLembretesInfinite(filtros)
 
   function renderLembrete({ item }: { item: Lembrete }) {
     return (
@@ -145,7 +138,7 @@ export function LembreteListScreen() {
         <FiltroChips opcoes={OPCOES_PERIODO} selecionado={periodo} onSelecionar={setPeriodo} />
       </View>
 
-      {loading && !data ? (
+      {loading && itens.length === 0 ? (
         <View style={styles.center}>
           <ActivityIndicator
             size="large"
@@ -155,7 +148,7 @@ export function LembreteListScreen() {
             Carregando lembretes...
           </Text>
         </View>
-      ) : error && !data ? (
+      ) : error && itens.length === 0 ? (
         <View style={styles.center}>
           <Text style={styles.message}>
             Não foi possível carregar os lembretes.
@@ -171,67 +164,27 @@ export function LembreteListScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <>
-          <FlatList
-            data={data?.itens ?? []}
-            keyExtractor={item => String(item.id)}
-            renderItem={renderLembrete}
-            contentContainerStyle={styles.list}
-            onRefresh={async () => {
-              // Com conexão, traz o que mudou na API; sem conexão, só relê o aparelho
-              await baixar()
-              refresh()
-            }}
-            refreshing={loading}
-            ListEmptyComponent={
-              <View style={styles.center}>
-                <CalendarDays
-                  size={40}
-                  color={colors.textSecondary}
-                />
-                <Text style={styles.message}>
-                  {VAZIO_POR_PERIODO[periodo]}
-                </Text>
-              </View>
-            }
-          />
-
-          {data && data.total > 0 && (
-            <View style={styles.pagination}>
-              <TouchableOpacity
-                disabled={page === 1 || loading}
-                onPress={previousPage}
-                style={[
-                  styles.pageButton,
-                  (page === 1 || loading) &&
-                    styles.disabledButton,
-                ]}
-              >
-                <Text style={styles.actionText}>
-                  Anterior
-                </Text>
-              </TouchableOpacity>
-
-              <Text style={styles.infoText}>
-                Página {page}
+        <FlatList
+          data={itens}
+          keyExtractor={item => String(item.id)}
+          renderItem={renderLembrete}
+          contentContainerStyle={styles.list}
+          onRefresh={refresh}
+          refreshing={refreshing}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <CalendarDays
+                size={40}
+                color={colors.textSecondary}
+              />
+              <Text style={styles.message}>
+                {VAZIO_POR_PERIODO[periodo]}
               </Text>
-
-              <TouchableOpacity
-                disabled={!hasNextPage || loading}
-                onPress={nextPage}
-                style={[
-                  styles.pageButton,
-                  (!hasNextPage || loading) &&
-                    styles.disabledButton,
-                ]}
-              >
-                <Text style={styles.actionText}>
-                  Próxima
-                </Text>
-              </TouchableOpacity>
             </View>
-          )}
-        </>
+          }
+        />
       )}
     </SafeAreaView>
   )
@@ -316,20 +269,5 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 14,
     fontWeight: 'bold',
-  },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderAlt,
-  },
-  pageButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  disabledButton: {
-    opacity: 0.4,
   },
 })
