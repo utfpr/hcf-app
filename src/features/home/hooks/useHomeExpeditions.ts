@@ -36,11 +36,21 @@ export function useHomeExpeditions() {
     return splitExpeditions(itens, today, id => statusDaExpedicao(pendencias, id));
   }, [query.data, today]);
 
-  // Puxar para atualizar: baixa da API se houver conexão; sem conexão, só relê o aparelho
+  // O RefreshControl precisa de refreshing=true já no onRefresh; senão o indicador some
+  // e volta quando a baixa (que antes checa a conexão) começa, parecendo vários reloads
+  const [puxando, setPuxando] = useState(false);
+
+  // Puxar para atualizar: baixa da API se houver conexão; sem conexão, só relê o aparelho.
+  // Depois de uma baixa as telas já releem sozinhas (um aviso só, no fim)
   const refresh = useCallback(async () => {
-    const resultado = await baixar();
-    setErroBaixa(resultado.success || !resultado.message ? undefined : new Error(resultado.message));
-    return reler();
+    setPuxando(true);
+    try {
+      const resultado = await baixar();
+      setErroBaixa(resultado.success || !resultado.message ? undefined : new Error(resultado.message));
+      if (!resultado.success) await reler();
+    } finally {
+      setPuxando(false);
+    }
   }, [baixar, reler]);
 
   // Ao voltar do segundo plano, relê o aparelho (e re-renderiza com a data atual)
@@ -56,7 +66,7 @@ export function useHomeExpeditions() {
   return {
     ...expeditions,
     loading: query.loading || (baixando && vazio),
-    refreshing: baixando && !vazio,
+    refreshing: puxando || (baixando && !vazio),
     // Sem nada no aparelho, o erro da baixa explica a tela vazia
     error: vazio ? erroBaixa ?? query.error : query.error,
     refresh,
