@@ -74,6 +74,14 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.inputText,
   },
+  fieldRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  fieldColumn: {
+    flex: 1,
+    minWidth: 0,
+  },
   selectInput: {
     backgroundColor: colors.inputBackground,
     borderRadius: 10,
@@ -124,6 +132,117 @@ export const styles = StyleSheet.create({
   },
   diaryTextArea: {
     minHeight: 230,
+  },
+  detalhesToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderAlt,
+  },
+  detalhesToggleText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  multiOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  multiOption: {
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    borderRadius: 18,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  multiOptionSelected: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  multiOptionText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  multiOptionTextSelected: {
+    color: colors.onAccent,
+  },
+  conditionalInput: {
+    marginTop: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  },
+  optionModal: {
+    maxHeight: '75%',
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingTop: 18,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+  },
+  modalTitle: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  modalClose: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalHint: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    paddingHorizontal: 18,
+    marginTop: 5,
+    marginBottom: 12,
+  },
+  modalOptions: {
+    paddingHorizontal: 18,
+    paddingBottom: 28,
+    gap: 8,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+  },
+  modalOptionSelected: {
+    borderColor: colors.accent,
+    backgroundColor: colors.surfaceAlt,
+  },
+  modalOptionText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   fieldHint: {
     color: colors.bell,

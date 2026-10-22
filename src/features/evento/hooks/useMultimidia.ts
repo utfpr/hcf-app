@@ -9,6 +9,7 @@ import { useFeedback } from '@/components/feedback/FeedbackContext'
 import type { CriarEvidenciaPayload } from '../types'
 
 const audioRecorderPlayer = new AudioRecorderPlayer()
+export const MAX_VIDEO_DURATION_SECONDS = 60
 
 export type TipoPendente = 'imagem' | 'audio' | 'video' | 'outro'
 
@@ -19,6 +20,9 @@ export interface EvidenciaPendente {
   payload: CriarEvidenciaPayload
   // Tamanho do arquivo ou duração do áudio, exibido abaixo do nome
   detalhe: string
+  // O seletor de arquivos não fornece duração. A tela a verifica antes de
+  // liberar o salvamento.
+  validandoDuracao?: boolean
 }
 
 function tipoPorMime(mime: string): TipoPendente {
@@ -70,7 +74,13 @@ export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean }
   }, [])
 
   function adicionar(tipo: TipoPendente, payload: CriarEvidenciaPayload, detalhe: string) {
-    setPendentes(prev => [...prev, { id: `${Date.now()}-${prev.length}`, tipo, payload, detalhe }])
+    setPendentes(prev => [...prev, {
+      id: `${Date.now()}-${prev.length}`,
+      tipo,
+      payload,
+      detalhe,
+      validandoDuracao: tipo === 'video',
+    }])
   }
 
   async function pararReproducao() {
@@ -86,6 +96,23 @@ export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean }
     setPendentes(prev => prev.filter(p => p.id !== id))
   }
 
+  function validarDuracaoVideo(id: string, duracao: number) {
+    if (duracao > MAX_VIDEO_DURATION_SECONDS) {
+      setPendentes(prev => prev.filter(item => item.id !== id))
+      setError('O vídeo pode ter no máximo 1 minuto.')
+      return
+    }
+
+    setPendentes(prev => prev.map(item => item.id === id
+      ? { ...item, validandoDuracao: false }
+      : item))
+  }
+
+  function rejeitarVideoSemDuracao(id: string) {
+    setPendentes(prev => prev.filter(item => item.id !== id))
+    setError('Não foi possível verificar a duração do vídeo. Escolha outro arquivo.')
+  }
+
   async function capturar(mediaType: 'photo' | 'video') {
     const allowed = await requestPermissions(
       mediaType === 'photo'
@@ -99,7 +126,12 @@ export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean }
 
     setIsCapturing(true)
     try {
-      const result = await launchCamera({ mediaType, saveToPhotos: true, videoQuality: 'high' })
+      const result = await launchCamera({
+        mediaType,
+        saveToPhotos: true,
+        videoQuality: 'high',
+        durationLimit: MAX_VIDEO_DURATION_SECONDS,
+      })
       if (result.didCancel) return
       const asset = result.assets?.[0]
       if (result.errorCode || !asset?.uri) {
@@ -107,6 +139,10 @@ export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean }
         return
       }
       const isPhoto = mediaType === 'photo'
+      if (!isPhoto && asset.duration && asset.duration > MAX_VIDEO_DURATION_SECONDS) {
+        setError('O vídeo pode ter no máximo 1 minuto.')
+        return
+      }
       const nome = asset.fileName ?? `${isPhoto ? 'foto' : 'video'}_${Date.now()}.${isPhoto ? 'jpg' : 'mp4'}`
       const type = asset.type ?? (isPhoto ? 'image/jpeg' : 'video/mp4')
       adicionar(isPhoto ? 'imagem' : 'video', {
@@ -236,8 +272,8 @@ export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean }
     recordTime,
     isCapturing,
     playingId,
-    // Enquanto grava ou a câmera está aberta, não dá para salvar
-    busy: isRecording || isCapturing,
+    // Enquanto grava, captura ou verifica um vídeo, não dá para salvar.
+    busy: isRecording || isCapturing || pendentes.some(item => item.validandoDuracao),
     abrirCamera,
     capturarFoto,
     capturarVideo,
@@ -245,6 +281,8 @@ export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean }
     alternarGravacao,
     alternarReproducao,
     remover,
+    validarDuracaoVideo,
+    rejeitarVideoSemDuracao,
   }
 }
 

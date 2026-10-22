@@ -1,5 +1,6 @@
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Camera, FileText, Mic, Pause, Play, Upload, Video, X } from 'lucide-react-native'
+import VideoPlayer from 'react-native-video'
 
 import { colors } from '@/theme/colors'
 
@@ -20,6 +21,17 @@ export function Multimidia({ state, disabled = false, apenasFotos = false }: Mul
 
   return (
     <View>
+      {pendentes.filter(item => item.tipo === 'video' && item.validandoDuracao).map(item => (
+        <VideoPlayer
+          key={`duracao-${item.id}`}
+          source={{ uri: item.payload.arquivo.uri }}
+          paused
+          style={styles.hiddenVideo}
+          onLoad={evento => state.validarDuracaoVideo(item.id, evento.duration)}
+          onError={() => state.rejeitarVideoSemDuracao(item.id)}
+        />
+      ))}
+
       <View style={styles.mediaRow}>
         <TouchableOpacity
           style={styles.mediaButton}
@@ -98,7 +110,9 @@ export function Multimidia({ state, disabled = false, apenasFotos = false }: Mul
           )}
           <View style={styles.previewInfo}>
             <Text style={styles.previewName} numberOfLines={1}>{item.payload.nome}</Text>
-            <Text style={styles.previewMeta}>{item.detalhe}</Text>
+            <Text style={styles.previewMeta}>
+              {item.validandoDuracao ? 'Verificando duração do vídeo...' : item.detalhe}
+            </Text>
           </View>
           <TouchableOpacity onPress={() => state.remover(item.id)} disabled={disabled} hitSlop={HIT_SLOP}>
             <X size={16} color={colors.textSecondary} />
@@ -150,6 +164,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.borderAlt,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  hiddenVideo: {
+    width: 0,
+    height: 0,
   },
   previewInfo: { flex: 1 },
   previewName: { color: colors.textPrimary, fontSize: 12 },

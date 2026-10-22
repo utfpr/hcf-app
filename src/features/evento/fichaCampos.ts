@@ -1,5 +1,3 @@
-import type { RotaExpedicao } from '@/features/expedition/types'
-
 import type { FichaColeta } from './types'
 
 // Campos de texto da ficha, com rótulo e exemplo. Família fica de fora: tem campo
@@ -24,32 +22,64 @@ export const FICHA_FIELDS = [
 
 export type FichaFieldName = (typeof FICHA_FIELDS)[number][0]
 
-export type FichaValues = Record<FichaFieldName, string>
+export type FichaValues = Record<FichaFieldName | 'referencia_local', string>
 
-export const EMPTY_FICHA: FichaValues = Object.fromEntries(
-  FICHA_FIELDS.map(([key]) => [key, '']),
-) as FichaValues
+export const EMPTY_FICHA: FichaValues = {
+  ...Object.fromEntries(FICHA_FIELDS.map(([key]) => [key, ''])),
+  referencia_local: '',
+} as FichaValues
 
-/** Texto vazio vira null, como a API espera */
-export function fichaParaPayload(ficha: FichaValues): Record<FichaFieldName, string | null> {
-  return Object.fromEntries(
-    FICHA_FIELDS.map(([key]) => [key, ficha[key].trim() || null]),
-  ) as Record<FichaFieldName, string | null>
+// Opções da ficha impressa. Elas existem apenas no aplicativo: a API recebe o
+// texto escolhido, separado por vírgula quando houver mais de uma opção.
+export const FICHA_MULTIPLA_ESCOLHA = {
+  substrato: ['Rupícola', 'Ripária', 'Palustre', 'Psamófila', 'Reófila', 'Hidrófila', 'Terrícola'],
+  tronco_com_casca: ['Lisa', 'Escamosa', 'Esfoliante', 'Estriada', 'Fissurada', 'Gretada', 'Suberosa', 'Verrucosa'],
+  associacoes: ['Epífita', 'Parasita', 'Hemi-parasita', 'Micoteterotrófica'],
+  folhas: ['Cartáceas', 'Coriáceas', 'Crassas', 'Membranáceas'],
+  habito: [
+    'Árvore', 'Arvoreta', 'Arbusto', 'Subarbusto', 'Erva', 'Ereta', 'Liana',
+    'Decumbente', 'Escandente', 'Cespitosas', 'Prostrada/reptante',
+    'Trepadeira com gavinhas', 'Trepadeira volúvel',
+  ],
+  frutos: ['Carnoso', 'Seco', 'Deiscentes', 'Indeiscentes'],
+  luminosidade: ['Heliófita', 'Semi-ciófita', 'Ciófita'],
+} as const satisfies Partial<Record<FichaFieldName, readonly string[]>>
+
+export type CampoMultiplaEscolha = keyof typeof FICHA_MULTIPLA_ESCOLHA
+
+// A ficha física prevê uma anotação complementar nestes campos. O texto é
+// enviado junto do valor do próprio campo, mesmo sem uma opção selecionada.
+export const ROTULO_OBSERVACAO_MULTIPLA: Partial<Record<CampoMultiplaEscolha, string>> = {
+  associacoes: 'Observações',
+  folhas: 'Cor',
+  habito: 'Observações',
+  frutos: 'Cor',
 }
 
-/**
- * Município e estado da ficha a partir do local de coleta escolhido: a cidade da rota
- * em que o local está (a API só aceita na rota locais daquela cidade). Sem o nome do
- * estado (detalhe antigo salvo no aparelho), devolve só o município.
- */
-export function municipioEEstadoDoLocal(
-  rotas: RotaExpedicao[],
-  localId: number,
-): Partial<Pick<FichaValues, 'municipio' | 'estado'>> | null {
-  const rota = rotas.find(r => (r.locais_coleta ?? []).some(local => local.id === localId))
-  if (!rota) return null
-  return {
-    municipio: rota.nome_cidade,
-    ...(rota.estado_nome ? { estado: rota.estado_nome } : {}),
+export type ObservacoesMultiplas = Partial<Record<CampoMultiplaEscolha, string>>
+
+export function fichaComObservacoesMultiplas(
+  ficha: FichaValues,
+  observacoes: ObservacoesMultiplas,
+): FichaValues {
+  const atualizada = { ...ficha }
+
+  for (const [campo, rotulo] of Object.entries(ROTULO_OBSERVACAO_MULTIPLA) as Array<[CampoMultiplaEscolha, string]>) {
+    const anotacao = observacoes[campo]?.trim()
+    if (anotacao) {
+      const selecionadas = ficha[campo].trim()
+      atualizada[campo] = selecionadas
+        ? `${selecionadas}, ${rotulo}: ${anotacao}`
+        : `${rotulo}: ${anotacao}`
+    }
   }
+
+  return atualizada
+}
+
+/** Texto vazio vira null, como a API espera */
+export function fichaParaPayload(ficha: FichaValues): Record<keyof FichaValues, string | null> {
+  return Object.fromEntries(
+    [...FICHA_FIELDS.map(([key]) => [key, ficha[key].trim() || null]), ['referencia_local', ficha.referencia_local.trim() || null]],
+  ) as Record<keyof FichaValues, string | null>
 }
