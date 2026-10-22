@@ -78,15 +78,27 @@ export class SyncService {
   ): Promise<ResultadoEnvio> {
     const resultado: ResultadoEnvio = { enviados: 0, erros: 0 }
     const daExpedicao = (expedicaoId: number) => filtro.expedicaoId === undefined || filtro.expedicaoId === expedicaoId
-    const midiaElegivel = (midia: Pendencias['midias'][number]) => midia.status !== 'sent' && (
-      midia.alvo.tipo === 'evento' ? daExpedicao(midia.alvo.expedicao_id) : filtro.expedicaoId === undefined
-    )
-
     let pendencias = await this.store.pendencias()
+
+    // Mídia de lembrete herda a expedição do lembrete a que pertence
+    const lembreteDaExpedicao = (lembrete: Pendencias['lembretes'][number]) => (
+      filtro.expedicaoId === undefined || lembrete.payload.expedicao_id === filtro.expedicaoId
+    )
+    const midiaElegivel = (midia: Pendencias['midias'][number]) => {
+      if (midia.status === 'sent') return false
+      if (midia.alvo.tipo === 'evento') return daExpedicao(midia.alvo.expedicao_id)
+      const { lembrete_id: lembreteId, lembrete_local_id: lembreteLocalId } = midia.alvo
+      const pai = pendencias.lembretes.find(lembrete => (
+        (lembreteLocalId !== undefined && lembrete.local_id === lembreteLocalId)
+        || (lembreteId !== undefined && lembrete.remote_id === lembreteId)
+      ))
+      // Sem o lembrete pendente (já enviado antes): só no envio geral
+      return pai ? lembreteDaExpedicao(pai) : filtro.expedicaoId === undefined
+    }
 
     // Total contado no início, para a tela mostrar "Enviando 3 de 12…"
     const total = pendencias.eventos.filter(evento => evento.status !== 'sent' && daExpedicao(evento.expedicao_id)).length
-      + (filtro.expedicaoId === undefined ? pendencias.lembretes.filter(lembrete => lembrete.status !== 'sent').length : 0)
+      + pendencias.lembretes.filter(lembrete => lembrete.status !== 'sent' && lembreteDaExpedicao(lembrete)).length
       + pendencias.midias.filter(midiaElegivel).length
     let feitos = 0
     const avancar = () => onProgresso?.({ feitos: ++feitos, total })
@@ -103,18 +115,16 @@ export class SyncService {
       avancar()
     }
 
-    // 2. Lembretes (não pertencem a uma expedição: só no "sincronizar tudo")
+    // 2. Lembretes: no envio de uma expedição, só os criados nela
     pendencias = await this.store.pendencias()
-    if (filtro.expedicaoId === undefined) {
-      for (const lembrete of pendencias.lembretes) {
-        if (lembrete.status === 'sent') continue
-        await this.tentar(resultado, 'lembretes', lembrete.local_id, async () => {
-          const criado = await this.lembretes.criar({ ...lembrete.payload, client_uuid: lembrete.local_id })
-          await this.ligarFilhos('lembrete', lembrete.local_id, criado.id)
-          return criado.id
-        })
-        avancar()
-      }
+    for (const lembrete of pendencias.lembretes) {
+      if (lembrete.status === 'sent' || !lembreteDaExpedicao(lembrete)) continue
+      await this.tentar(resultado, 'lembretes', lembrete.local_id, async () => {
+        const criado = await this.lembretes.criar({ ...lembrete.payload, client_uuid: lembrete.local_id })
+        await this.ligarFilhos('lembrete', lembrete.local_id, criado.id)
+        return criado.id
+      })
+      avancar()
     }
 
     // 3. Mídia: só sobe quando o pai já tem id na API; senão espera a próxima vez

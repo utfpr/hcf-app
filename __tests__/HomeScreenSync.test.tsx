@@ -62,9 +62,8 @@ describe('HomeScreen Sincronização Geral', () => {
 
     const root = renderer!.root
 
-    // Botão de sync no cabeçalho
-    const headerSyncBtn = root.findByProps({ testID: 'header-sync-button' })
-    expect(headerSyncBtn).toBeDefined()
+    // O cabeçalho não tem mais botão de sync: só o refresh e o card
+    expect(root.findAllByProps({ testID: 'header-sync-button' })).toHaveLength(0)
 
     // Card de sincronização geral no conteúdo
     const syncTitle = root.findByProps({ children: 'Sincronização Geral' })
@@ -92,21 +91,5 @@ describe('HomeScreen Sincronização Geral', () => {
     expect(mockSyncAll).toHaveBeenCalledTimes(1)
     // Resultado no aviso do app, não no diálogo nativo
     expect(root.findByProps({ children: 'Sincronização concluída' })).toBeDefined()
-  })
-
-  it('triggers sync when pressing the header sync button', async () => {
-    let renderer: ReactTestRenderer.ReactTestRenderer | undefined
-    ReactTestRenderer.act(() => {
-      renderer = ReactTestRenderer.create(<FeedbackProvider><HomeScreen /></FeedbackProvider>)
-    })
-
-    const root = renderer!.root
-    const headerSyncBtn = root.findByProps({ testID: 'header-sync-button' })
-
-    await ReactTestRenderer.act(async () => {
-      headerSyncBtn.props.onPress()
-    })
-
-    expect(mockSyncAll).toHaveBeenCalledTimes(1)
   })
 })

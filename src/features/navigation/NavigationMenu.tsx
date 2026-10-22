@@ -27,11 +27,11 @@ interface MenuItem {
 }
 
 const ITEMS: MenuItem[] = [
-  { route: 'Home', label: 'Início', icon: <House size={19} color={colors.accent} /> },
-  { route: 'ExpeditionList', label: 'Expedições', icon: <Compass size={19} color={colors.accent} /> },
-  { route: 'Synchronization', label: 'Sincronização', icon: <RefreshCw size={19} color={colors.accent} /> },
-  { route: 'LembreteList', label: 'Lembretes', icon: <Bell size={19} color={colors.accent} /> },
-  { route: 'UserProfile', label: 'Perfil do Usuário', icon: <UserRound size={19} color={colors.accent} /> },
+  { route: 'Home', label: 'Início', icon: <House size={24} color={colors.accent} /> },
+  { route: 'ExpeditionList', label: 'Expedições', icon: <Compass size={24} color={colors.accent} /> },
+  { route: 'Synchronization', label: 'Sincronização', icon: <RefreshCw size={24} color={colors.accent} /> },
+  { route: 'LembreteList', label: 'Todos Lembretes', icon: <Bell size={24} color={colors.accent} /> },
+  { route: 'UserProfile', label: 'Perfil do Usuário', icon: <UserRound size={24} color={colors.accent} /> },
 ]
 
 interface NavigationMenuProps {
@@ -96,8 +96,8 @@ const styles = StyleSheet.create({
   menu: {
     position: 'absolute',
     left: 16,
-    width: 252,
-    paddingVertical: 6,
+    width: 310,
+    paddingVertical: 8,
     backgroundColor: colors.cardBackground,
     borderRadius: 8,
     borderWidth: 1,
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   },
   menuTitle: {
     color: colors.textSecondary,
-    fontSize: 10,
+    fontSize: 13,
     fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 48,
+    minHeight: 62,
     marginHorizontal: 6,
     paddingHorizontal: 10,
     borderBottomWidth: 1,
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: 17,
     fontWeight: '400',
   },
   badge: {

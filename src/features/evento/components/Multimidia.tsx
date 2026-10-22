@@ -9,11 +9,13 @@ interface MultimidiaProps {
   state: MultimidiaState
   // Bloqueia os botões, por exemplo enquanto as evidências estão sendo enviadas
   disabled?: boolean
+  // Lembrete: só foto (câmera e galeria), sem vídeo nem áudio
+  apenasFotos?: boolean
 }
 
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 }
 
-export function Multimidia({ state, disabled = false }: MultimidiaProps) {
+export function Multimidia({ state, disabled = false, apenasFotos = false }: MultimidiaProps) {
   const { pendentes, error, isRecording, recordTime, isCapturing, playingId } = state
 
   return (
@@ -30,29 +32,33 @@ export function Multimidia({ state, disabled = false }: MultimidiaProps) {
           <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>Foto</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.mediaButton}
-          onPress={state.capturarVideo}
-          disabled={disabled || state.busy}
-        >
-          <Video size={16} color={colors.onAccent} />
-          <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>Vídeo</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.mediaButton, isRecording && styles.mediaButtonRecording]}
-          onPress={state.alternarGravacao}
-          disabled={disabled || isCapturing}
-        >
-          <Mic size={16} color={isRecording ? colors.danger : colors.onAccent} />
-          <Text
-            style={[styles.mediaButtonText, isRecording && styles.mediaButtonTextRecording]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
+        {apenasFotos ? null : (
+          <TouchableOpacity
+            style={styles.mediaButton}
+            onPress={state.capturarVideo}
+            disabled={disabled || state.busy}
           >
-            {isRecording ? recordTime : 'Áudio'}
-          </Text>
-        </TouchableOpacity>
+            <Video size={16} color={colors.onAccent} />
+            <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>Vídeo</Text>
+          </TouchableOpacity>
+        )}
+
+        {apenasFotos ? null : (
+          <TouchableOpacity
+            style={[styles.mediaButton, isRecording && styles.mediaButtonRecording]}
+            onPress={state.alternarGravacao}
+            disabled={disabled || isCapturing}
+          >
+            <Mic size={16} color={isRecording ? colors.danger : colors.onAccent} />
+            <Text
+              style={[styles.mediaButtonText, isRecording && styles.mediaButtonTextRecording]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {isRecording ? recordTime : 'Áudio'}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={styles.mediaButton}
@@ -60,7 +66,9 @@ export function Multimidia({ state, disabled = false }: MultimidiaProps) {
           disabled={disabled || state.busy}
         >
           <Upload size={16} color={colors.onAccent} />
-          <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>Upload</Text>
+          <Text style={styles.mediaButtonText} numberOfLines={1} adjustsFontSizeToFit>
+            {apenasFotos ? 'Galeria' : 'Upload'}
+          </Text>
         </TouchableOpacity>
 
       </View>

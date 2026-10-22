@@ -86,7 +86,7 @@ export function SyncScreen() {
         mostrarResultado(
           'Envio',
           await sincronizar({ semBaixar: true }),
-          'Tudo o que estava no aparelho foi enviado para a API.',
+          'Tudo o que estava no aparelho foi enviado para o servidor.',
         )
       } else if (action === 'baixar') {
         mostrarResultado(
@@ -194,7 +194,7 @@ export function SyncScreen() {
           ) : (
             <RefreshCw size={18} color={colors.onAccent} />
           )}
-          <Text style={styles.primaryButtonText}>Sincronizar</Text>
+          <Text style={styles.primaryButtonText}>Sincronizar expedição</Text>
         </Pressable>
 
         <Text style={styles.sectionLabel}>Só enviar ou só baixar</Text>
@@ -208,7 +208,7 @@ export function SyncScreen() {
           ) : (
             <CloudUpload size={18} color={colors.accent} />
           )}
-          <Text style={styles.secondaryButtonText}>Enviar tudo para a API</Text>
+          <Text style={styles.secondaryButtonText}>Enviar tudo para o servidor</Text>
         </Pressable>
 
         <Pressable
@@ -221,7 +221,7 @@ export function SyncScreen() {
           ) : (
             <CloudDownload size={18} color={colors.accent} />
           )}
-          <Text style={styles.secondaryButtonText}>Baixar expedições da API</Text>
+          <Text style={styles.secondaryButtonText}>Atualizar expedições</Text>
         </Pressable>
 
         <Pressable
@@ -234,7 +234,7 @@ export function SyncScreen() {
           ) : (
             <BookOpen size={18} color={colors.accent} />
           )}
-          <Text style={styles.secondaryButtonText}>Importar dados taxonômicos</Text>
+          <Text style={styles.secondaryButtonText}>Sincronizar dados taxonômicos</Text>
         </Pressable>
         <Text style={styles.taxonomiaInfo}>
           {taxonomia.atualizadoEm

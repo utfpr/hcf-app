@@ -47,7 +47,8 @@ async function requestPermissions(permissions: Permission[]) {
 
 // Estado e ações da seção "Multimídia": tirar foto, gravar vídeo/áudio e fazer upload.
 // Usado no formulário de coleta/diário e no modal de adicionar evidência do RegistroCard.
-export function useMultimidia() {
+// Com `apenasFotos` (lembrete), o upload só abre imagens e rejeita qualquer outro tipo.
+export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean } = {}) {
   const { dialogo } = useFeedback()
   const [pendentes, setPendentes] = useState<EvidenciaPendente[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -146,12 +147,16 @@ export function useMultimidia() {
     try {
       const results = await pick({
         allowMultiSelection: true,
-        type: [types.images, types.video, types.audio],
+        type: apenasFotos ? [types.images] : [types.images, types.video, types.audio],
       })
       const agora = new Date().toISOString()
       for (const file of results) {
         const nome = file.name ?? file.uri.split('/').pop() ?? `upload_${Date.now()}`
         const type = file.type ?? 'application/octet-stream'
+        if (apenasFotos && !type.startsWith('image/')) {
+          setError(`${nome} não é uma foto. O lembrete aceita apenas fotos.`)
+          continue
+        }
         // O content:// do seletor perde a permissão depois; a cópia (file://) é o que vai para o aparelho
         const [copia] = await keepLocalCopy({
           files: [{ uri: file.uri, fileName: nome }],

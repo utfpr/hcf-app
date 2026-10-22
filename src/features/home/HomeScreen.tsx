@@ -82,7 +82,7 @@ export function HomeScreen() {
           <Pressable
             style={styles.menuButton}
             onPress={() => setIsMenuOpen(true)}
-            hitSlop={10}
+            hitSlop={14}
             accessibilityRole="button"
             accessibilityLabel="Abrir menu de navegação"
           >
@@ -95,28 +95,6 @@ export function HomeScreen() {
             {user?.nome}
           </Text>
         </View>
-
-        <Pressable
-          style={styles.headerSyncButton}
-          onPress={handleSyncAll}
-          disabled={isSyncing}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Sincronizar dados"
-          testID="header-sync-button"
-        >
-          {isSyncing ? (
-            <ActivityIndicator size="small" color={colors.accent} />
-          ) : (
-            <RefreshCw size={20} color={colors.textPrimary} />
-          )}
-          {/* Quantos itens do aparelho ainda não subiram */}
-          {pendentes > 0 && !isSyncing ? (
-            <View style={styles.badge} testID="header-sync-badge">
-              <Text style={styles.badgeText}>{pendentes > 99 ? '99+' : pendentes}</Text>
-            </View>
-          ) : null}
-        </Pressable>
       </View>
 
       <OfflineBanner />
@@ -254,13 +232,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  headerSyncButton: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-  },
 
   badge: {
     position: 'absolute',
@@ -282,17 +253,17 @@ const styles = StyleSheet.create({
   },
 
   menuButton: {
-    width: 32,
-    height: 32,
+    width: 44,
+    height: 44,
 
     justifyContent: 'center',
 
-    gap: 5,
+    gap: 7,
   },
 
   menuLine: {
-    width: 20,
-    height: 2,
+    width: 28,
+    height: 3,
 
     borderRadius: 2,
 

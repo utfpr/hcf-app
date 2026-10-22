@@ -9,13 +9,13 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
-import { ArrowLeft, CalendarDays, MapPin } from 'lucide-react-native'
+import { ArrowLeft } from 'lucide-react-native'
 
 import { FiltroChips, type OpcaoFiltro } from '@/components/FiltroChips'
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { toApiDate } from '@/features/home/mapExpeditions'
-import { SyncStatusIndicator } from '@/features/sync/components/SyncStatusIndicator'
 import { colors } from '@/theme/colors'
+import { LembreteCard } from './components/LembreteCard'
 import { useLembretesInfinite } from './hooks/useLembretesInfinite'
 import type { FiltrosLembrete, Lembrete } from './types'
 
@@ -60,14 +60,9 @@ const VAZIO_POR_PERIODO: Record<Periodo, string> = {
   todos: 'Nenhum lembrete encontrado.',
 }
 
-function formatarData(data: string): string {
-  const [ano, mes, dia] = data.slice(0, 10).split('-')
-  return `${dia}/${mes}/${ano}`
-}
-
 export function LembreteListScreen() {
   const navigation = useNavigation()
-  const [periodo, setPeriodo] = useState<Periodo>('proximos')
+  const [periodo, setPeriodo] = useState<Periodo>('todos')
   const filtros = useMemo(() => filtrosDoPeriodo(periodo), [periodo])
 
   const {
@@ -80,36 +75,7 @@ export function LembreteListScreen() {
   } = useLembretesInfinite(filtros)
 
   function renderLembrete({ item }: { item: Lembrete }) {
-    return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle} numberOfLines={1}>
-            {item.nome_cientifico ?? item.familia ?? (item.id > 0 ? `Lembrete #${item.id}` : 'Lembrete')}
-          </Text>
-          <SyncStatusIndicator status={item.syncStatus ?? 'synced'} />
-        </View>
-
-        <View style={styles.infoRow}>
-          <CalendarDays
-            size={18}
-            color={colors.accent}
-          />
-          <Text style={styles.infoText}>
-            {formatarData(item.data_coleta)}
-          </Text>
-        </View>
-
-        <View style={styles.infoRow}>
-          <MapPin
-            size={18}
-            color={colors.accent}
-          />
-          <Text style={styles.infoText}>
-            {item.local_coleta}
-          </Text>
-        </View>
-      </View>
-    )
+    return <LembreteCard lembrete={item} />
   }
 
   return (
@@ -126,7 +92,7 @@ export function LembreteListScreen() {
         </TouchableOpacity>
 
         <Text style={styles.title}>
-          Meus Lembretes
+          Todos Lembretes
         </Text>
 
         <View style={{ width: 24 }} />
@@ -216,35 +182,6 @@ const styles = StyleSheet.create({
   list: {
     padding: 16,
     flexGrow: 1,
-  },
-  card: {
-    backgroundColor: colors.surfaceAlt,
-    padding: 18,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  cardTitle: {
-    flexShrink: 1,
-    color: colors.textPrimary,
-    fontSize: 17,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
-  },
-  infoText: {
-    color: colors.textSecondary,
-    fontSize: 14,
   },
   center: {
     flex: 1,

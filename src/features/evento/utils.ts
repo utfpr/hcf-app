@@ -5,10 +5,14 @@ import type { Evidencia } from './types'
 // A API serve os arquivos em /uploads na raiz do servidor, fora do prefixo da API (ex.: /api)
 const API_ORIGIN = API_BASE_URL.match(/^https?:\/\/[^/]+/)?.[0] ?? ''
 
+export function urlDoArquivo(url: string): string {
+  // Arquivo que ainda está só no aparelho já vem com o caminho completo (file://)
+  if (/^[a-z]+:\/\//i.test(url)) return url
+  return `${API_ORIGIN}${url}`
+}
+
 export function arquivoUrl(evidencia: Evidencia): string {
-  // Evidência que ainda está só no aparelho já vem com o caminho completo (file://)
-  if (/^[a-z]+:\/\//i.test(evidencia.url)) return evidencia.url
-  return `${API_ORIGIN}${evidencia.url}`
+  return urlDoArquivo(evidencia.url)
 }
 
 export type TipoEvidencia = 'imagem' | 'audio' | 'video' | 'outro'

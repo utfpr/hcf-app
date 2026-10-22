@@ -11,8 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { ArrowLeft, Bell, BookOpen, Calendar, Clock, Leaf, MapPin, Plus, Users } from 'lucide-react-native'
+import { ArrowLeft, Bell, BookOpen, Clock, Leaf, Plus, Send, Users } from 'lucide-react-native'
 import { useMemo, useState } from 'react'
+import { useFeedback } from '@/components/feedback/FeedbackContext'
+import { useOffline } from '@/features/offline/OfflineContext'
 import { CampoBusca } from '@/components/CampoBusca'
 import { FiltroChips, type OpcaoFiltro } from '@/components/FiltroChips'
 import { OfflineBanner } from '@/components/OfflineBanner'
@@ -25,6 +27,7 @@ import { useRegistrosExpedicao } from '../evento/hooks/useRegistrosExpedicao'
 import { useExpedition } from '../expedition/hooks/useExpedition'
 import { formatDate, getStatus } from '../expedition/utils'
 
+import { LembreteCard } from '@/features/lembrete/components/LembreteCard'
 import { useLembretes } from '../lembrete/hooks/useLembretes'
 import type { Lembrete } from '../lembrete/types'
 
@@ -54,20 +57,14 @@ type ExpeditionDetailRouteProp = RouteProp<RootStackParamList, 'ExpeditionDetail
 type ExpeditionDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionDetail'>
 
 
-function formatarDataParaBr(dataIso: string) {
-  if (!dataIso) return ''
-  const partes = dataIso.split('-')
-  if (partes.length === 3) {
-    return `${partes[2]}/${partes[1]}/${partes[0]}`
-  }
-  return dataIso
-}
-
 export function ExpeditionDetailScreen() {
   const navigation = useNavigation<ExpeditionDetailNavigationProp>()
   const route = useRoute<ExpeditionDetailRouteProp>()
   const { expeditionId } = route.params
 
+  const { toast } = useFeedback()
+  const { sincronizar } = useOffline()
+  const [enviando, setEnviando] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [evidenciaAberta, setEvidenciaAberta] = useState<Evidencia | null>(null)
   const [audioAtivoId, setAudioAtivoId] = useState<number | null>(null)
@@ -103,6 +100,21 @@ export function ExpeditionDetailScreen() {
     refresh()
     registros.refresh()
     lembretes.refresh()
+  }
+
+  // Manda só o que é desta expedição (registros, lembretes e mídia), sem baixar nada
+  async function handleEnviarExpedicao() {
+    if (enviando) return
+    setEnviando(true)
+    try {
+      const resultado = await sincronizar({ expedicaoId: Number(expeditionId), semBaixar: true })
+      toast(resultado.success
+        ? { tipo: 'sucesso', titulo: 'Envio', mensagem: 'A expedição foi enviada para o servidor.' }
+        : { tipo: 'erro', titulo: 'Envio', mensagem: resultado.message ?? 'Não foi possível concluir.' })
+      if (resultado.success) handleRefresh()
+    } finally {
+      setEnviando(false)
+    }
   }
 
   function handleOpenForm(mode: EvidenceMode) {
@@ -296,41 +308,9 @@ export function ExpeditionDetailScreen() {
               </TouchableOpacity>
             </View>
           ) : lembretes.data?.itens.length ? (
-            lembretes.data.itens.map((lembrete: Lembrete) => {
-              const nomeCientifico = lembrete.nome_cientifico
-              const familia = lembrete.familia
-
-              return (
-                <View key={lembrete.id} style={styles.reminderCard}>
-                  <View style={styles.reminderBadge}>
-                    <Bell size={12} color={colors.bell} />
-                    <Text style={styles.reminderBadgeText}>
-                      {lembrete.id > 0 ? `Lembrete #${lembrete.id}` : 'Lembrete (no aparelho)'}
-                    </Text>
-                  </View>
-
-                  {nomeCientifico ? (
-                    <Text style={styles.reminderTitle}>{nomeCientifico}</Text>
-                  ) : null}
-
-                  {familia ? (
-                    <Text style={styles.reminderSubtitle}>{familia}</Text>
-                  ) : null}
-
-                  <View style={[styles.iconRow, { marginTop: 8 }]}>
-                    <MapPin size={13} color={colors.textSecondary} />
-                    <Text style={styles.reminderInfo}>{lembrete.local_coleta}</Text>
-                  </View>
-
-                  <View style={[styles.iconRow, { marginTop: 4 }]}>
-                    <Calendar size={13} color={colors.accent} />
-                    <Text style={[styles.reminderInfo, { color: colors.accent }]}>
-                      Voltar em: {formatarDataParaBr(lembrete.data_coleta)}
-                    </Text>
-                  </View>
-                </View>
-              )
-            })
+            lembretes.data.itens.map((lembrete: Lembrete) => (
+              <LembreteCard key={lembrete.id} lembrete={lembrete} />
+            ))
           ) : (
             <Text style={styles.emptyTeamText}>
               Nenhum lembrete criado nesta expedição. Use o botão + para criar um lembrete.
@@ -339,21 +319,33 @@ export function ExpeditionDetailScreen() {
         )}
       </ScrollView>
 
+      {/* Fica disponível também com a expedição finalizada */}
+      <TouchableOpacity
+        style={[styles.sendButton, enviando && styles.sendButtonDisabled]}
+        onPress={handleEnviarExpedicao}
+        disabled={enviando}
+      >
+        {enviando
+          ? <ActivityIndicator color={colors.onAccent} />
+          : <Send color={colors.onAccent} size={20} />}
+        <Text style={styles.sendButtonText}>{enviando ? 'Enviando...' : 'Enviar expedição'}</Text>
+      </TouchableOpacity>
+
       {/* Expedição finalizada é só para visualizar: sem o botão de novos registros */}
       {!isFinalizada && (
         <>
           {isMenuOpen && (
             <View style={styles.floatingMenu}>
               <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('collection')}>
-                <Leaf color={colors.accent} size={14} />
+                <Leaf color={colors.accent} size={20} />
                 <Text style={styles.menuOptionText}>Coleta</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('diary')}>
-                <BookOpen color={colors.diary} size={14} />
+                <BookOpen color={colors.diary} size={20} />
                 <Text style={styles.menuOptionText}>Diário</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={handleOpenLembrete}>
-                <Bell color={colors.bell} size={14} />
+                <Bell color={colors.bell} size={20} />
                 <Text style={styles.menuOptionText}>Lembrete</Text>
               </TouchableOpacity>
             </View>
@@ -362,7 +354,7 @@ export function ExpeditionDetailScreen() {
             style={styles.floatingButton}
             onPress={() => setIsMenuOpen(!isMenuOpen)}
           >
-            <Text style={styles.floatingButtonText}><Plus color={colors.onAccent} size={28}/></Text>
+            <Text style={styles.floatingButtonText}><Plus color={colors.onAccent} size={32}/></Text>
           </TouchableOpacity>
         </>
       )}
@@ -457,66 +449,42 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: colors.onAccent,
   },
-  reminderCard: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-  },
-  reminderBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    backgroundColor: colors.background,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginBottom: 8,
-  },
-  reminderBadgeText: {
-    color: colors.bell,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  reminderTitle: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  reminderSubtitle: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontStyle: 'italic',
-    marginTop: 2,
-  },
-  reminderInfo: {
-    color: colors.textSecondary,
-    fontSize: 12,
-  },
   floatingButton: {
     position: 'absolute',
     bottom: 24,
     right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   floatingButtonText: { color: colors.onAccent, fontSize: 28, lineHeight: 30 },
-  floatingMenu: { position: 'absolute', bottom: 90, right: 24 },
+  floatingMenu: { position: 'absolute', bottom: 100, right: 24 },
   menuOption: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginBottom: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    marginBottom: 10,
+    gap: 10,
   },
-  menuOptionText: { color: colors.textPrimary, fontSize: 13 },
+  menuOptionText: { color: colors.textPrimary, fontSize: 16 },
+  sendButton: {
+    position: 'absolute',
+    bottom: 28,
+    left: 24,
+    height: 56,
+    paddingHorizontal: 20,
+    borderRadius: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.accent,
+  },
+  sendButtonDisabled: { opacity: 0.6 },
+  sendButtonText: { color: colors.onAccent, fontSize: 15, fontWeight: '600' },
   notFound: {
     flex: 1,
     justifyContent: 'center',

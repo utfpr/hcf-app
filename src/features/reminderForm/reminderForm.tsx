@@ -8,6 +8,7 @@ import { CampoData } from '@/components/CampoData';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { LocalizacaoChip } from '@/features/evento/components/LocalizacaoChip';
 import { EMPTY_FICHA, FICHA_FIELDS, fichaParaPayload, type FichaFieldName, type FichaValues } from '@/features/evento/fichaCampos';
+import { useExpedition } from '@/features/expedition/hooks/useExpedition';
 import { useCriarLembrete } from '@/features/lembrete/hooks/useCriarLembrete';
 import { useFeedback } from '@/components/feedback/FeedbackContext';
 import { RascunhoBanner } from '@/features/offline/RascunhoBanner';
@@ -16,7 +17,7 @@ import { FamiliaInput } from '@/features/taxonomia/components/FamiliaInput';
 import type { CriarLembretePayload } from '@/features/lembrete/types';
 import { dataBrParaIso, hojeIso } from '@/features/lembrete/utils';
 import { getUserFacingHttpError } from '@/libraries/http/httpError';
-import { formatarCoordenadas, useLocalizacao } from '@/libraries/location/useLocalizacao';
+import { formatarCoordenadas, useLocalizacao, type Coordenadas } from '@/libraries/location/useLocalizacao';
 import { RootStackParamList } from '@/navigation/types';
 import { colors } from '../../theme/colors';
 import { styles } from '../evidenceForm/styles';
@@ -36,6 +37,10 @@ const CAMPOS_DETALHE = FICHA_FIELDS.filter(([campo]) => campo !== 'nome_cientifi
 interface Rascunho {
   familia: string;
   local: string;
+  // Ausentes em rascunhos salvos antes de a lista de locais e a descrição existirem
+  localId?: number | null;
+  descricao?: string;
+  posicao?: { latitude: number; longitude: number } | null;
   data: string;
   ficha: FichaValues;
   midias: EvidenciaPendente[];
@@ -53,11 +58,20 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
   const [family, setFamily] = useState('');
   const [ficha, setFicha] = useState<FichaValues>(EMPTY_FICHA);
   const [localColeta, setLocalColeta] = useState('');
+  const [selectedLocalId, setSelectedLocalId] = useState<number | null>(null);
+  const [isLocalListVisible, setIsLocalListVisible] = useState(false);
+  const [descricao, setDescricao] = useState('');
+  const [posicao, setPosicao] = useState<{ latitude: number; longitude: number } | null>(null);
   const [dataColeta, setDataColeta] = useState('');
   const [detalhesAbertos, setDetalhesAbertos] = useState(false);
-  const multimidia = useMultimidia();
+  const multimidia = useMultimidia({ apenasFotos: true });
   const { pendentes, setPendentes } = multimidia;
   const localizacao = useLocalizacao();
+
+  // Locais de coleta definidos nas rotas da expedição, como no formulário de coleta
+  const expedition = useExpedition(expedicaoId);
+  const locaisColeta = expedition.data?.rotas.flatMap(rota => rota.locais_coleta ?? []) ?? [];
+  const usaListaDeLocais = !!expedicaoId;
 
   const { trigger: criar, loading: isSaving } = useCriarLembrete();
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -77,23 +91,32 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
 
     setFamily(salvo.familia);
     setLocalColeta(salvo.local);
+    setSelectedLocalId(salvo.localId ?? null);
+    setDescricao(salvo.descricao ?? '');
+    setPosicao(salvo.posicao ?? null);
     setDataColeta(salvo.data);
     setFicha({ ...EMPTY_FICHA, ...salvo.ficha });
-    setPendentes(salvo.midias);
+    // Lembrete só tem foto: descarta vídeo/áudio de rascunhos antigos
+    setPendentes(salvo.midias.filter(midia => midia.tipo === 'imagem'));
     setRecuperado(true);
   }, [rascunho.pronto, rascunho.restaurado, setPendentes]);
 
   const { salvar: salvarRascunho } = rascunho;
   useEffect(() => {
     if (!restaurou.current) return;
-    const atual: Rascunho = { familia: family, local: localColeta, data: dataColeta, ficha, midias: pendentes };
+    const atual: Rascunho = {
+      familia: family, local: localColeta, localId: selectedLocalId, descricao, posicao, data: dataColeta, ficha, midias: pendentes,
+    };
     if (!rascunhoVazio(atual)) salvarRascunho(atual);
-  }, [family, localColeta, dataColeta, ficha, pendentes, salvarRascunho]);
+  }, [family, localColeta, selectedLocalId, descricao, posicao, dataColeta, ficha, pendentes, salvarRascunho]);
 
   async function handleDescartarRascunho() {
     await rascunho.descartar();
     setFamily('');
     setLocalColeta('');
+    setSelectedLocalId(null);
+    setDescricao('');
+    setPosicao(null);
     setDataColeta('');
     setFicha(EMPTY_FICHA);
     setPendentes([]);
@@ -109,13 +132,19 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
       localizacao.atualizar();
       return;
     }
-    const posicao = formatarCoordenadas(localizacao.coords);
-    setLocalColeta(current => (current.trim() ? `${current.trim()} (${posicao})` : posicao));
+    const { latitude, longitude }: Coordenadas = localizacao.coords;
+    setPosicao({ latitude, longitude });
+  }
+
+  function handleSelectLocal(localId: number, nome: string) {
+    setSelectedLocalId(localId);
+    setLocalColeta(nome);
+    setIsLocalListVisible(false);
   }
 
   // Devolve a mensagem do primeiro problema, ou null se dá para salvar.
   function validar(): string | null {
-    if (!localColeta.trim()) return 'Informe o local da coleta.';
+    if (!localColeta.trim()) return usaListaDeLocais ? 'Selecione o local da coleta.' : 'Informe o local da coleta.';
 
     const iso = dataBrParaIso(dataColeta);
     if (!iso) return 'Informe uma data válida no formato DD/MM/AAAA.';
@@ -129,6 +158,9 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
       ...fichaParaPayload(ficha),
       data_coleta: dataBrParaIso(dataColeta) as string,
       local_coleta: localColeta.trim(),
+      descricao: descricao.trim() || null,
+      latitude: posicao?.latitude ?? null,
+      longitude: posicao?.longitude ?? null,
       familia: family.trim() || null,
       ...(expedicaoId ? { expedicao_id: expedicaoId } : {}),
     };
@@ -209,15 +241,58 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
               <MapPin size={14} color={colors.textSecondary} />
               <Text style={reminderStyles.labelInline}>Local da coleta *</Text>
             </View>
+            {usaListaDeLocais ? (
+              <>
+                <TouchableOpacity
+                  style={styles.selectInput}
+                  onPress={() => setIsLocalListVisible(current => !current)}
+                  disabled={expedition.loading}
+                >
+                  <Text style={localColeta ? styles.selectValue : styles.selectPlaceholder}>
+                    {expedition.loading ? 'Carregando locais...' : localColeta || 'Selecione o local'}
+                  </Text>
+                  <ChevronDown color={colors.textSecondary} size={18} />
+                </TouchableOpacity>
+                {expedition.error ? (
+                  <Text style={styles.mediaError}>Não foi possível carregar os locais da expedição.</Text>
+                ) : null}
+                {isLocalListVisible && (
+                  <View style={styles.optionsList}>
+                    {locaisColeta.length ? locaisColeta.map(local => (
+                      <TouchableOpacity
+                        key={local.id}
+                        style={styles.option}
+                        onPress={() => handleSelectLocal(local.id, local.descricao ?? `Local #${local.id}`)}
+                      >
+                        <Text style={styles.optionText}>{local.descricao ?? `Local #${local.id}`}</Text>
+                      </TouchableOpacity>
+                    )) : <Text style={styles.emptyOption}>Nenhum local vinculado às rotas desta expedição.</Text>}
+                  </View>
+                )}
+              </>
+            ) : (
+              <TextInput
+                style={[styles.textArea, reminderStyles.localInput]}
+                value={localColeta}
+                onChangeText={setLocalColeta}
+                placeholder="Ex.: Trilha da cachoeira, 300 m após a ponte"
+                placeholderTextColor={colors.placeholder}
+                multiline
+                numberOfLines={3}
+              />
+            )}
+
+            <Text style={styles.label}>Descrição</Text>
             <TextInput
               style={[styles.textArea, reminderStyles.localInput]}
-              value={localColeta}
-              onChangeText={setLocalColeta}
-              placeholder="Ex.: Trilha da cachoeira, 300 m após a ponte"
+              value={descricao}
+              onChangeText={setDescricao}
+              placeholder="Ex.: Voltar na floração, 300 m após a ponte"
               placeholderTextColor={colors.placeholder}
               multiline
               numberOfLines={3}
             />
+
             <TouchableOpacity
               style={reminderStyles.secondaryButton}
               onPress={handleUsarPosicaoAtual}
@@ -225,9 +300,11 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
             >
               <Crosshair size={14} color={colors.accent} />
               <Text style={reminderStyles.secondaryButtonText}>
-                {localizacao.coords
-                  ? `Usar posição atual (${formatarCoordenadas(localizacao.coords)})`
-                  : localizacao.carregando ? 'Obtendo posição…' : 'Sem GPS — toque para tentar'}
+                {posicao
+                  ? `Coordenadas: ${formatarCoordenadas(posicao as Coordenadas)} (toque para atualizar)`
+                  : localizacao.coords
+                    ? `Registrar coordenadas atuais (${formatarCoordenadas(localizacao.coords)})`
+                    : localizacao.carregando ? 'Obtendo posição…' : 'Sem GPS — toque para tentar'}
               </Text>
             </TouchableOpacity>
 
@@ -240,8 +317,8 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
               Quando a planta deve estar pronta para coletar (floração, frutificação...).
             </Text>
 
-            <Text style={styles.label}>Mídia</Text>
-            <Multimidia state={multimidia} disabled={isSaving} />
+            <Text style={styles.label}>Fotos</Text>
+            <Multimidia state={multimidia} disabled={isSaving} apenasFotos />
 
             <TouchableOpacity
               style={reminderStyles.detalhesToggle}

@@ -8,8 +8,14 @@ export interface Lembrete extends FichaColeta {
   id: number
   data_coleta: string // YYYY-MM-DD
   local_coleta: string
+  descricao?: string | null
+  latitude?: number | null
+  longitude?: number | null
   // Expedição de onde o lembrete foi criado; null quando não veio de uma
   expedicao_id?: number | null
+  // Fotos; a listagem da API já devolve junto de cada lembrete. As ainda não
+  // enviadas aparecem com a uri do arquivo no aparelho
+  evidencias?: FotoLembrete[]
   created_at: string
   updated_at: string
   created_by: number | null
@@ -18,7 +24,9 @@ export interface Lembrete extends FichaColeta {
   syncStatus?: import('@/features/sync/types').SyncStatus
 }
 
-// Multimídia do lembrete (/v1/lembretes/:id/evidencias); mesmo formato da evidência do evento.
+export type FotoLembrete = Pick<LembreteEvidencia, 'id' | 'nome' | 'url'>
+
+// Foto do lembrete (/v1/lembretes/:id/evidencias); só aceita imagem.
 export interface LembreteEvidencia {
   id: number
   lembrete_id: number
@@ -38,6 +46,9 @@ export interface LembreteEvidencia {
 export interface CriarLembretePayload extends Partial<FichaColeta> {
   data_coleta: string // YYYY-MM-DD
   local_coleta: string
+  descricao?: string | null
+  latitude?: number | null
+  longitude?: number | null
   expedicao_id?: number
   client_uuid?: string
 }
