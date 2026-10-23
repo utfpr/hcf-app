@@ -1,9 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors } from '../../theme/colors';
 
-// cor específica deste componente — não se repete em nenhuma outra tela do app
-const waveformBar = '#3E6A4F';
-
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -110,6 +107,12 @@ export const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 14,
   },
+  emptyOption: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
   textArea: {
     backgroundColor: colors.inputBackground,
     borderRadius: 10,
@@ -119,86 +122,129 @@ export const styles = StyleSheet.create({
     color: colors.inputText,
     textAlignVertical: 'top',
   },
-  mediaRow: {
+  diaryTextArea: {
+    minHeight: 230,
+  },
+  detalhesToggle: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderAlt,
+  },
+  detalhesToggleText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  multiOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  multiOption: {
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    borderRadius: 18,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  multiOptionSelected: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  multiOptionText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  multiOptionTextSelected: {
+    color: colors.onAccent,
+  },
+  conditionalInput: {
+    marginTop: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  },
+  optionModal: {
+    maxHeight: '75%',
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingTop: 18,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+  },
+  modalTitle: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  modalClose: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalHint: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    paddingHorizontal: 18,
+    marginTop: 5,
     marginBottom: 12,
   },
-  mediaButton: {
-    flex: 1,
-    backgroundColor: colors.background,
+  modalOptions: {
+    paddingHorizontal: 18,
+    paddingBottom: 28,
+    gap: 8,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 48,
     borderWidth: 1,
     borderColor: colors.borderAlt,
     borderRadius: 10,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
+    paddingHorizontal: 12,
   },
-  mediaButtonText: {
-    color: colors.onAccent,
-    fontSize: 13,
-    fontWeight: '400',
+  modalOptionSelected: {
+    borderColor: colors.accent,
+    backgroundColor: colors.surfaceAlt,
+  },
+  modalOptionText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  fieldHint: {
+    color: colors.bell,
+    fontSize: 12,
+    marginTop: 6,
   },
   mediaError: {
     color: colors.danger,
     fontSize: 12,
     marginBottom: 12,
-  },
-  previewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 10,
-    padding: 8,
-    marginBottom: 8,
-  },
-  previewThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: colors.borderAlt,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  previewImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-  },
-  previewInfo: {
-    flex: 1,
-  },
-  previewName: {
-    color: colors.onAccent,
-    fontSize: 12,
-  },
-  previewMeta: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  audioPlayIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.borderAlt,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  waveform: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    height: 20,
-  },
-  waveformBar: {
-    width: 2,
-    backgroundColor: waveformBar,
-    borderRadius: 1,
   },
   saveButton: {
     backgroundColor: colors.accent,

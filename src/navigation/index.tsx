@@ -3,6 +3,7 @@ import React from 'react'
 import { ActivityIndicator, View } from 'react-native'
 
 import { useAuth } from '@/contexts/Auth/useAuth'
+import { OfflineProvider } from '@/features/offline/OfflineContext'
 
 import { AppNavigator } from './AppNavigator'
 import { AuthNavigator } from './AuthNavigator'
@@ -20,7 +21,11 @@ export function Navigation() {
 
   return (
     <NavigationContainer>
-      {loggedIn ? <AppNavigator /> : <AuthNavigator />}
+      {loggedIn ? (
+        <OfflineProvider>
+          <AppNavigator />
+        </OfflineProvider>
+      ) : <AuthNavigator />}
     </NavigationContainer>
   )
 }

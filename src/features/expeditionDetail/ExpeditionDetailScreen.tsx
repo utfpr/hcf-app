@@ -1,5 +1,6 @@
 import {
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -10,31 +11,121 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { ArrowLeft } from 'lucide-react-native'
-import { useState } from 'react'
+import { ArrowLeft, Bell, BookOpen, Clock, Leaf, Plus, Send, Users } from 'lucide-react-native'
+import { useMemo, useState } from 'react'
+import { useFeedback } from '@/components/feedback/FeedbackContext'
+import { useOffline } from '@/features/offline/OfflineContext'
+import { CampoBusca } from '@/components/CampoBusca'
+import { FiltroChips, type OpcaoFiltro } from '@/components/FiltroChips'
+import { OfflineBanner } from '@/components/OfflineBanner'
+import { contemTermo } from '@/libraries/text/normalizar'
 
 import { EvidenceMode, RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
 
+import { useRegistrosExpedicao } from '../evento/hooks/useRegistrosExpedicao'
 import { useExpedition } from '../expedition/hooks/useExpedition'
 import { formatDate, getStatus } from '../expedition/utils'
+
+import { LembreteCard } from '@/features/lembrete/components/LembreteCard'
+import { useLembretes } from '../lembrete/hooks/useLembretes'
+import type { Lembrete } from '../lembrete/types'
+
+import { EvidenciaViewer } from './components/EvidenciaViewer'
+import { RegistroCard } from './components/RegistroCard'
+
+import type { Evidencia, RegistroExpedicao } from '../evento/types'
+import { AdicionarEvidenciaModal } from './components/AdicionarEvidenciaModal'
+
+type FiltroTipo = 'todos' | 'COLETA' | 'DIARIO'
+
+const OPCOES_TIPO: ReadonlyArray<OpcaoFiltro<FiltroTipo>> = [
+  { valor: 'todos', rotulo: 'Todos' },
+  { valor: 'COLETA', rotulo: 'Coletas' },
+  { valor: 'DIARIO', rotulo: 'Diários' },
+]
+
+// Nome científico, família ou nº da coleta
+function registroBate(registro: RegistroExpedicao, busca: string): boolean {
+  return contemTermo(registro.coleta?.nome_cientifico, busca)
+    || contemTermo(registro.coleta?.familia, busca)
+    || contemTermo(registro.numero_coleta, busca)
+    || contemTermo(registro.observacoes, busca)
+}
 
 type ExpeditionDetailRouteProp = RouteProp<RootStackParamList, 'ExpeditionDetail'>
 type ExpeditionDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionDetail'>
 
-const MOCK_COORDS = { latitude: -20.2508, longitude: -46.4167 }
 
 export function ExpeditionDetailScreen() {
   const navigation = useNavigation<ExpeditionDetailNavigationProp>()
   const route = useRoute<ExpeditionDetailRouteProp>()
   const { expeditionId } = route.params
 
+  const { toast } = useFeedback()
+  const { sincronizar } = useOffline()
+  const [enviando, setEnviando] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [evidenciaAberta, setEvidenciaAberta] = useState<Evidencia | null>(null)
+  const [audioAtivoId, setAudioAtivoId] = useState<number | null>(null)
+  const [registroParaEvidencia, setRegistroParaEvidencia] = useState<RegistroExpedicao | null>(null)
+
+  const [activeTab, setActiveTab] = useState<'registros' | 'lembretes'>('registros')
+  const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('todos')
+  const [buscaRegistro, setBuscaRegistro] = useState('')
+
+  function handleOpenEvidencia(evidencia: Evidencia) {
+    // Para o áudio que estiver tocando antes de abrir a foto/vídeo
+    setAudioAtivoId(null)
+    setEvidenciaAberta(evidencia)
+  }
+
+  function handleAddEvidencia(registro: RegistroExpedicao) {   // <- NOVO
+    setAudioAtivoId(null) // para o áudio que estiver tocando
+    setRegistroParaEvidencia(registro)
+  }
 
   const { data, error, loading, refresh } = useExpedition(Number(expeditionId))
+  const registros = useRegistrosExpedicao(Number(expeditionId))
+  const registrosFiltrados = useMemo(() => (registros.data ?? []).filter(registro => (
+    (filtroTipo === 'todos' || registro.tipo === filtroTipo)
+    && (!buscaRegistro.trim() || registroBate(registro, buscaRegistro))
+  )), [registros.data, filtroTipo, buscaRegistro])
+
+  // Só os lembretes criados nesta expedição, o mais próximo primeiro. Todos de uma vez,
+  // como os registros: a aba não pagina
+  const lembretes = useLembretes({ expedicao_id: Number(expeditionId), limite: 100 })
+
+  function handleRefresh() {
+    refresh()
+    registros.refresh()
+    lembretes.refresh()
+  }
+
+  // Manda só o que é desta expedição (registros, lembretes e mídia), sem baixar nada
+  async function handleEnviarExpedicao() {
+    if (enviando) return
+    setEnviando(true)
+    try {
+      const resultado = await sincronizar({ expedicaoId: Number(expeditionId), semBaixar: true })
+      toast(resultado.success
+        ? { tipo: 'sucesso', titulo: 'Envio', mensagem: 'A expedição foi enviada para o servidor.' }
+        : { tipo: 'erro', titulo: 'Envio', mensagem: resultado.message ?? 'Não foi possível concluir.' })
+      if (resultado.success) handleRefresh()
+    } finally {
+      setEnviando(false)
+    }
+  }
+
   function handleOpenForm(mode: EvidenceMode) {
     setIsMenuOpen(false)
-    navigation.navigate('Formulario', { expeditionId, mode, ...MOCK_COORDS })
+    setAudioAtivoId(null)
+    navigation.navigate('Formulario', { expeditionId, mode })
+  }
+
+  function handleOpenLembrete() {
+    setIsMenuOpen(false)
+    navigation.navigate('Reminders', { expeditionId })
   }
 
   function renderHeader() {
@@ -92,48 +183,198 @@ export function ExpeditionDetailScreen() {
   }
 
   const status = getStatus(data.data_inicio, data.data_fim)
+  // Expedição encerrada não recebe novos registros (só evidências nos registros existentes)
+  const isFinalizada = status === 'Finalizada'
 
   return (
     <SafeAreaView style={styles.wrapper}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       {renderHeader()}
+      <OfflineBanner />
 
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        refreshControl={(
+          <RefreshControl
+            refreshing={registros.validating && !registros.loading}
+            onRefresh={handleRefresh}
+            colors={[colors.accent]}
+            tintColor={colors.accent}
+          />
+        )}
+      >
         <Text style={styles.expeditionName}>
           {data.descricao ?? `Expedição #${data.id}`}
         </Text>
         <View style={styles.infoRow}>
-          <Text style={styles.info}>
-            🕒 {formatDate(data.data_inicio)} – {formatDate(data.data_fim)}
-          </Text>
+          <View style={[styles.iconRow, styles.infoItem]}>
+            <Clock color={colors.placeholder} size={12} />
+            <Text style={styles.info}>
+              {formatDate(data.data_inicio)} – {formatDate(data.data_fim)}
+            </Text>
+          </View>
           <Text style={styles.status}>{status}</Text>
         </View>
 
-        {/* TODO: seção de registros (diário/coleta) entra aqui quando a
-            integração com a feature de evidências (evidenceForm) estiver pronta */}
-      </ScrollView>
+        <View style={styles.divider} />
 
-      {isMenuOpen && (
-        <View style={styles.floatingMenu}>
-          <TouchableOpacity style={styles.menuOption} onPress={() => handleOpenForm('diary')}>
-            <Text style={styles.menuOptionText}>📘 Novo diário</Text>
+        <View style={[styles.iconRow, styles.sectionHeader]}>
+          <Users size={12} color={colors.textSecondary} />
+          <Text style={styles.sectionTitleText}>EQUIPE</Text>
+        </View>
+        {data.participantes.length > 0 ? (
+          <View style={styles.teamRow}>
+            {data.participantes.map(participante => (
+              <View key={participante.id} style={styles.memberTag}>
+                <Text style={styles.memberTagText}>{participante.nome}</Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.emptyTeamText}>Nenhum participante cadastrado.</Text>
+        )}
+
+        <View style={styles.divider} />
+
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'registros' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('registros')}
+          >
+            <Text style={[styles.tabText, activeTab === 'registros' && styles.tabTextActive]}>
+              Registros ({registros.data?.length ?? 0})
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuOption} onPress={() => handleOpenForm('collection')}>
-            <Text style={styles.menuOptionText}>🌿 Nova coleta</Text>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'lembretes' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('lembretes')}
+          >
+            <Text style={[styles.tabText, activeTab === 'lembretes' && styles.tabTextActive]}>
+              Lembretes ({lembretes.data?.total ?? 0})
+            </Text>
           </TouchableOpacity>
         </View>
-      )}
+
+        {activeTab === 'registros' ? (
+          /* Conteúdo da aba de Registros */
+          registros.loading && !registros.data ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : registros.error && !registros.data ? (
+            <View>
+              <Text style={styles.emptyTeamText}>Não foi possível carregar os registros.</Text>
+              <TouchableOpacity onPress={() => registros.refresh()}>
+                <Text style={styles.retryLink}>Tentar novamente</Text>
+              </TouchableOpacity>
+            </View>
+          ) : registros.data?.length ? (
+            <View>
+              <View style={styles.filtrosRegistros}>
+                <FiltroChips opcoes={OPCOES_TIPO} selecionado={filtroTipo} onSelecionar={setFiltroTipo} />
+                <CampoBusca
+                  value={buscaRegistro}
+                  onChangeText={setBuscaRegistro}
+                  placeholder="Nome científico, família ou nº da coleta"
+                />
+              </View>
+              {registrosFiltrados.length === 0 ? (
+                <Text style={styles.emptyTeamText}>Nenhum registro com esse filtro.</Text>
+              ) : null}
+              {registrosFiltrados.map(registro => (
+              <RegistroCard
+                key={registro.id}
+                registro={registro}
+                onAddEvidencia={handleAddEvidencia}
+                onOpenEvidencia={handleOpenEvidencia}
+                audioAtivoId={audioAtivoId}
+                onActivateAudio={setAudioAtivoId}
+              />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyTeamText}>
+              {isFinalizada
+                ? 'Nenhum registro nesta expedição.'
+                : 'Nenhum registro ainda. Use o botão + para adicionar uma coleta ou diário.'}
+            </Text>
+          )
+        ) : (
+          lembretes.loading && !lembretes.data ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : lembretes.error && !lembretes.data ? (
+            <View>
+              <Text style={styles.emptyTeamText}>Não foi possível carregar os lembretes.</Text>
+              <TouchableOpacity onPress={() => lembretes.refresh()}>
+                <Text style={styles.retryLink}>Tentar novamente</Text>
+              </TouchableOpacity>
+            </View>
+          ) : lembretes.data?.itens.length ? (
+            lembretes.data.itens.map((lembrete: Lembrete) => (
+              <LembreteCard key={lembrete.id} lembrete={lembrete} />
+            ))
+          ) : (
+            <Text style={styles.emptyTeamText}>
+              Nenhum lembrete criado nesta expedição. Use o botão + para criar um lembrete.
+            </Text>
+          )
+        )}
+      </ScrollView>
+
+      {/* Fica disponível também com a expedição finalizada */}
       <TouchableOpacity
-        style={styles.floatingButton}
-        onPress={() => setIsMenuOpen(!isMenuOpen)}
+        style={[styles.sendButton, enviando && styles.sendButtonDisabled]}
+        onPress={handleEnviarExpedicao}
+        disabled={enviando}
       >
-        <Text style={styles.floatingButtonText}>+</Text>
+        {enviando
+          ? <ActivityIndicator color={colors.onAccent} />
+          : <Send color={colors.onAccent} size={20} />}
+        <Text style={styles.sendButtonText}>{enviando ? 'Enviando...' : 'Enviar expedição'}</Text>
       </TouchableOpacity>
+
+      {/* Expedição finalizada é só para visualizar: sem o botão de novos registros */}
+      {!isFinalizada && (
+        <>
+          {isMenuOpen && (
+            <View style={styles.floatingMenu}>
+              <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('collection')}>
+                <Leaf color={colors.accent} size={20} />
+                <Text style={styles.menuOptionText}>Coleta</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('diary')}>
+                <BookOpen color={colors.diary} size={20} />
+                <Text style={styles.menuOptionText}>Diário</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={handleOpenLembrete}>
+                <Bell color={colors.bell} size={20} />
+                <Text style={styles.menuOptionText}>Lembrete</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <TouchableOpacity
+            style={styles.floatingButton}
+            onPress={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            <Text style={styles.floatingButtonText}><Plus color={colors.onAccent} size={32}/></Text>
+          </TouchableOpacity>
+        </>
+      )}
+
+      <EvidenciaViewer evidencia={evidenciaAberta} onClose={() => setEvidenciaAberta(null)} />
+        
+      <AdicionarEvidenciaModal
+        registro={registroParaEvidencia}
+        expedicaoId={Number(expeditionId)}
+        onClose={() => setRegistroParaEvidencia(null)}
+      />
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
+  filtrosRegistros: {
+    gap: 8,
+    marginBottom: 12,
+  },
   wrapper: {
     flex: 1,
     backgroundColor: colors.background,
@@ -146,6 +387,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderAlt,
+  },
+  CardIcon: {
+    fontSize: 14,
   },
   headerTitle: {
     color: colors.textPrimary,
@@ -163,9 +407,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   infoRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  info: { color: colors.textSecondary, marginRight: 12 },
-  status: { color: colors.accent },
-  sectionTitle: { color: colors.textSecondary, fontSize: 12, marginTop: 20, marginBottom: 8 },
+  iconRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  infoItem: { marginRight: 12 },
+  info: { color: colors.textSecondary, fontSize: 12 },
+  status: { color: colors.accent, fontWeight: 700 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: 16, marginHorizontal: -16 },
+  sectionHeader: { marginBottom: 8 },
+  sectionTitleText: { color: colors.textSecondary, fontSize: 12, fontWeight: 700 },
   teamRow: { flexDirection: 'row', flexWrap: 'wrap' },
   memberTag: {
     backgroundColor: colors.surfaceAlt,
@@ -177,27 +425,66 @@ const styles = StyleSheet.create({
   },
   memberTagText: { color: colors.textPrimary, fontSize: 12 },
   emptyTeamText: { color: colors.textSecondary, fontSize: 13 },
+  retryLink: { color: colors.accent, fontSize: 13, marginTop: 6 },
+  tabContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+  },
+  tabButtonActive: {
+    backgroundColor: colors.accent,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  tabTextActive: {
+    color: colors.onAccent,
+  },
   floatingButton: {
     position: 'absolute',
     bottom: 24,
     right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   floatingButtonText: { color: colors.onAccent, fontSize: 28, lineHeight: 30 },
-  floatingMenu: { position: 'absolute', bottom: 90, right: 24 },
+  floatingMenu: { position: 'absolute', bottom: 100, right: 24 },
   menuOption: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginBottom: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    marginBottom: 10,
+    gap: 10,
   },
-  menuOptionText: { color: colors.textPrimary, fontSize: 13 },
+  menuOptionText: { color: colors.textPrimary, fontSize: 16 },
+  sendButton: {
+    position: 'absolute',
+    bottom: 28,
+    left: 24,
+    height: 56,
+    paddingHorizontal: 20,
+    borderRadius: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.accent,
+  },
+  sendButtonDisabled: { opacity: 0.6 },
+  sendButtonText: { color: colors.onAccent, fontSize: 15, fontWeight: '600' },
   notFound: {
     flex: 1,
     justifyContent: 'center',

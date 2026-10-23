@@ -1,236 +1,218 @@
-import React, { useState, useEffect } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View, Platform, PermissionsAndroid } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
-import { ArrowLeft, Check, ChevronDown, Clock, Image as ImageIcon, MapPin, Mic, Play, Pause, X } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-import { useRegistrarEvento } from '@/features/evento/hooks/useRegistrarEvento';
-import type { CriarEventoPayload, CriarEvidenciaPayload } from '@/features/evento/types';
-import { getUserFacingHttpError } from '@/libraries/http/httpError';
-import { EvidenceMode, RootStackParamList } from '@/navigation/types';
-import { colors } from '../../theme/colors';
-import { styles } from './styles';
+import React, { useEffect, useRef, useState } from 'react'
+import { ActivityIndicator, Modal, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Clock } from 'lucide-react-native'
+import { useNavigation } from '@react-navigation/native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { OfflineBanner } from '@/components/OfflineBanner'
+import { LocalizacaoChip } from '@/features/evento/components/LocalizacaoChip'
+import { Multimidia } from '@/features/evento/components/Multimidia'
+import { useFeedback } from '@/components/feedback/FeedbackContext'
+import {
+  EMPTY_FICHA,
+  FICHA_MULTIPLA_ESCOLHA,
+  FICHA_FIELDS,
+  fichaComObservacoesMultiplas,
+  fichaParaPayload,
+  ROTULO_OBSERVACAO_MULTIPLA,
+  type CampoMultiplaEscolha,
+  type FichaValues,
+  type ObservacoesMultiplas,
+} from '@/features/evento/fichaCampos'
+import { type EvidenciaPendente, useMultimidia } from '@/features/evento/hooks/useMultimidia'
+import { useRegistrosExpedicao } from '@/features/evento/hooks/useRegistrosExpedicao'
+import type { CriarEventoPayload } from '@/features/evento/types'
+import { useRegistrarEvento } from '@/features/evento/hooks/useRegistrarEvento'
+import { existeColetaComNumero } from '@/features/offline/mesclagem'
+import { RascunhoBanner } from '@/features/offline/RascunhoBanner'
+import { useRascunho } from '@/features/offline/useRascunho'
+import { FamiliaInput } from '@/features/taxonomia/components/FamiliaInput'
+import { getUserFacingHttpError } from '@/libraries/http/httpError'
+import { useLocalizacao } from '@/libraries/location/useLocalizacao'
+import { EvidenceMode } from '@/navigation/types'
+import { colors } from '@/theme/colors'
+import { styles } from './styles'
 
 export interface FormularioProps {
-  // Todo evento pertence a uma expedição na API; sem ela o formulário não salva.
-  expedicaoId?: number;
-  mode: EvidenceMode;
-  latitude: number;
-  longitude: number;
+  expedicaoId?: number
+  mode: EvidenceMode
 }
 
-interface ImageAsset { uri: string; name: string; type: string; sizeLabel: string; capturadoEm: string }
-interface AudioAsset { uri: string; durationLabel: string; capturadoEm: string }
-
 interface ModeConfig {
-  title: string;
-  notesLabel: string;
-  notesPlaceholder: string;
-  saveLabel: string;
+  title: string
+  descriptionPlaceholder: string
+  saveLabel: string
 }
 
 const MODE_CONFIG: Record<EvidenceMode, ModeConfig> = {
   collection: {
     title: 'Registro de Coleta',
-    notesLabel: 'Observações',
-    notesPlaceholder: 'Detalhes adicionais da coleta...',
+    descriptionPlaceholder: 'Detalhes adicionais da coleta...',
     saveLabel: 'Salvar Coleta',
   },
   diary: {
     title: 'Registro de Diário',
-    notesLabel: 'Anotação',
-    notesPlaceholder: 'Descreva o que foi observado em campo...',
+    descriptionPlaceholder: 'Descreva detalhadamente o que foi observado em campo...',
     saveLabel: 'Salvar Diário',
   },
-};
-
-const FAMILY_OPTIONS = ['Acanthaceae', 'Asteraceae', 'Bromeliaceae', 'Fabaceae', 'Myrtaceae', 'Orchidaceae', 'Rubiaceae'];
-
-function formatFileSize(size?: number) {
-  if (!size) return 'Tamanho não disponível';
-  return size < 1024 ? String(size) + ' B' : (size / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
-const audioRecorderPlayer = new AudioRecorderPlayer();
+// O que o rascunho guarda para devolver o formulário como estava
+interface Rascunho {
+  iniciado_em: string
+  numero: string
+  familia: string
+  ficha: FichaValues
+  observacoes_multiplas: ObservacoesMultiplas
+  observacoes: string
+  midias: EvidenciaPendente[]
+}
 
-export function Formulario({ expedicaoId, mode, latitude, longitude }: FormularioProps) {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Formulario'>>();
-  const config = MODE_CONFIG[mode];
-  const isCollection = mode === 'collection';
+const CAMPOS_DETALHE = FICHA_FIELDS
 
-  // Instante da captura: fixado na abertura do formulário para não mudar a cada render.
-  const [capturadoEm] = useState(() => new Date());
-  const dataHora = `${capturadoEm.toLocaleDateString('pt-BR')} ${capturadoEm.toLocaleTimeString('pt-BR')}`;
+function rascunhoVazio(rascunho: Rascunho): boolean {
+  return !rascunho.numero && !rascunho.familia && !rascunho.observacoes
+    && rascunho.midias.length === 0
+    && Object.values(rascunho.ficha).every(valor => !valor)
+    && Object.values(rascunho.observacoes_multiplas ?? {}).every(valor => !valor)
+}
 
-  const [family, setFamily] = useState<string | null>(null);
-  const [isFamilyListVisible, setIsFamilyListVisible] = useState(false);
-  const [scientificName, setScientificName] = useState('');
-  const [notes, setNotes] = useState('');
-  const [image, setImage] = useState<ImageAsset | null>(null);
-  const [imageError, setImageError] = useState<string | null>(null);
+export function Formulario({ expedicaoId, mode }: FormularioProps) {
+  const navigation = useNavigation()
+  const { toast } = useFeedback()
+  const config = MODE_CONFIG[mode]
+  const isCollection = mode === 'collection'
 
-  const [audio, setAudio] = useState<AudioAsset | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [recordTime, setRecordTime] = useState('00:00');
+  const [agora, setAgora] = useState(() => new Date())
+  const dataHora = `${agora.toLocaleDateString('pt-BR')} ${agora.toLocaleTimeString('pt-BR')}`
 
-  const { trigger: registrar, loading: isSaving } = useRegistrarEvento(expedicaoId);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [collectionIdentifier, setCollectionIdentifier] = useState('')
+  const [family, setFamily] = useState('')
+  const [ficha, setFicha] = useState<FichaValues>(EMPTY_FICHA)
+  const [observacoesMultiplas, setObservacoesMultiplas] = useState<ObservacoesMultiplas>({})
+  const [detalhesAbertos, setDetalhesAbertos] = useState(false)
+  const [campoAberto, setCampoAberto] = useState<CampoMultiplaEscolha | null>(null)
+  const [notes, setNotes] = useState('')
+  const [saveError, setSaveError] = useState<string | null>(null)
 
+  const localizacao = useLocalizacao()
+  const registros = useRegistrosExpedicao(isCollection ? expedicaoId : undefined)
+  const multimidia = useMultimidia()
+  const { pendentes, setPendentes } = multimidia
+
+  const { trigger: registrar, loading: isSaving } = useRegistrarEvento(expedicaoId)
+  const saveDisabled = !expedicaoId || isSaving || multimidia.busy
+
+  // Mesmo número de uma coleta que já existe = mesma coleta: a API junta as duas
+  const numero = collectionIdentifier.trim()
+  const juntaComExistente = isCollection && !!registros.data && existeColetaComNumero(registros.data, numero)
+
+  const rascunho = useRascunho<Rascunho>(expedicaoId ? `${isCollection ? 'coleta' : 'diario'}-${expedicaoId}` : null)
+  const [recuperado, setRecuperado] = useState(false)
+  const restaurou = useRef(false)
+
+  // Abriu com um rascunho salvo: devolve o formulário como estava
   useEffect(() => {
-    return () => {
-      audioRecorderPlayer.removeRecordBackListener();
-      audioRecorderPlayer.removePlayBackListener();
-    };
-  }, []);
+    if (restaurou.current || !rascunho.pronto) return
+    restaurou.current = true
+    const salvo = rascunho.restaurado
+    if (!salvo || rascunhoVazio(salvo)) return
 
-  async function handleAddImage() {
-    setImageError(null);
-    const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
-    if (result.didCancel) return;
-    const asset = result.assets?.[0];
-    if (result.errorCode || !asset?.uri) {
-      setImageError('Não foi possível selecionar a imagem. Tente novamente.');
-      return;
+    setAgora(new Date(salvo.iniciado_em))
+    setCollectionIdentifier(salvo.numero)
+    setFamily(salvo.familia)
+    setFicha({ ...EMPTY_FICHA, ...salvo.ficha })
+    setObservacoesMultiplas(salvo.observacoes_multiplas ?? {})
+    setNotes(salvo.observacoes)
+    setPendentes(salvo.midias.map(item => item.tipo === 'video'
+      ? { ...item, validandoDuracao: true }
+      : item))
+    setRecuperado(true)
+  }, [rascunho.pronto, rascunho.restaurado, setPendentes])
+
+  const { salvar: salvarRascunho } = rascunho
+  useEffect(() => {
+    if (!restaurou.current) return
+    const atual: Rascunho = {
+      iniciado_em: agora.toISOString(),
+      numero: collectionIdentifier,
+      familia: family,
+      ficha,
+      observacoes_multiplas: observacoesMultiplas,
+      observacoes: notes,
+      midias: pendentes,
     }
-    setImage({
-      uri: asset.uri,
-      name: asset.fileName ?? 'imagem_coleta.jpg',
-      type: asset.type ?? 'image/jpeg',
-      sizeLabel: formatFileSize(asset.fileSize),
-      capturadoEm: new Date().toISOString(),
-    });
+    if (!rascunhoVazio(atual)) salvarRascunho(atual)
+  }, [agora, collectionIdentifier, family, ficha, observacoesMultiplas, notes, pendentes, salvarRascunho])
+
+  async function handleDescartarRascunho() {
+    await rascunho.descartar()
+    setAgora(new Date())
+    setCollectionIdentifier('')
+    setFamily('')
+    setFicha(EMPTY_FICHA)
+    setObservacoesMultiplas({})
+    setNotes('')
+    setPendentes([])
+    setRecuperado(false)
   }
 
-  async function checkPermissions() {
-    if (Platform.OS === 'android') {
-      try {
-        const grants = await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-        ]);
-        return grants['android.permission.RECORD_AUDIO'] === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
-    }
-    return true;
+  function updateFicha(field: keyof FichaValues, value: string) {
+    setFicha(current => ({ ...current, [field]: value }))
   }
 
-  async function handleToggleRecord() {
-    if (isRecording) {
-      const resultUri = await audioRecorderPlayer.stopRecorder();
-      audioRecorderPlayer.removeRecordBackListener();
-      setIsRecording(false);
-      setAudio({ uri: resultUri, durationLabel: recordTime, capturadoEm: new Date().toISOString() });
-    } else {
-      const hasPermission = await checkPermissions();
-      if (!hasPermission) return;
+  function alternarOpcao(campo: CampoMultiplaEscolha, opcao: string) {
+    const selecionadas = ficha[campo]
+      ? ficha[campo].split(', ').filter(Boolean)
+      : []
+    const proximo = selecionadas.includes(opcao)
+      ? selecionadas.filter(item => item !== opcao)
+      : [...selecionadas, opcao]
 
-      setIsRecording(true);
-      setRecordTime('00:00');
-
-      await audioRecorderPlayer.startRecorder();
-      audioRecorderPlayer.addRecordBackListener((e) => {
-        const time = audioRecorderPlayer.mmssss(Math.floor(e.currentPosition));
-        setRecordTime(time.substring(0, 5));
-      });
-    }
+    updateFicha(campo, proximo.join(', '))
   }
 
-  async function handleTogglePlay() {
-    if (!audio?.uri) return;
-
-    if (isPlaying) {
-      await audioRecorderPlayer.stopPlayer();
-      audioRecorderPlayer.removePlayBackListener();
-      setIsPlaying(false);
-    } else {
-      setIsPlaying(true);
-      await audioRecorderPlayer.startPlayer(audio.uri);
-      audioRecorderPlayer.addPlayBackListener((e) => {
-        if (e.currentPosition >= e.duration) {
-          audioRecorderPlayer.stopPlayer();
-          setIsPlaying(false);
-        }
-      });
-    }
-  }
-
-  function handleRemoveAudio() {
-    if (isPlaying) {
-      audioRecorderPlayer.stopPlayer();
-      setIsPlaying(false);
-    }
-    setAudio(null);
-    setRecordTime('00:00');
-  }
-
-  function buildEventoPayload(): CriarEventoPayload {
-    const observacoes = notes.trim() || null;
-    const base = { capturado_em: capturadoEm.toISOString(), latitude, longitude, observacoes };
-
-    if (!isCollection) return { ...base, tipo: 'DIARIO' };
-
-    return {
-      ...base,
-      tipo: 'COLETA',
-      coleta: { familia: family, nome_cientifico: scientificName.trim() || null },
-    };
-  }
-
-  function buildEvidencias(): CriarEvidenciaPayload[] {
-    const evidencias: CriarEvidenciaPayload[] = [];
-
-    if (image) {
-      evidencias.push({
-        arquivo: { uri: image.uri, name: image.name, type: image.type },
-        nome: image.name,
-        capturado_em: image.capturadoEm,
-      });
-    }
-
-    if (audio) {
-      // O gravador salva AAC em container MP4 (sound.mp4 no Android, sound.m4a no iOS).
-      const extensao = audio.uri.endsWith('.m4a') ? 'm4a' : 'mp4';
-      const nome = `audio_${Date.now()}.${extensao}`;
-      evidencias.push({
-        arquivo: { uri: audio.uri, name: nome, type: 'audio/mp4' },
-        nome,
-        capturado_em: audio.capturadoEm,
-      });
-    }
-
-    return evidencias;
-  }
+  const opcoesDoModal = campoAberto ? FICHA_MULTIPLA_ESCOLHA[campoAberto] : []
+  const rotuloDoModal = campoAberto
+    ? FICHA_FIELDS.find(([campo]) => campo === campoAberto)?.[1] ?? ''
+    : ''
+  const selecionadasNoModal = campoAberto ? ficha[campoAberto].split(', ').filter(Boolean) : []
 
   async function handleSave() {
-    if (!expedicaoId || isSaving || isRecording) return;
+    if (saveDisabled) return
+    setSaveError(null)
 
-    if (isPlaying) {
-      await audioRecorderPlayer.stopPlayer();
-      audioRecorderPlayer.removePlayBackListener();
-      setIsPlaying(false);
+    const base = {
+      data_captura: agora.toISOString(),
+      latitude: localizacao.coords?.latitude ?? null,
+      longitude: localizacao.coords?.longitude ?? null,
+      altitude: localizacao.coords?.altitude ?? null,
+      observacoes: notes.trim() || null,
     }
 
-    setSaveError(null);
+    const eventoPayload: CriarEventoPayload = isCollection
+      ? {
+          ...base,
+          tipo: 'COLETA',
+          numero_coleta: numero || null,
+          coleta: {
+            ...fichaParaPayload(fichaComObservacoesMultiplas(ficha, observacoesMultiplas)),
+            familia: family.trim() || null,
+          },
+        }
+      : { ...base, tipo: 'DIARIO' }
+
     try {
-      await registrar(buildEventoPayload(), buildEvidencias());
+      await registrar(eventoPayload, pendentes.map(item => item.payload))
+      await rascunho.descartar()
+      toast({
+        tipo: 'sucesso',
+        titulo: isCollection ? 'Coleta salva' : 'Diário salvo',
+        mensagem: 'Salvo no aparelho. Será enviado no próximo "Sincronizar".',
+      })
+      navigation.goBack()
     } catch (error) {
-      setSaveError(getUserFacingHttpError(error, 'Não foi possível salvar o registro. Tente novamente.'));
-      return;
+      setSaveError(getUserFacingHttpError(error, 'Erro ao salvar o registro no aparelho.'))
     }
-
-    Alert.alert(
-      isCollection ? 'Coleta salva' : 'Diário salvo',
-      'O registro foi salvo na expedição.',
-      [{ text: 'OK', onPress: () => navigation.popTo('ExpeditionDetail', { expeditionId: String(expedicaoId) }) }],
-      { cancelable: false },
-    );
   }
 
   return (
@@ -246,146 +228,170 @@ export function Formulario({ expedicaoId, mode, latitude, longitude }: Formulari
           <View style={{ width: 22 }} />
         </View>
 
+        <OfflineBanner />
+
         <View style={styles.metaRow}>
-          <View style={styles.metaChip}>
-            <MapPin size={14} color={colors.textSecondary} />
-            <Text style={styles.metaText}>{latitude.toFixed(4)}, {longitude.toFixed(4)}</Text>
-          </View>
+          <LocalizacaoChip localizacao={localizacao} />
           <View style={styles.metaChip}>
             <Clock size={14} color={colors.textSecondary} />
             <Text style={styles.metaText}>{dataHora}</Text>
           </View>
         </View>
 
+        {recuperado ? <RascunhoBanner onDescartar={handleDescartarRascunho} /> : null}
+
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.formCard}>
-            {isCollection && (
+            {isCollection ? (
               <>
-                <Text style={styles.labelFirst}>Família</Text>
-                <TouchableOpacity
-                  style={styles.selectInput}
-                  onPress={() => setIsFamilyListVisible(v => !v)}
-                  accessibilityRole="button"
-                >
-                  <Text style={family ? styles.selectValue : styles.selectPlaceholder}>
-                    {family ?? 'Selecione a família'}
-                  </Text>
-                  <ChevronDown color={colors.textSecondary} size={18} />
-                </TouchableOpacity>
-                {isFamilyListVisible && (
-                  <View style={styles.optionsList}>
-                    {FAMILY_OPTIONS.map(option => (
-                      <TouchableOpacity
-                        key={option}
-                        style={styles.option}
-                        onPress={() => {
-                          setFamily(option);
-                          setIsFamilyListVisible(false);
-                        }}
-                      >
-                        <Text style={styles.optionText}>{option}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-
-                <Text style={styles.label}>Nome científico</Text>
+                <Text style={styles.labelFirst}>Nº da coleta</Text>
                 <TextInput
                   style={styles.input}
-                  value={scientificName}
-                  onChangeText={setScientificName}
-                  placeholder="Ex.: Euterpe edulis"
-                  placeholderTextColor={colors.placeholder}
-                  autoCapitalize="none"
-                  autoCorrect={false}
+                  value={collectionIdentifier}
+                  onChangeText={value => setCollectionIdentifier(value.replace(/\D/g, ''))}
+                  keyboardType="number-pad"
                 />
-              </>
-            )}
+                {juntaComExistente ? (
+                  <Text style={styles.fieldHint}>
+                    Já existe a coleta Nº {numero} nesta expedição: este registro e as evidências serão juntados a ela.
+                  </Text>
+                ) : null}
 
-            {/* no diário, a anotação é o primeiro campo */}
-            <Text style={isCollection ? styles.label : styles.labelFirst}>{config.notesLabel}</Text>
+                <Text style={styles.label}>Família</Text>
+                <FamiliaInput value={family} onChangeText={setFamily} disabled={isSaving} />
+
+                <Text style={styles.label}>Local da coleta</Text>
+                <TextInput
+                  style={styles.input}
+                  value={ficha.referencia_local}
+                  onChangeText={value => updateFicha('referencia_local', value)}
+                  placeholder="Ex.: Trilha da cachoeira"
+                  placeholderTextColor={colors.placeholder}
+                />
+
+              </>
+            ) : null}
+
+            <Text style={isCollection ? styles.label : styles.labelFirst}>Multimídia</Text>
+            <Multimidia state={multimidia} disabled={isSaving} />
+
+            {isCollection ? (
+              <>
+                <TouchableOpacity
+                  style={styles.detalhesToggle}
+                  onPress={() => setDetalhesAbertos(aberto => !aberto)}
+                >
+                  <Text style={styles.detalhesToggleText}>Mais detalhes da coleta</Text>
+                  {detalhesAbertos
+                    ? <ChevronUp size={18} color={colors.accent} />
+                    : <ChevronDown size={18} color={colors.accent} />}
+                </TouchableOpacity>
+
+                {detalhesAbertos ? CAMPOS_DETALHE.map(([field, label, placeholder]) => {
+                  const opcoes = FICHA_MULTIPLA_ESCOLHA[field as CampoMultiplaEscolha]
+                  if (!opcoes) {
+                    return (
+                      <View key={field}>
+                        <Text style={styles.label}>{label}</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={ficha[field]}
+                          onChangeText={value => updateFicha(field, value)}
+                          placeholder={placeholder}
+                          placeholderTextColor={colors.placeholder}
+                        />
+                      </View>
+                    )
+                  }
+
+                  const campo = field as CampoMultiplaEscolha
+                  const selecionadas = ficha[campo].split(', ').filter(Boolean)
+                  const rotuloObservacao = ROTULO_OBSERVACAO_MULTIPLA[campo]
+                  return (
+                    <View key={field}>
+                      <Text style={styles.label}>{label}</Text>
+                      <TouchableOpacity style={styles.selectInput} onPress={() => setCampoAberto(campo)}>
+                        <Text
+                          style={selecionadas.length ? styles.selectValue : styles.selectPlaceholder}
+                          numberOfLines={1}
+                        >
+                          {selecionadas.length
+                            ? selecionadas.join(', ')
+                            : 'Selecionar uma ou mais opções'}
+                        </Text>
+                        <ChevronDown color={colors.textSecondary} size={18} />
+                      </TouchableOpacity>
+                      {rotuloObservacao ? (
+                        <TextInput
+                          style={[styles.input, styles.conditionalInput]}
+                          value={observacoesMultiplas[campo] ?? ''}
+                          onChangeText={value => setObservacoesMultiplas(atual => ({ ...atual, [campo]: value }))}
+                          placeholder={rotuloObservacao}
+                          placeholderTextColor={colors.placeholder}
+                        />
+                      ) : null}
+                    </View>
+                  )
+                }) : null}
+              </>
+            ) : null}
+
+            <Text style={styles.label}>{isCollection ? 'Observações' : 'Descrição'}</Text>
             <TextInput
-              style={styles.textArea}
+              style={[styles.textArea, !isCollection && styles.diaryTextArea]}
               value={notes}
               onChangeText={setNotes}
-              placeholder={config.notesPlaceholder}
+              placeholder={config.descriptionPlaceholder}
               placeholderTextColor={colors.placeholder}
               multiline
-              numberOfLines={5}
+              numberOfLines={isCollection ? 5 : 10}
             />
 
-            <Text style={styles.label}>Multimídia</Text>
-            <View style={styles.mediaRow}>
-              <TouchableOpacity style={styles.mediaButton} onPress={handleAddImage}>
-                <ImageIcon size={16} color={colors.onAccent} />
-                <Text style={styles.mediaButtonText}>Imagem</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.mediaButton, isRecording && { backgroundColor: '#d32f2f' }]}
-                onPress={handleToggleRecord}
-                disabled={!!audio && !isRecording}
-              >
-                <Mic size={16} color={colors.onAccent} />
-                <Text style={styles.mediaButtonText}>
-                  {isRecording ? `Gravando... ${recordTime}` : 'Áudio'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {imageError ? <Text style={styles.mediaError}>{imageError}</Text> : null}
-
-            {image && (
-              <View style={styles.previewRow}>
-                <Image source={{ uri: image.uri }} style={styles.previewImage} />
-                <View style={styles.previewInfo}>
-                  <Text style={styles.previewName} numberOfLines={1}>{image.name}</Text>
-                  <Text style={styles.previewMeta}>{image.sizeLabel}</Text>
-                </View>
-                <TouchableOpacity onPress={() => setImage(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <X size={16} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {audio && (
-              <View style={styles.previewRow}>
-                <TouchableOpacity style={styles.audioPlayIcon} onPress={handleTogglePlay} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  {isPlaying ? <Pause size={14} color={colors.textSecondary} /> : <Play size={14} color={colors.textSecondary} />}
-                </TouchableOpacity>
-                <View style={styles.waveform}>
-                  {[8, 14, 6, 16, 10, 18, 9, 13].map((height, index) => (
-                    <View key={index} style={[styles.waveformBar, { height, backgroundColor: isPlaying ? '#0288d1' : colors.placeholder }]} />
-                  ))}
-                </View>
-                <Text style={styles.previewMeta}>{audio.durationLabel}</Text>
-                <TouchableOpacity onPress={handleRemoveAudio} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <X size={16} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            )}
+            {saveError ? <Text style={styles.mediaError}>{saveError}</Text> : null}
           </View>
         </ScrollView>
 
-        {!expedicaoId ? (
-          <Text style={styles.saveError}>Abra o formulário a partir de uma expedição para poder salvar.</Text>
-        ) : saveError ? (
-          <Text style={styles.saveError}>{saveError}</Text>
-        ) : null}
-
-        <TouchableOpacity
-          style={[styles.saveButton, (!expedicaoId || isSaving || isRecording) && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={!expedicaoId || isSaving || isRecording}
+        <Modal
+          visible={!!campoAberto}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setCampoAberto(null)}
         >
-          {isSaving ? (
-            <ActivityIndicator color={colors.onAccent} />
-          ) : (
-            <Check size={18} color={colors.onAccent} />
-          )}
+          <View style={styles.modalOverlay}>
+            <View style={styles.optionModal}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{rotuloDoModal}</Text>
+                <TouchableOpacity onPress={() => setCampoAberto(null)}>
+                  <Text style={styles.modalClose}>Concluído</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.modalHint}>Selecione uma ou mais opções.</Text>
+              <ScrollView contentContainerStyle={styles.modalOptions}>
+                {opcoesDoModal.map(opcao => {
+                  const selecionada = selecionadasNoModal.includes(opcao)
+                  return (
+                    <TouchableOpacity
+                      key={opcao}
+                      style={[styles.modalOption, selecionada && styles.modalOptionSelected]}
+                      onPress={() => campoAberto && alternarOpcao(campoAberto, opcao)}
+                    >
+                      <View style={[styles.checkbox, selecionada && styles.checkboxSelected]}>
+                        {selecionada ? <Check size={14} color={colors.onAccent} /> : null}
+                      </View>
+                      <Text style={styles.modalOptionText}>{opcao}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        <TouchableOpacity style={[styles.saveButton, saveDisabled && { opacity: 0.7 }]} onPress={handleSave} disabled={saveDisabled}>
+          {isSaving ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Check size={18} color="#FFFFFF" />}
           <Text style={styles.saveButtonText}>{isSaving ? 'Salvando...' : config.saveLabel}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
-  );
+  )
 }

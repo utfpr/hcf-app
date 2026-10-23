@@ -5,7 +5,11 @@ export interface LoginRequest {
   senha: string
 }
 
+// Espelha POST /auth/login e /auth/refresh do hcf-api (sessões com refresh token)
 export interface LoginResponse {
-  token: string
-  usuario: Usuario
+  access_token: string
+  refresh_token: string
+  token_type: 'Bearer'
+  expires_in: number
+  user: Usuario
 }

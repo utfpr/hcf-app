@@ -1,8 +1,13 @@
 import {
+  MaterialDesignIcons,
+  MaterialDesignIconsIconName,
+} from '@react-native-vector-icons/material-design-icons'
+import {
   ActivityIndicator,
   StyleSheet,
   Text,
   TouchableOpacity,
+  View,
 } from 'react-native'
 
 export interface ButtonProps {
@@ -10,6 +15,8 @@ export interface ButtonProps {
   loading?: boolean
   disabled?: boolean
   variant?: 'primary' | 'secondary'
+  /** Ícone exibido à esquerda do título (nomes em https://pictogrammers.com/library/mdi/) */
+  icon?: MaterialDesignIconsIconName
   onPress?: () => void
 }
 
@@ -18,9 +25,11 @@ export function Button({
   loading = false,
   disabled,
   variant = 'primary',
+  icon,
   onPress,
 }: ButtonProps) {
   const isDisabled = disabled || loading
+  const contentColor = variant === 'secondary' ? '#00B14F' : '#FFFFFF'
 
   return (
     <TouchableOpacity
@@ -35,13 +44,14 @@ export function Button({
       {loading ? (
         <ActivityIndicator color="#FFFFFF" size="small" />
       ) : (
-        <Text
-          style={[
-            styles.text,
-            variant === 'secondary' && styles.textSecondary,
-          ]}>
-          {title}
-        </Text>
+        <View style={styles.content}>
+          {icon ? (
+            <MaterialDesignIcons name={icon} size={20} color={contentColor} style={styles.icon} />
+          ) : null}
+          <Text style={[styles.text, { color: contentColor }]}>
+            {title}
+          </Text>
+        </View>
       )}
     </TouchableOpacity>
   )
@@ -64,13 +74,16 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  icon: {
+    marginRight: 8,
+  },
   text: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.3,
-  },
-  textSecondary: {
-    color: '#00B14F',
   },
 })
