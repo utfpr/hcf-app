@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -11,15 +10,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RefreshCw } from 'lucide-react-native';
 
 import { OfflineBanner } from '@/components/OfflineBanner';
-import { useFeedback } from '@/components/feedback/FeedbackContext';
 import { useAuth } from '@/contexts/Auth/useAuth';
 import { getHttpErrorMessage, isNetworkError } from '@/libraries/http/httpError';
 import { RootStackParamList } from '@/navigation/types';
 import { colors } from '@/theme/colors';
-import { useSync } from '@/features/sync/hooks/useSync';
 import { NavigationMenu } from '@/features/navigation/NavigationMenu';
 
 import { ActiveExpeditionsList } from './components/ActiveExpeditionsList';
@@ -50,21 +46,6 @@ export function HomeScreen() {
     error,
     refresh,
   } = useHomeExpeditions();
-  const { isSyncing, syncAll, lastSyncFormatted, pendentes, progressoTexto } = useSync();
-  const { toast } = useFeedback();
-
-  async function handleSyncAll() {
-    try {
-      const result = await syncAll();
-      if (result.success) {
-        toast({ tipo: 'sucesso', titulo: 'Sincronização concluída', mensagem: 'Todos os dados foram sincronizados com sucesso.' });
-      } else {
-        toast({ tipo: 'erro', titulo: 'Sincronização', mensagem: result.message ?? 'Não foi possível sincronizar os dados.' });
-      }
-    } catch {
-      toast({ tipo: 'erro', titulo: 'Sincronização', mensagem: 'Ocorreu um erro ao sincronizar os dados.' });
-    }
-  }
 
   function handleExpeditionPress(expedition: Expedition) {
     navigation.navigate('ExpeditionDetail', { expeditionId: expedition.id });
@@ -116,38 +97,6 @@ export function HomeScreen() {
           />
         )}
       >
-        {/* Banner de Sincronização Geral */}
-        <View style={styles.syncCard}>
-          <View style={styles.syncInfo}>
-            <Text style={styles.syncTitle}>Sincronização Geral</Text>
-            <Text style={styles.syncSubtitle}>
-              {isSyncing
-                ? progressoTexto ?? 'Sincronizando dados com o servidor...'
-                : pendentes > 0
-                  ? `${pendentes} item(ns) aguardando envio · Última: ${lastSyncFormatted}`
-                  : `Última sincronização: ${lastSyncFormatted}`}
-            </Text>
-          </View>
-
-          <Pressable
-            style={[styles.syncButton, isSyncing && styles.syncButtonDisabled]}
-            onPress={handleSyncAll}
-            disabled={isSyncing}
-            accessibilityRole="button"
-            accessibilityLabel="Sincronizar todos os dados"
-            testID="home-sync-all-button"
-          >
-            {isSyncing ? (
-              <ActivityIndicator size="small" color={colors.onAccent} />
-            ) : (
-              <RefreshCw size={15} color={colors.onAccent} />
-            )}
-            <Text style={styles.syncButtonText}>
-              {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
-            </Text>
-          </Pressable>
-        </View>
-
         {error ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{getLoadErrorMessage(error)}</Text>
@@ -277,60 +226,6 @@ const styles = StyleSheet.create({
 
     fontSize: 16,
     fontWeight: '500',
-  },
-
-  /* =========================
-     SINCRONIZAÇÃO
-  ========================== */
-
-  syncCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.cardBackground,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 20,
-    gap: 12,
-  },
-
-  syncInfo: {
-    flex: 1,
-    gap: 4,
-  },
-
-  syncTitle: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-
-  syncSubtitle: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-
-  syncButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.accent,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-  },
-
-  syncButtonDisabled: {
-    opacity: 0.6,
-  },
-
-  syncButtonText: {
-    color: colors.onAccent,
-    fontSize: 13,
-    fontWeight: '600',
   },
 
   /* =========================
