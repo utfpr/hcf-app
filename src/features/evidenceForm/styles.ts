@@ -74,14 +74,6 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.inputText,
   },
-  fieldRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  fieldColumn: {
-    flex: 1,
-    minWidth: 0,
-  },
   selectInput: {
     backgroundColor: colors.inputBackground,
     borderRadius: 10,

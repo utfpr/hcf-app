@@ -257,22 +257,17 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
                   </Text>
                 ) : null}
 
-                <View style={styles.fieldRow}>
-                  <View style={styles.fieldColumn}>
-                    <Text style={styles.label}>Família</Text>
-                    <FamiliaInput value={family} onChangeText={setFamily} disabled={isSaving} />
-                  </View>
-                  <View style={styles.fieldColumn}>
-                    <Text style={styles.label}>Local da coleta</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={ficha.referencia_local}
-                      onChangeText={value => updateFicha('referencia_local', value)}
-                      placeholder="Ex.: Trilha da cachoeira"
-                      placeholderTextColor={colors.placeholder}
-                    />
-                  </View>
-                </View>
+                <Text style={styles.label}>Família</Text>
+                <FamiliaInput value={family} onChangeText={setFamily} disabled={isSaving} />
+
+                <Text style={styles.label}>Local da coleta</Text>
+                <TextInput
+                  style={styles.input}
+                  value={ficha.referencia_local}
+                  onChangeText={value => updateFicha('referencia_local', value)}
+                  placeholder="Ex.: Trilha da cachoeira"
+                  placeholderTextColor={colors.placeholder}
+                />
 
               </>
             ) : null}
