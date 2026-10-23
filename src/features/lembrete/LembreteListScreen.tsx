@@ -9,7 +9,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
-import { ArrowLeft } from 'lucide-react-native'
+import { ArrowLeft, CalendarDays } from 'lucide-react-native'
 
 import { FiltroChips, type OpcaoFiltro } from '@/components/FiltroChips'
 import { OfflineBanner } from '@/components/OfflineBanner'
