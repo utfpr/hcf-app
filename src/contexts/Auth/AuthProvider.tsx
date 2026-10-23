@@ -24,8 +24,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false)
   const [sessaoExpirada, setSessaoExpirada] = useState(false)
   // Lido pelos handlers do HttpClient, que não re-renderizam
-  const refreshToken = useRef<string | undefined>()
-  const userRef = useRef<Usuario | undefined>()
+  const refreshToken = useRef<string | undefined>(undefined)
+  const userRef = useRef<Usuario | undefined>(undefined)
 
   const loggedIn = Boolean(token) && Boolean(user?.id)
 
