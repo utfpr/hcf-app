@@ -73,6 +73,21 @@ When you want to forcefully reload, for example to reset the state of your app, 
 - **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
 - **iOS**: Press <kbd>R</kbd> in iOS Simulator.
 
+## APK de release com a API de desenvolvimento da UTFPR
+
+A API de dev fica em `https://api.dev.hcf.cm.utfpr.edu.br` (HTTPS, então funciona em qualquer rede, sem mexer no `network_security_config.xml`).
+
+1. Crie um `.env.dev` (fica fora do git) com `API_BASE_URL=https://api.dev.hcf.cm.utfpr.edu.br` (sem `/api`: o servidor já prefixa).
+2. Gere o APK com esse arquivo:
+
+   ```sh
+   rm -rf /tmp/metro-*
+   cd android
+   ENVFILE=.env.dev ./gradlew :app:createBundleReleaseJsAndAssets --rerun assembleRelease -PreactNativeArchitectures=arm64-v8a
+   ```
+
+   O `--rerun` é necessário porque o Gradle não vê a troca de `ENVFILE` e, sem ele, reaproveita o bundle JS do build anterior (com a URL antiga).
+
 ## APK de release com o back no PC (cabo USB)
 
 O APK de release só aceita HTTP sem TLS para `localhost`, `127.0.0.1` e `10.0.2.2` (ver `android/app/src/release/res/xml/network_security_config.xml`); qualquer outro endereço precisa de HTTPS.

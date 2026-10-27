@@ -70,6 +70,7 @@ yarn-error.log
 # Env
 .env
 .env.release
+.env.dev
 
 # Yarn
 .yarn/*
