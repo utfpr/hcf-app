@@ -15,7 +15,7 @@ import { PasswordInput } from '@/components/forms/PasswordInput'
 import { TextInput } from '@/components/forms/TextInput'
 import { colors } from '@/theme/colors'
 
-import logo from '@/assets/images/logoherbario.png'
+import logo from '@/assets/images/logo_branca.png'
 import { LoginFormValues, useLoginScreen } from './hooks/useLoginScreen'
 
 export function LoginScreen() {
