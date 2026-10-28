@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+
+    <!-- Endereços do back rodando no PC da equipe, sem HTTPS. Para outro endereço,
+         inclua-o aqui além de mudar o API_BASE_URL (ver README). -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Back no PC com o celular no cabo: adb reverse tcp:3010 tcp:3010 -->
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <!-- O PC visto de dentro do emulador -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- O PC quando cria um hotspot Wi-Fi (NetworkManager): celulares sem cabo -->
+        <domain includeSubdomains="false">10.42.0.1</domain>
+    </domain-config>
+</network-security-config>

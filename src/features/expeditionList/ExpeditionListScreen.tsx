@@ -10,27 +10,52 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { Calendar, Menu, MapPin, Plus, ChevronLeft, ChevronRight } from 'lucide-react-native'
+import { Menu } from 'lucide-react-native'
 
+import { CampoBusca } from '@/components/CampoBusca'
+import { FiltroChips, type OpcaoFiltro } from '@/components/FiltroChips'
+import { OfflineBanner } from '@/components/OfflineBanner'
+import { useAuth } from '@/contexts/Auth/useAuth'
+import type { ExpeditionStatus } from '@/features/home/types'
 import { RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
 
-// Importando os hooks e utils reais que o Bruno e o Eduardo fizeram!
-import { useExpeditions } from '../expedition/hooks/useExpeditions'
-import { ExpedicaoListItem } from '../expedition/types'
-import { formatDate, getStatus } from '../expedition/utils'
+import { useExpeditionsInfinite } from '../expedition/hooks/useExpeditionsInfinite'
+import { ExpeditionCard } from '../home/components/ExpeditionCard'
+import { toApiDate, toExpedition } from '../home/mapExpeditions'
+import { NavigationMenu } from '../navigation/NavigationMenu'
 
 type ExpeditionListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExpeditionList'>
 
+// paddingVertical (12 + 12) + ícone do menu (24)
+const HEADER_HEIGHT = 48
+
+type FiltroStatus = 'todas' | ExpeditionStatus
+
+const OPCOES_STATUS: ReadonlyArray<OpcaoFiltro<FiltroStatus>> = [
+  { valor: 'todas', rotulo: 'Todas' },
+  { valor: 'Em andamento', rotulo: 'Em andamento' },
+  { valor: 'Planejada', rotulo: 'Planejadas' },
+  { valor: 'Finalizada', rotulo: 'Finalizadas' },
+]
+
 export function ExpeditionListScreen() {
   const navigation = useNavigation<ExpeditionListNavigationProp>()
+  const { user } = useAuth()
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-  // 1. Chamando o hook do backend!
-  const { data, error, loading, refresh, page, hasNextPage, nextPage, previousPage } = useExpeditions()
+  const [busca, setBusca] = useState('')
+  const [status, setStatus] = useState<FiltroStatus>('todas')
+  const filtrando = busca.trim() !== '' || status !== 'todas'
+  const { itens, error, loading, loadingMore, loadMore, refresh, syncStatusDe } = useExpeditionsInfinite({
+    busca,
+    status: status === 'todas' ? null : status,
+  })
+  const today = toApiDate(new Date())
 
-  // 2. Componentes de Loading e Erro
+  // Componentes de Loading e Erro
   function renderContent() {
-    if (loading && !data) {
+    if (loading && itens.length === 0) {
       return (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
@@ -38,7 +63,7 @@ export function ExpeditionListScreen() {
       )
     }
 
-    if (error && !data) {
+    if (error && itens.length === 0) {
       return (
         <View style={styles.centerContainer}>
           <Text style={styles.emptyText}>Não foi possível carregar as expedições.</Text>
@@ -49,44 +74,37 @@ export function ExpeditionListScreen() {
       )
     }
 
-    if (data?.itens.length === 0) {
+    if (!loading && itens.length === 0) {
       return (
         <View style={styles.centerContainer}>
-          <Text style={styles.emptyText}>Nenhuma expedição encontrada.</Text>
+          <Text style={styles.emptyText}>
+            {filtrando ? 'Nenhuma expedição com esse filtro.' : 'Nenhuma expedição encontrada.'}
+          </Text>
         </View>
       )
     }
 
     return (
       <FlatList
-        data={data?.itens}
+        data={itens}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.content}
-        numColumns={2} // Isso substitui aquela função complexa 'chunkIntoRows' do mock!
+        numColumns={2}
         columnWrapperStyle={styles.row}
         ListHeaderComponent={<Text style={styles.title}>Expedições</Text>}
         refreshing={loading}
         onRefresh={refresh}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
         renderItem={({ item }) => (
           <ExpeditionCard
-            expedition={item}
-            // 5. Conectando a navegação para a tela de detalhes que você já arrumou!
-            onPress={() => navigation.navigate('ExpeditionDetail', { expeditionId: String(item.id) })}
+            expedition={toExpedition(item, today, syncStatusDe(item.id))}
+            onPress={expedition => navigation.navigate('ExpeditionDetail', { expeditionId: expedition.id })}
           />
         )}
-        // 4. Controles de paginação no final da lista
+        // Indicador de carregamento do scroll infinito
         ListFooterComponent={
-          data && data.total > 0 ? (
-            <View style={styles.paginationContainer}>
-              <TouchableOpacity disabled={page === 1} onPress={previousPage} style={[styles.pageButton, page === 1 && styles.pageButtonDisabled]}>
-                <ChevronLeft color={page === 1 ? colors.textSecondary : colors.onAccent} />
-              </TouchableOpacity>
-              <Text style={styles.pageText}>Página {page}</Text>
-              <TouchableOpacity disabled={!hasNextPage} onPress={nextPage} style={[styles.pageButton, !hasNextPage && styles.pageButtonDisabled]}>
-                <ChevronRight color={!hasNextPage ? colors.textSecondary : colors.onAccent} />
-              </TouchableOpacity>
-            </View>
-          ) : null
+          loadingMore ? <ActivityIndicator style={styles.footerLoader} color={colors.accent} /> : null
         }
       />
     )
@@ -95,57 +113,28 @@ export function ExpeditionListScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity hitSlop={12}>
+        <TouchableOpacity hitSlop={12} onPress={() => setIsMenuOpen(open => !open)}>
           <Menu size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.userName}>Dr. Silva</Text>
+        <Text style={styles.userName} numberOfLines={1}>{user?.nome}</Text>
+      </View>
+
+      <OfflineBanner />
+
+      <View style={styles.filtros}>
+        <CampoBusca value={busca} onChangeText={setBusca} placeholder="Buscar por nome ou cidade" />
+        <FiltroChips opcoes={OPCOES_STATUS} selecionado={status} onSelecionar={setStatus} />
       </View>
 
       {renderContent()}
 
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.85}
-        // Aqui também já leva pro form para criar do zero (passando apenas a coordenada por enquanto)
-        onPress={() => navigation.navigate('Formulario', { latitude: -25.4284, longitude: -49.2733 })}
-      >
-        <Plus size={28} color={colors.onAccent} />
-      </TouchableOpacity>
+      <NavigationMenu
+        visible={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        current="ExpeditionList"
+        headerHeight={HEADER_HEIGHT}
+      />
     </SafeAreaView>
-  )
-}
-
-interface ExpeditionCardProps {
-  expedition: ExpedicaoListItem
-  onPress: () => void
-}
-
-function ExpeditionCard({ expedition, onPress }: ExpeditionCardProps) {
-  // 3. Tratando os dados reais
-  const status = getStatus(expedition.data_inicio, expedition.data_fim)
-  const title = expedition.descricao ?? `Expedição #${expedition.id}`
-
-  return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
-      <Text style={styles.cardName} numberOfLines={2}>{title}</Text>
-
-      <View style={styles.cardRow}>
-        <Calendar size={13} color={colors.textSecondary} />
-        <Text style={styles.cardRowText}>{formatDate(expedition.data_inicio)}</Text>
-      </View>
-
-      <View style={styles.cardRow}>
-        <MapPin size={13} color={colors.textSecondary} />
-        <Text style={styles.cardRowText} numberOfLines={1}>
-          {/* Como a API só retorna o ID da cidade, deixamos um fallback por enquanto */}
-          Cidade ID: {expedition.cidade_id}
-        </Text>
-      </View>
-
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>{status}</Text>
-      </View>
-    </TouchableOpacity>
   )
 }
 
@@ -162,8 +151,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   userName: {
+    flexShrink: 1,
+    marginLeft: 16,
     color: colors.textPrimary,
     fontSize: 14,
+  },
+  filtros: {
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   content: {
     paddingHorizontal: 16,
@@ -178,54 +174,7 @@ const styles = StyleSheet.create({
   },
   row: {
     justifyContent: 'space-between',
-  },
-  card: {
-    width: '48%',
-    backgroundColor: colors.cardBackground,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    padding: 12,
     marginBottom: 12,
-  },
-  cardName: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 4,
-  },
-  cardRowText: {
-    color: colors.textSecondary,
-    fontSize: 12,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 4,
-    paddingVertical: 3,
-    paddingHorizontal: 7,
-    marginTop: 6,
-  },
-  badgeText: {
-    color: colors.accent,
-    fontSize: 10,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 28,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   centerContainer: {
     flex: 1,
@@ -251,24 +200,8 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 14,
   },
-  paginationContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
-    gap: 16,
-  },
-  pageButton: {
-    backgroundColor: colors.surfaceAlt,
-    padding: 8,
-    borderRadius: 8,
-  },
-  pageButtonDisabled: {
-    opacity: 0.5,
-  },
-  pageText: {
-    color: colors.textPrimary,
-    fontSize: 14,
+  footerLoader: {
+    marginVertical: 20,
   },
 })
+

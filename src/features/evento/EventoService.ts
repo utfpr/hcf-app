@@ -1,3 +1,4 @@
+import type { Paginacao } from '@/features/expedition/types'
 import type { HttpClient } from '@/libraries/http/HttpClient'
 
 import type {
@@ -5,7 +6,11 @@ import type {
   CriarEvidenciaPayload,
   Evento,
   Evidencia,
+  RegistroExpedicao,
 } from './types'
+
+// A tela de detalhes mostra todos os registros de uma vez; acima disso será preciso paginar
+const LIMITE_REGISTROS = 100
 
 export interface RegistroSalvo {
   evento: Evento
@@ -17,25 +22,50 @@ export class EventoService {
 
   async criar(expedicaoId: number, payload: CriarEventoPayload): Promise<Evento> {
     const response = await this.httpClient.post<Evento>(
-      `/v2/expedicoes/${expedicaoId}/eventos`,
+      `/v1/expedicoes/${expedicaoId}/eventos`,
       payload,
     )
     return response.data
   }
 
+  async listar(expedicaoId: number): Promise<Paginacao<Evento>> {
+    const response = await this.httpClient.get<Paginacao<Evento>>(
+      `/v1/expedicoes/${expedicaoId}/eventos`,
+      { limite: LIMITE_REGISTROS },
+    )
+    return response.data
+  }
+
+  async listarEvidencias(eventoId: number): Promise<Evidencia[]> {
+    const response = await this.httpClient.get<Evidencia[]>(`/v1/eventos/${eventoId}/evidencias`)
+    return response.data
+  }
+
+  // Eventos da expedição (mais recentes primeiro) com as evidências de cada um
+  async listarRegistros(expedicaoId: number): Promise<RegistroExpedicao[]> {
+    const { itens } = await this.listar(expedicaoId)
+    return Promise.all(
+      itens.map(async evento => ({
+        ...evento,
+        evidencias: await this.listarEvidencias(evento.id),
+      })),
+    )
+  }
+
   async excluir(eventoId: number): Promise<void> {
-    await this.httpClient.delete<void>(`/v2/eventos/${eventoId}`)
+    await this.httpClient.delete<void>(`/v1/eventos/${eventoId}`)
   }
 
   async enviarEvidencia(eventoId: number, payload: CriarEvidenciaPayload): Promise<Evidencia> {
     const form = new FormData()
     form.append('nome', payload.nome)
-    form.append('capturado_em', payload.capturado_em)
+    form.append('data_captura', payload.data_captura)
+    if (payload.client_uuid) form.append('client_uuid', payload.client_uuid)
     // O arquivo vai por último: o multer da API lê os campos de texto antes do arquivo.
     form.append('arquivo', payload.arquivo as unknown as Blob)
 
     const response = await this.httpClient.postForm<Evidencia>(
-      `/v2/eventos/${eventoId}/evidencias`,
+      `/v1/eventos/${eventoId}/evidencias`,
       form,
     )
     return response.data
@@ -61,5 +91,20 @@ export class EventoService {
       await this.excluir(evento.id).catch(() => {})
       throw error
     }
+  }
+    // Anexa evidências a um evento que já existe. Diferente do registrar(), nunca
+  // exclui o evento se um envio falhar: ele já tem dados salvos. O callback avisa
+  // cada envio concluído, para a tela não reenviar essas evidências numa nova tentativa.
+  async adicionarEvidencias(
+    eventoId: number,
+    evidencias: CriarEvidenciaPayload[],
+    onEnviada?: (indice: number) => void,
+  ): Promise<Evidencia[]> {
+    const enviadas: Evidencia[] = []
+    for (let i = 0; i < evidencias.length; i++) {
+      enviadas.push(await this.enviarEvidencia(eventoId, evidencias[i]))
+      onEnviada?.(i)
+    }
+    return enviadas
   }
 }

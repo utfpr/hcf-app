@@ -16,8 +16,33 @@ export interface Expedicao {
 }
 
 export interface ExpedicaoListItem extends Expedicao {
+  cidade_nome: string | null
+  estado_sigla: string | null
   participantes: ParticipanteExpedicao[]
   rotas: number[]
+}
+
+// GET /v1/expedicoes/:id devolve a equipe e as rotas, mas não o nome da cidade
+export interface ExpedicaoDetalhe extends Expedicao {
+  participantes: ParticipanteExpedicao[]
+  rotas: RotaExpedicao[]
+}
+
+export interface LocalColeta {
+  id: number
+  descricao: string | null
+}
+
+export interface RotaExpedicao {
+  cidade_id: number
+  ordem: number
+  nome_cidade: string
+  // id do estado
+  estado: string | number | null
+  // Ausentes num detalhe salvo no aparelho antes da API devolvê-los
+  estado_nome?: string | null
+  estado_sigla?: string | null
+  locais_coleta: LocalColeta[]
 }
 
 export interface Paginacao<T> {

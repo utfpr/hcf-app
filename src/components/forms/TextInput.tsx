@@ -1,3 +1,4 @@
+import { MaterialDesignIcons } from '@react-native-vector-icons/material-design-icons'
 import { ReactNode } from 'react'
 import {
   StyleSheet,
@@ -52,10 +53,17 @@ export function TextInput({
         />
         {accessory}
       </View>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <View style={styles.errorRow}>
+          <MaterialDesignIcons name="alert-circle-outline" size={14} color={ERROR_TEXT_COLOR} />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
     </View>
   )
 }
+
+const ERROR_TEXT_COLOR = '#FCA5A5'
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -79,6 +87,7 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: '#EF4444',
+    borderWidth: 2,
   },
   input: {
     flex: 1,
@@ -86,9 +95,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     paddingVertical: 0,
   },
-  errorText: {
-    color: '#FCA5A5',
-    fontSize: 12,
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 4,
+  },
+  errorText: {
+    color: ERROR_TEXT_COLOR,
+    fontSize: 12,
+    marginLeft: 4,
   },
 })

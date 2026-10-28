@@ -92,15 +92,30 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Chave do APK distribuído. Fica fora do repositório; o caminho e as senhas vêm
+        // de ~/.gradle/gradle.properties (HCF_RELEASE_*), que também não vai para o git.
+        if (project.hasProperty('HCF_RELEASE_STORE_FILE')) {
+            release {
+                storeFile file(HCF_RELEASE_STORE_FILE)
+                storePassword HCF_RELEASE_STORE_PASSWORD
+                keyAlias HCF_RELEASE_KEY_ALIAS
+                keyPassword HCF_RELEASE_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Sem a chave de release (ex.: clone de outro integrante), assina com a de
+            // debug para o build não quebrar; esse APK não instala por cima do oficial.
+            if (signingConfigs.findByName('release') != null) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.warn('HCF_RELEASE_* não definidas: APK de release assinado com a chave de debug')
+                signingConfig signingConfigs.debug
+            }
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

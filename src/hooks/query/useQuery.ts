@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import useSWR from 'swr'
 
 interface UseQueryOptions {
@@ -22,11 +23,14 @@ export function useQuery<F extends (...args: any) => any>(
     isValidating, mutate,
   } = useSWR<Awaited<ReturnType<F>>, Error>(deps, fetcher, options)
 
+  // Referência estável: pode ir em dependências de efeitos sem re-executá-los a cada render
+  const refresh = useCallback(() => mutate(), [mutate])
+
   return {
     data,
     error,
     loading: isLoading,
     validating: isValidating,
-    refresh: () => mutate(),
+    refresh,
   }
 }
