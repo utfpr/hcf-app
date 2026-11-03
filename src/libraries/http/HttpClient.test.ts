@@ -43,4 +43,22 @@ describe('HttpClient', () => {
     await expect(client.get('/v1/expedicoes')).rejects.toBeInstanceOf(AxiosError)
     expect(onUnauthorized).not.toHaveBeenCalled()
   })
+
+  it('apaga o Content-Type no multipart para o cliente colocar o boundary', async () => {
+    const accessTokenSource = new MemoryAccessTokenSource()
+    const client = new HttpClient({ baseUrl: 'http://localhost/api', accessTokenSource })
+    let visto: InternalAxiosRequestConfig | undefined
+    ;(client as any).axios.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
+      visto = config
+      return { data: {}, status: 200, statusText: 'OK', headers: {}, config }
+    }
+
+    const form = new FormData()
+    form.append('nome', 'foto.jpg')
+    await client.postForm('/v1/eventos/1/evidencias', form)
+
+    const headers = visto!.headers as { get?: (name: string) => unknown }
+    const contentType = headers.get?.('Content-Type')
+    expect(contentType === false || contentType == null || contentType === '').toBe(true)
+  })
 })

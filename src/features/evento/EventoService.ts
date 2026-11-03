@@ -1,6 +1,7 @@
 import type { Paginacao } from '@/features/expedition/types'
 import type { HttpClient } from '@/libraries/http/HttpClient'
 
+import { montarFormEvidencia } from './formEvidencia'
 import type {
   CriarEventoPayload,
   CriarEvidenciaPayload,
@@ -57,16 +58,9 @@ export class EventoService {
   }
 
   async enviarEvidencia(eventoId: number, payload: CriarEvidenciaPayload): Promise<Evidencia> {
-    const form = new FormData()
-    form.append('nome', payload.nome)
-    form.append('data_captura', payload.data_captura)
-    if (payload.client_uuid) form.append('client_uuid', payload.client_uuid)
-    // O arquivo vai por último: o multer da API lê os campos de texto antes do arquivo.
-    form.append('arquivo', payload.arquivo as unknown as Blob)
-
     const response = await this.httpClient.postForm<Evidencia>(
       `/v1/eventos/${eventoId}/evidencias`,
-      form,
+      montarFormEvidencia(payload),
     )
     return response.data
   }

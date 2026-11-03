@@ -122,9 +122,13 @@ export class HttpClient {
 
   // Envio multipart (upload de arquivos). O timeout é maior porque
   // imagens, áudios e vídeos podem demorar para subir em campo.
+  //
+  // Não defina Content-Type: a instância já manda application/json, e
+  // `multipart/form-data` sem boundary faz o multer ignorar o arquivo.
+  // `false` apaga o header; o XHR do RN coloca o boundary.
   async postForm<T>(url: string, data: FormData): Promise<HttpClientResponse<T>> {
     const response = await this.axios.post<T>(url, data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { 'Content-Type': false },
       timeout: 120000,
     })
     return {
