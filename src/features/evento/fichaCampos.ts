@@ -95,17 +95,19 @@ export function locaisColetaDaExpedicao(rotas: readonly RotaExpedicao[] | undefi
     }))
 }
 
-export function localEstaSelecionado(ficha: FichaValues, local: OpcaoLocalColeta): boolean {
-  return ficha.referencia_local === local.descricao
-    && ficha.municipio === local.municipio
-    && ficha.estado === local.estado
+function semAcento(texto: string): string {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
-/** Escolher um local preenche cidade e estado; tocar de novo no mesmo local limpa os três */
+/** Locais da expedição cujo nome ou cidade contém o termo; termo vazio devolve todos */
+export function buscarLocaisColeta(locais: OpcaoLocalColeta[], termo: string): OpcaoLocalColeta[] {
+  const procurado = semAcento(termo.trim())
+  if (!procurado) return locais
+  return locais.filter(local => semAcento(`${local.descricao} ${local.municipio}`).includes(procurado))
+}
+
+/** Escolher um local sugerido preenche também a cidade e o estado */
 export function escolherLocalColeta(ficha: FichaValues, local: OpcaoLocalColeta): FichaValues {
-  if (localEstaSelecionado(ficha, local)) {
-    return { ...ficha, referencia_local: '', municipio: '', estado: '' }
-  }
   return { ...ficha, referencia_local: local.descricao, municipio: local.municipio, estado: local.estado }
 }
 
