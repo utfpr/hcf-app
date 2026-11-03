@@ -1,10 +1,9 @@
 import React, { useState } from 'react'
-import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import { Check, MapPin } from 'lucide-react-native'
+import { Text, TextInput, TouchableOpacity, View } from 'react-native'
 
 import {
+  buscarLocaisColeta,
   escolherLocalColeta,
-  localEstaSelecionado,
   type FichaValues,
   type OpcaoLocalColeta,
 } from '@/features/evento/fichaCampos'
@@ -14,80 +13,71 @@ import { styles } from './styles'
 
 interface LocalColetaInputProps {
   ficha: FichaValues
-  // Locais das rotas da expedição; vazio = só texto livre
+  // Locais das rotas da expedição
   locais: OpcaoLocalColeta[]
   onChange: (ficha: FichaValues) => void
 }
 
 /**
- * Local da coleta: o usuário escreve livremente ou escolhe um dos locais
- * cadastrados nas rotas da expedição (o que também preenche cidade e estado).
+ * Local da coleta com sugestões dos locais da expedição, como o campo de família.
+ * O valor é sempre o texto do campo: um local fora da expedição é salvo como foi
+ * digitado. Escolher uma sugestão também preenche a cidade e o estado.
  */
 export function LocalColetaInput({ ficha, locais, onChange }: LocalColetaInputProps) {
   const [aberto, setAberto] = useState(false)
-  const temLocais = locais.length > 0
+  const sugestoes = buscarLocaisColeta(locais, ficha.referencia_local)
+
+  function handleChangeText(text: string) {
+    onChange({ ...ficha, referencia_local: text })
+    setAberto(true)
+  }
+
+  function handleSelect(local: OpcaoLocalColeta) {
+    onChange(escolherLocalColeta(ficha, local))
+    setAberto(false)
+  }
+
+  function renderSugestoes() {
+    if (!locais.length) {
+      return (
+        <Text style={styles.emptyOption}>
+          Esta expedição não tem locais cadastrados. O local digitado será salvo assim mesmo.
+        </Text>
+      )
+    }
+
+    if (!sugestoes.length) {
+      return (
+        <Text style={styles.emptyOption}>
+          Nenhum local da expedição encontrado. O local digitado será salvo assim mesmo.
+        </Text>
+      )
+    }
+
+    return sugestoes.map(local => (
+      <TouchableOpacity key={local.id} style={styles.option} onPress={() => handleSelect(local)}>
+        <Text style={styles.optionText}>{local.descricao}</Text>
+        <Text style={styles.localOptionCidade}>{[local.municipio, local.estado].filter(Boolean).join(' – ')}</Text>
+      </TouchableOpacity>
+    ))
+  }
+
+  // Com o campo vazio, a lista só aparece se houver locais para sugerir
+  const mostrarLista = aberto && (ficha.referencia_local.trim().length > 0 || locais.length > 0)
 
   return (
     <>
-      <View style={styles.localInputRow}>
-        <TextInput
-          style={[styles.input, styles.localInputText]}
-          value={ficha.referencia_local}
-          onChangeText={value => onChange({ ...ficha, referencia_local: value })}
-          placeholder={temLocais ? 'Escreva ou escolha um local da expedição' : 'Ex.: Trilha da cachoeira'}
-          placeholderTextColor={colors.placeholder}
-        />
-        {temLocais ? (
-          <TouchableOpacity
-            testID="abrir-locais-coleta"
-            style={styles.localListButton}
-            onPress={() => setAberto(true)}
-            accessibilityLabel="Escolher um local da expedição"
-          >
-            <MapPin color={colors.textPrimary} size={18} />
-          </TouchableOpacity>
-        ) : null}
-      </View>
-
-      <Modal visible={aberto} transparent animationType="slide" onRequestClose={() => setAberto(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.optionModal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Local da coleta</Text>
-              <TouchableOpacity onPress={() => setAberto(false)}>
-                <Text style={styles.modalClose}>Fechar</Text>
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.modalHint}>A cidade e o estado são preenchidos a partir do local escolhido.</Text>
-            <ScrollView contentContainerStyle={styles.modalOptions}>
-              {locais.map(local => {
-                const selecionado = localEstaSelecionado(ficha, local)
-                return (
-                  <TouchableOpacity
-                    key={local.id}
-                    testID={`local-coleta-${local.id}`}
-                    style={[styles.modalOption, selecionado && styles.modalOptionSelected]}
-                    onPress={() => {
-                      onChange(escolherLocalColeta(ficha, local))
-                      setAberto(false)
-                    }}
-                  >
-                    <View style={[styles.checkbox, styles.radio, selecionado && styles.checkboxSelected]}>
-                      {selecionado ? <Check size={14} color={colors.onAccent} /> : null}
-                    </View>
-                    <View style={styles.localOptionText}>
-                      <Text style={styles.modalOptionText}>{local.descricao}</Text>
-                      <Text style={styles.localOptionCidade}>
-                        {[local.municipio, local.estado].filter(Boolean).join(' – ')}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                )
-              })}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      <TextInput
+        style={styles.input}
+        value={ficha.referencia_local}
+        onChangeText={handleChangeText}
+        onFocus={() => setAberto(true)}
+        onBlur={() => setAberto(false)}
+        placeholder={locais.length ? 'Digite para buscar os locais da expedição' : 'Ex.: Trilha da cachoeira'}
+        placeholderTextColor={colors.placeholder}
+        autoCorrect={false}
+      />
+      {mostrarLista ? <View style={styles.optionsList}>{renderSugestoes()}</View> : null}
     </>
   )
 }
