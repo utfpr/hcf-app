@@ -177,6 +177,19 @@ export function existeColetaComNumero(registros: RegistroExpedicao[], numero: st
   return procurado !== '' && registros.some(registro => numeroDaColeta(registro) === procurado)
 }
 
+/**
+ * Número sugerido para a próxima coleta: a contagem é por expedição e segue o
+ * maior número já usado (na API ou só no aparelho). Números que não são
+ * inteiros (ex.: "12A") não entram na conta.
+ */
+export function proximoNumeroColeta(registros: RegistroExpedicao[]): string {
+  const maior = registros
+    .map(numeroDaColeta)
+    .filter((numero): numero is string => numero !== null && /^\d+$/.test(numero))
+    .reduce((atual, numero) => Math.max(atual, Number(numero)), 0)
+  return String(maior + 1)
+}
+
 /** Status do card da expedição: só conta o que ainda não subiu */
 export function statusDaExpedicao(pendencias: Pendencias, expedicaoId: number): SyncStatus {
   const eventos = pendencias.eventos.filter(evento => evento.expedicao_id === expedicaoId)
