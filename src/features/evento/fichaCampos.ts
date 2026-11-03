@@ -1,3 +1,4 @@
+import type { RotaExpedicao } from '@/features/expedition/types'
 import type { FichaColeta } from './types'
 
 // Campos de texto da ficha, com rótulo e exemplo. Família fica de fora: tem campo
@@ -46,6 +47,67 @@ export const FICHA_MULTIPLA_ESCOLHA = {
 } as const satisfies Partial<Record<FichaFieldName, readonly string[]>>
 
 export type CampoMultiplaEscolha = keyof typeof FICHA_MULTIPLA_ESCOLHA
+
+// Só estes campos aceitam mais de uma opção; nos demais a escolha é única.
+const CAMPOS_MULTIPLA_SELECAO: ReadonlySet<CampoMultiplaEscolha> = new Set(['folhas', 'frutos', 'habito'])
+
+export function aceitaVariasOpcoes(campo: CampoMultiplaEscolha): boolean {
+  return CAMPOS_MULTIPLA_SELECAO.has(campo)
+}
+
+export function opcoesSelecionadas(valor: string): string[] {
+  return valor ? valor.split(', ').filter(Boolean) : []
+}
+
+/** Novo valor do campo depois de tocar numa opção */
+export function escolherOpcao(campo: CampoMultiplaEscolha, valorAtual: string, opcao: string): string {
+  const selecionadas = opcoesSelecionadas(valorAtual)
+  if (!aceitaVariasOpcoes(campo)) {
+    return selecionadas.length === 1 && selecionadas[0] === opcao ? '' : opcao
+  }
+  const proximo = selecionadas.includes(opcao)
+    ? selecionadas.filter(item => item !== opcao)
+    : [...selecionadas, opcao]
+  return proximo.join(', ')
+}
+
+export interface OpcaoLocalColeta {
+  id: number
+  descricao: string
+  municipio: string
+  estado: string
+}
+
+/** Locais de coleta de todas as cidades da rota, na ordem da rota */
+export function locaisColetaDaExpedicao(rotas: readonly RotaExpedicao[] | undefined): OpcaoLocalColeta[] {
+  if (!rotas) return []
+  return [...rotas]
+    .sort((a, b) => a.ordem - b.ordem)
+    .flatMap(rota => (rota.locais_coleta ?? []).flatMap(local => {
+      const descricao = local.descricao?.trim()
+      if (!descricao) return []
+      return [{
+        id: local.id,
+        descricao,
+        municipio: rota.nome_cidade,
+        estado: rota.estado_nome ?? rota.estado_sigla ?? '',
+      }]
+    }))
+}
+
+export function localEstaSelecionado(ficha: FichaValues, local: OpcaoLocalColeta): boolean {
+  return ficha.referencia_local === local.descricao
+    && ficha.municipio === local.municipio
+    && ficha.estado === local.estado
+}
+
+/** Escolher um local preenche cidade e estado; tocar de novo no mesmo local limpa os três */
+export function escolherLocalColeta(ficha: FichaValues, local: OpcaoLocalColeta): FichaValues {
+  if (localEstaSelecionado(ficha, local)) {
+    return { ...ficha, referencia_local: '', municipio: '', estado: '' }
+  }
+  return { ...ficha, referencia_local: local.descricao, municipio: local.municipio, estado: local.estado }
+}
 
 // A ficha física prevê uma anotação complementar nestes campos. O texto é
 // enviado junto do valor do próprio campo, mesmo sem uma opção selecionada.
