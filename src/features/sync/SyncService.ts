@@ -4,7 +4,7 @@ import type { ExpedicaoListItem, Paginacao } from '@/features/expedition/types'
 import { LembreteListService } from '@/features/lembrete/LembreteListService'
 import { LembreteService } from '@/features/lembrete/LembreteService'
 import type { OfflineStore } from '@/features/offline/OfflineStore'
-import type { Pendencias, StatusPendencia } from '@/features/offline/types'
+import type { MidiaPendente, Pendencias, StatusPendencia } from '@/features/offline/types'
 import type { HttpClient } from '@/libraries/http/HttpClient'
 import { getHttpStatus, getUserFacingHttpError, isNetworkError } from '@/libraries/http/httpError'
 
@@ -31,6 +31,33 @@ export class EnvioInterrompidoError extends Error {
 }
 
 type Lista = 'eventos' | 'midias' | 'lembretes'
+
+function idDoAlvo(midia: MidiaPendente, pendencias: Pendencias): number | undefined {
+  if (midia.alvo.tipo === 'evento') {
+    return midia.alvo.evento_id
+      ?? pendencias.eventos.find(evento => evento.local_id === midia.alvo.evento_local_id)?.remote_id
+  }
+  return midia.alvo.lembrete_id
+    ?? pendencias.lembretes.find(lembrete => lembrete.local_id === midia.alvo.lembrete_local_id)?.remote_id
+}
+
+function temFilhoPendente(
+  pendencias: Pendencias,
+  tipo: 'evento' | 'lembrete',
+  localId: string,
+  remoteId?: number,
+): boolean {
+  return pendencias.midias.some(midia => {
+    if (midia.status === 'sent' || midia.alvo.tipo !== tipo) return false
+    if (tipo === 'evento' && midia.alvo.tipo === 'evento') {
+      return midia.alvo.evento_local_id === localId
+        || (remoteId !== undefined && midia.alvo.evento_id === remoteId)
+    }
+    return midia.alvo.tipo === 'lembrete'
+      && (midia.alvo.lembrete_local_id === localId
+        || (remoteId !== undefined && midia.alvo.lembrete_id === remoteId))
+  })
+}
 
 interface Parcial {
   status: StatusPendencia
@@ -129,10 +156,18 @@ export class SyncService {
 
     // 3. Mídia: só sobe quando o pai já tem id na API; senão espera a próxima vez
     pendencias = await this.store.pendencias()
+    for (const evento of pendencias.eventos) {
+      if (evento.remote_id) await this.ligarFilhos('evento', evento.local_id, evento.remote_id)
+    }
+    for (const lembrete of pendencias.lembretes) {
+      if (lembrete.remote_id) await this.ligarFilhos('lembrete', lembrete.local_id, lembrete.remote_id)
+    }
+
+    pendencias = await this.store.pendencias()
     for (const midia of pendencias.midias) {
       if (!midiaElegivel(midia)) continue
 
-      const alvoId = midia.alvo.tipo === 'evento' ? midia.alvo.evento_id : midia.alvo.lembrete_id
+      const alvoId = idDoAlvo(midia, pendencias)
       if (!alvoId) {
         avancar()
         continue
@@ -256,16 +291,22 @@ export class SyncService {
     await this.store.atualizarMeta({ ultima_baixa: new Date().toISOString() }, SILENCIOSO)
   }
 
-  /** Só depois de uma baixa bem-sucedida: o que foi enviado já está no cache */
+  /** Só depois de uma baixa bem-sucedida: o que foi enviado já está no cache.
+   * Pai sent com mídia pendente fica: o próximo envio ainda precisa do remote_id. */
   async limparEnviados(): Promise<void> {
     const pendencias = await this.store.pendencias()
     const enviadas = pendencias.midias.filter(midia => midia.status === 'sent')
 
     await this.store.atualizarPendencias(atual => ({
       ...atual,
-      eventos: atual.eventos.filter(evento => evento.status !== 'sent'),
+      eventos: atual.eventos.filter(evento => (
+        evento.status !== 'sent' || temFilhoPendente(atual, 'evento', evento.local_id, evento.remote_id)
+      )),
       midias: atual.midias.filter(midia => midia.status !== 'sent'),
-      lembretes: atual.lembretes.filter(lembrete => lembrete.status !== 'sent'),
+      lembretes: atual.lembretes.filter(lembrete => (
+        lembrete.status !== 'sent'
+        || temFilhoPendente(atual, 'lembrete', lembrete.local_id, lembrete.remote_id)
+      )),
     }), SILENCIOSO)
 
     await Promise.all(enviadas.map(midia => this.store.apagarMidia(midia.payload.arquivo).catch(() => undefined)))
