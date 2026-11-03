@@ -1,6 +1,7 @@
 import type { RotaExpedicao } from '@/features/expedition/types'
 import {
   aceitaVariasOpcoes,
+  buscarLocaisColeta,
   EMPTY_FICHA,
   escolherLocalColeta,
   escolherOpcao,
@@ -73,11 +74,24 @@ describe('fichaCampos', () => {
     expect(locaisColetaDaExpedicao(undefined)).toEqual([])
   })
 
-  it('escolher o local preenche cidade e estado; escolher de novo limpa', () => {
+  it('escolher um local sugerido preenche o local, a cidade e o estado', () => {
     const local = { id: 10, descricao: 'Trilha da cachoeira', municipio: 'Campo Mourão', estado: 'Paraná' }
-    const escolhida = escolherLocalColeta({ ...EMPTY_FICHA, municipio: 'Outra' }, local)
+    const escolhida = escolherLocalColeta({ ...EMPTY_FICHA, referencia_local: 'tri', municipio: 'Outra' }, local)
 
     expect(escolhida).toMatchObject({ referencia_local: 'Trilha da cachoeira', municipio: 'Campo Mourão', estado: 'Paraná' })
-    expect(escolherLocalColeta(escolhida, local)).toMatchObject({ referencia_local: '', municipio: '', estado: '' })
+    expect(escolherLocalColeta(escolhida, local)).toEqual(escolhida)
+  })
+
+  it('busca os locais da expedição pelo nome ou pela cidade, sem diferenciar maiúsculas e acentos', () => {
+    const locais = [
+      { id: 10, descricao: 'Trilha da Cachoeira', municipio: 'Campo Mourão', estado: 'Paraná' },
+      { id: 20, descricao: 'Bosque', municipio: 'Peabiru', estado: 'Paraná' },
+    ]
+
+    expect(buscarLocaisColeta(locais, 'cachoe').map(local => local.id)).toEqual([10])
+    expect(buscarLocaisColeta(locais, 'mourao').map(local => local.id)).toEqual([10])
+    expect(buscarLocaisColeta(locais, '  BOSQUE ').map(local => local.id)).toEqual([20])
+    expect(buscarLocaisColeta(locais, 'Beira da estrada')).toEqual([])
+    expect(buscarLocaisColeta(locais, '')).toEqual(locais)
   })
 })
