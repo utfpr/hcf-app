@@ -74,6 +74,22 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.inputText,
   },
+  localInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  localInputText: {
+    flex: 1,
+  },
+  localListButton: {
+    backgroundColor: colors.inputBackground,
+    borderRadius: 10,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   selectInput: {
     backgroundColor: colors.inputBackground,
     borderRadius: 10,
@@ -231,6 +247,18 @@ export const styles = StyleSheet.create({
     borderColor: colors.borderAlt,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  radio: {
+    borderRadius: 10,
+  },
+  localOptionText: {
+    flex: 1,
+    paddingVertical: 8,
+  },
+  localOptionCidade: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginTop: 2,
   },
   checkboxSelected: {
     backgroundColor: colors.accent,
