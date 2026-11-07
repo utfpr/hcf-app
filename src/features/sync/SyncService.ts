@@ -33,12 +33,14 @@ export class EnvioInterrompidoError extends Error {
 type Lista = 'eventos' | 'midias' | 'lembretes'
 
 function idDoAlvo(midia: MidiaPendente, pendencias: Pendencias): number | undefined {
-  if (midia.alvo.tipo === 'evento') {
-    return midia.alvo.evento_id
-      ?? pendencias.eventos.find(evento => evento.local_id === midia.alvo.evento_local_id)?.remote_id
+  // Em const: o TS não mantém o narrowing de `midia.alvo` dentro do callback do find
+  const alvo = midia.alvo
+  if (alvo.tipo === 'evento') {
+    return alvo.evento_id
+      ?? pendencias.eventos.find(evento => evento.local_id === alvo.evento_local_id)?.remote_id
   }
-  return midia.alvo.lembrete_id
-    ?? pendencias.lembretes.find(lembrete => lembrete.local_id === midia.alvo.lembrete_local_id)?.remote_id
+  return alvo.lembrete_id
+    ?? pendencias.lembretes.find(lembrete => lembrete.local_id === alvo.lembrete_local_id)?.remote_id
 }
 
 function temFilhoPendente(
