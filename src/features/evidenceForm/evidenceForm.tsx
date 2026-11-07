@@ -11,10 +11,10 @@ import {
   aceitaVariasOpcoes,
   EMPTY_FICHA,
   escolherOpcao,
+  FICHA_COLETA_FIELDS,
   FICHA_MULTIPLA_ESCOLHA,
-  FICHA_FIELDS,
+  fichaColetaParaPayload,
   fichaComObservacoesMultiplas,
-  fichaParaPayload,
   locaisColetaDaExpedicao,
   opcoesSelecionadas,
   ROTULO_OBSERVACAO_MULTIPLA,
@@ -73,7 +73,7 @@ interface Rascunho {
   midias: EvidenciaPendente[]
 }
 
-const CAMPOS_DETALHE = FICHA_FIELDS
+const CAMPOS_DETALHE = FICHA_COLETA_FIELDS
 
 function rascunhoVazio(rascunho: Rascunho): boolean {
   return !rascunho.numero && !rascunho.familia && !rascunho.observacoes
@@ -182,7 +182,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
 
   const opcoesDoModal = campoAberto ? FICHA_MULTIPLA_ESCOLHA[campoAberto] : []
   const rotuloDoModal = campoAberto
-    ? FICHA_FIELDS.find(([campo]) => campo === campoAberto)?.[1] ?? ''
+    ? FICHA_COLETA_FIELDS.find(([campo]) => campo === campoAberto)?.[1] ?? ''
     : ''
   const selecionadasNoModal = campoAberto ? opcoesSelecionadas(ficha[campoAberto]) : []
   const modalMultiplo = campoAberto ? aceitaVariasOpcoes(campoAberto) : false
@@ -205,7 +205,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
           tipo: 'COLETA',
           numero_coleta: numero || null,
           coleta: {
-            ...fichaParaPayload(fichaComObservacoesMultiplas(ficha, observacoesMultiplas)),
+            ...fichaColetaParaPayload(fichaComObservacoesMultiplas(ficha, observacoesMultiplas)),
             familia: family.trim() || null,
           },
         }
