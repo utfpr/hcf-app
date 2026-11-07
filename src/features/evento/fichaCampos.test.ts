@@ -7,6 +7,8 @@ import {
   escolherOpcao,
   FICHA_MULTIPLA_ESCOLHA,
   fichaComObservacoesMultiplas,
+  FICHA_COLETA_FIELDS,
+  fichaColetaParaPayload,
   fichaParaPayload,
   locaisColetaDaExpedicao,
 } from './fichaCampos'
@@ -44,6 +46,48 @@ describe('fichaCampos', () => {
     expect(FICHA_MULTIPLA_ESCOLHA.substrato).toContain('Rupícola')
     expect(FICHA_MULTIPLA_ESCOLHA.tronco_com_casca).toContain('Lisa')
     expect(FICHA_MULTIPLA_ESCOLHA.luminosidade).toEqual(['Heliófita', 'Semi-ciófita', 'Ciófita'])
+  })
+
+  it('escreve as opções como na ficha impressa', () => {
+    expect(FICHA_MULTIPLA_ESCOLHA.associacoes).toContain('Micoheterotrófica')
+    expect(FICHA_MULTIPLA_ESCOLHA.associacoes).not.toContain('Micoteterotrófica')
+    expect(FICHA_MULTIPLA_ESCOLHA.habito).toContain('Cespitosa')
+    expect(FICHA_MULTIPLA_ESCOLHA.habito).not.toContain('Cespitosas')
+  })
+
+  it('a coleta tem altura e exsudado depois do hábito e as cores das flores antes da observação', () => {
+    const campos = FICHA_COLETA_FIELDS.map(([campo]) => campo)
+
+    expect(campos.slice(campos.indexOf('habito'), campos.indexOf('habito') + 3))
+      .toEqual(['habito', 'altura', 'exsudado'])
+    expect(campos.slice(campos.indexOf('flores_cor_calice'), campos.indexOf('flores_cor_calice') + 3))
+      .toEqual(['flores_cor_calice', 'flores_cor_corola', 'flores'])
+  })
+
+  it('envia altura, exsudado e as cores das flores na coleta', () => {
+    const payload = fichaColetaParaPayload({
+      ...EMPTY_FICHA,
+      altura: ' 8 m ',
+      exsudado: 'Látex branco',
+      flores_cor_calice: 'Verde',
+      flores_cor_corola: '',
+    })
+
+    expect(payload).toMatchObject({
+      altura: '8 m',
+      exsudado: 'Látex branco',
+      flores_cor_calice: 'Verde',
+      flores_cor_corola: null,
+    })
+  })
+
+  it('o lembrete não envia os campos que só a coleta tem', () => {
+    const payload = fichaParaPayload({ ...EMPTY_FICHA, altura: '8 m' })
+
+    expect(Object.keys(payload)).not.toEqual(expect.arrayContaining(['altura']))
+    expect(payload).not.toHaveProperty('exsudado')
+    expect(payload).not.toHaveProperty('flores_cor_calice')
+    expect(payload).not.toHaveProperty('flores_cor_corola')
   })
 
   it('só folhas, frutos e hábito aceitam mais de uma opção', () => {
