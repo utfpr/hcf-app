@@ -30,11 +30,16 @@ function pendenciasComColeta(parcial: Partial<Pendencias> = {}): Pendencias {
   }
 }
 
+// Pendencias é só JSON (vem do AsyncStorage); os tipos do RN não declaram structuredClone
+function clonar(pendencias: Pendencias): Pendencias {
+  return JSON.parse(JSON.stringify(pendencias))
+}
+
 function criarStore(inicial: Pendencias) {
-  let atual = structuredClone(inicial)
+  let atual = clonar(inicial)
   return {
     usuarioId: 14,
-    pendencias: jest.fn(async () => structuredClone(atual)),
+    pendencias: jest.fn(async () => clonar(atual)),
     atualizarPendencias: jest.fn(async (alterar: (value: Pendencias) => Pendencias) => {
       atual = alterar(atual)
       return atual
