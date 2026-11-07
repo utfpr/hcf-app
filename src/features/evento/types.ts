@@ -6,7 +6,8 @@ import type { SyncStatus } from '@/features/sync/types'
 export type { SyncStatus }
 export type EventoTipo = 'DIARIO' | 'COLETA'
 
-export interface FichaColeta {
+// Campos que a coleta e o lembrete têm em comum
+export interface FichaComum {
   familia: string | null
   nome_popular: string | null
   nome_cientifico: string | null
@@ -24,6 +25,15 @@ export interface FichaColeta {
   frutos: string | null
   flores: string | null
   luminosidade: string | null
+}
+
+// Só a coleta: altura e exsudado (bloco Hábito da ficha) e as cores das flores.
+// `flores` guarda a observação das flores.
+export interface FichaColeta extends FichaComum {
+  altura: string | null
+  exsudado: string | null
+  flores_cor_calice: string | null
+  flores_cor_corola: string | null
 }
 
 export interface Evento {
