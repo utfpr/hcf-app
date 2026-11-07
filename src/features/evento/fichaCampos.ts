@@ -1,8 +1,8 @@
 import type { RotaExpedicao } from '@/features/expedition/types'
-import type { FichaColeta } from './types'
+import type { FichaColeta, FichaComum } from './types'
 
 // Campos de texto da ficha, com rótulo e exemplo. Família fica de fora: tem campo
-// próprio com busca (FamiliaInput). Usado na coleta e no lembrete.
+// próprio com busca (FamiliaInput). Usado no lembrete; a coleta usa FICHA_COLETA_FIELDS.
 export const FICHA_FIELDS = [
   ['nome_popular', 'Nome popular', 'Ex.: Palmito-juçara'],
   ['nome_cientifico', 'Nome científico', 'Ex.: Euterpe edulis'],
@@ -17,16 +17,40 @@ export const FICHA_FIELDS = [
   ['folhas', 'Folhas', 'Descreva as folhas'],
   ['habito', 'Hábito', 'Ex.: Arbóreo'],
   ['frutos', 'Frutos', 'Descreva os frutos'],
-  ['flores', 'Flores', 'Descreva as flores'],
+  ['flores', 'Flores', 'Observações sobre as flores'],
   ['luminosidade', 'Luminosidade', 'Ex.: Meia-sombra'],
-] as const satisfies ReadonlyArray<readonly [keyof FichaColeta, string, string]>
+] as const satisfies ReadonlyArray<readonly [keyof FichaComum, string, string]>
 
 export type FichaFieldName = (typeof FICHA_FIELDS)[number][0]
 
-export type FichaValues = Record<FichaFieldName | 'referencia_local', string>
+type CampoSoDaColeta = Exclude<keyof FichaColeta, keyof FichaComum>
+type DefinicaoCampo = readonly [FichaFieldName | CampoSoDaColeta, string, string]
+
+// Campos que só a ficha de coleta tem, encaixados na ordem da ficha impressa:
+// altura e exsudado no bloco Hábito; as cores do cálice e da corola antes da
+// observação das flores.
+const CAMPOS_DEPOIS_DE: Partial<Record<FichaFieldName, readonly DefinicaoCampo[]>> = {
+  habito: [
+    ['altura', 'Altura', 'Ex.: 8 m'],
+    ['exsudado', 'Exsudado (presença/cor)', 'Ex.: Látex branco'],
+  ],
+  frutos: [
+    ['flores_cor_calice', 'Cor do cálice', 'Ex.: Verde'],
+    ['flores_cor_corola', 'Cor da corola', 'Ex.: Lilás'],
+  ],
+}
+
+export const FICHA_COLETA_FIELDS: readonly DefinicaoCampo[] = FICHA_FIELDS.flatMap(campo => [
+  campo,
+  ...(CAMPOS_DEPOIS_DE[campo[0]] ?? []),
+])
+
+export type FichaColetaFieldName = DefinicaoCampo[0]
+
+export type FichaValues = Record<FichaColetaFieldName | 'referencia_local', string>
 
 export const EMPTY_FICHA: FichaValues = {
-  ...Object.fromEntries(FICHA_FIELDS.map(([key]) => [key, ''])),
+  ...Object.fromEntries(FICHA_COLETA_FIELDS.map(([key]) => [key, ''])),
   referencia_local: '',
 } as FichaValues
 
@@ -35,11 +59,11 @@ export const EMPTY_FICHA: FichaValues = {
 export const FICHA_MULTIPLA_ESCOLHA = {
   substrato: ['Rupícola', 'Ripária', 'Palustre', 'Psamófila', 'Reófila', 'Hidrófila', 'Terrícola'],
   tronco_com_casca: ['Lisa', 'Escamosa', 'Esfoliante', 'Estriada', 'Fissurada', 'Gretada', 'Suberosa', 'Verrucosa'],
-  associacoes: ['Epífita', 'Parasita', 'Hemi-parasita', 'Micoteterotrófica'],
+  associacoes: ['Epífita', 'Parasita', 'Hemi-parasita', 'Micoheterotrófica'],
   folhas: ['Cartáceas', 'Coriáceas', 'Crassas', 'Membranáceas'],
   habito: [
     'Árvore', 'Arvoreta', 'Arbusto', 'Subarbusto', 'Erva', 'Ereta', 'Liana',
-    'Decumbente', 'Escandente', 'Cespitosas', 'Prostrada/reptante',
+    'Decumbente', 'Escandente', 'Cespitosa', 'Prostrada/reptante',
     'Trepadeira com gavinhas', 'Trepadeira volúvel',
   ],
   frutos: ['Carnoso', 'Seco', 'Deiscentes', 'Indeiscentes'],
@@ -141,9 +165,21 @@ export function fichaComObservacoesMultiplas(
   return atualizada
 }
 
-/** Texto vazio vira null, como a API espera */
-export function fichaParaPayload(ficha: FichaValues): Record<keyof FichaValues, string | null> {
+function paraPayload<K extends FichaColetaFieldName>(
+  ficha: FichaValues,
+  campos: ReadonlyArray<readonly [K, string, string]>,
+): Record<K | 'referencia_local', string | null> {
   return Object.fromEntries(
-    [...FICHA_FIELDS.map(([key]) => [key, ficha[key].trim() || null]), ['referencia_local', ficha.referencia_local.trim() || null]],
-  ) as Record<keyof FichaValues, string | null>
+    [...campos.map(([key]) => [key, ficha[key].trim() || null]), ['referencia_local', ficha.referencia_local.trim() || null]],
+  ) as Record<K | 'referencia_local', string | null>
+}
+
+/** Ficha do lembrete; texto vazio vira null, como a API espera */
+export function fichaParaPayload(ficha: FichaValues): Record<FichaFieldName | 'referencia_local', string | null> {
+  return paraPayload(ficha, FICHA_FIELDS)
+}
+
+/** Ficha da coleta, com altura, exsudado e as cores das flores */
+export function fichaColetaParaPayload(ficha: FichaValues): Record<FichaColetaFieldName | 'referencia_local', string | null> {
+  return paraPayload(ficha, FICHA_COLETA_FIELDS)
 }
