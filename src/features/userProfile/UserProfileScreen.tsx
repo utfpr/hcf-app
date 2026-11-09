@@ -20,6 +20,8 @@ function getRoleName(tipo?: TipoUsuario) {
       return 'Operador';
     case TipoUsuario.Identificador:
       return 'Identificador';
+    case TipoUsuario.Expedicionario:
+      return 'Expedicionário';
     default:
       return 'Usuário';
   }
