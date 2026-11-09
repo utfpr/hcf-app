@@ -12,6 +12,8 @@ export function podeRegistrarNaExpedicao(
   user: Pick<Usuario, 'id' | 'tipo_usuario_id'> | null | undefined,
   expedicao: { participantes: ParticipanteExpedicao[] },
 ): boolean {
-  if (!user || user.tipo_usuario_id !== TipoUsuario.Expedicionario) return true
-  return expedicao.participantes.some(participante => participante.id === user.id)
+  // A API manda ids bigint como string ("15"); compara sempre como número.
+  if (!user || Number(user.tipo_usuario_id) !== TipoUsuario.Expedicionario) return true
+  const usuarioId = Number(user.id)
+  return expedicao.participantes.some(participante => Number(participante.id) === usuarioId)
 }

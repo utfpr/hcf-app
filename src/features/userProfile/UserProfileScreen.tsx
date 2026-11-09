@@ -13,7 +13,8 @@ import { colors } from '@/theme/colors';
 import { Button } from '@/components/forms/Button';
 
 function getRoleName(tipo?: TipoUsuario) {
-  switch (tipo) {
+  // A API manda tipo_usuario_id como string ("4").
+  switch (Number(tipo)) {
     case TipoUsuario.Curador:
       return 'Curador';
     case TipoUsuario.Operador:

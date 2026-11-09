@@ -9,6 +9,14 @@ describe('podeRegistrarNaExpedicao', () => {
     expect(podeRegistrarNaExpedicao({ id: 7, tipo_usuario_id: TipoUsuario.Expedicionario }, expedicao)).toBe(true)
   })
 
+  it('compara ids que a API manda como string (bigint)', () => {
+    const daApi = { participantes: [{ id: '15', nome: 'Exp' }] } as unknown as typeof expedicao
+    const usuario = { id: 15, tipo_usuario_id: '4' } as unknown as Parameters<typeof podeRegistrarNaExpedicao>[0]
+    expect(podeRegistrarNaExpedicao(usuario, daApi)).toBe(true)
+    const usuarioString = { id: '15', tipo_usuario_id: 4 } as unknown as Parameters<typeof podeRegistrarNaExpedicao>[0]
+    expect(podeRegistrarNaExpedicao(usuarioString, { participantes: [{ id: 15, nome: 'Exp' }] })).toBe(true)
+  })
+
   it('bloqueia o expedicionário que não participa', () => {
     expect(podeRegistrarNaExpedicao({ id: 8, tipo_usuario_id: TipoUsuario.Expedicionario }, expedicao)).toBe(false)
   })
