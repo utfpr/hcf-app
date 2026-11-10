@@ -11,9 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { ArrowLeft, Bell, BookOpen, Clock, Leaf, Plus, Send, Users } from 'lucide-react-native'
+import { ArrowLeft, Bell, BookOpen, Clock, Leaf, Lock, Plus, Send, Users } from 'lucide-react-native'
 import { useMemo, useState } from 'react'
 import { useFeedback } from '@/components/feedback/FeedbackContext'
+import { useAuth } from '@/contexts/Auth/useAuth'
 import { useOffline } from '@/features/offline/OfflineContext'
 import { CampoBusca } from '@/components/CampoBusca'
 import { FiltroChips, type OpcaoFiltro } from '@/components/FiltroChips'
@@ -25,6 +26,7 @@ import { colors } from '@/theme/colors'
 
 import { useRegistrosExpedicao } from '../evento/hooks/useRegistrosExpedicao'
 import { useExpedition } from '../expedition/hooks/useExpedition'
+import { AVISO_SOMENTE_PARTICIPANTES, podeRegistrarNaExpedicao } from '../expedition/permissoes'
 import { formatDate, getStatus } from '../expedition/utils'
 
 import { LembreteCard } from '@/features/lembrete/components/LembreteCard'
@@ -63,6 +65,7 @@ export function ExpeditionDetailScreen() {
   const { expeditionId } = route.params
 
   const { toast } = useFeedback()
+  const { user } = useAuth()
   const { sincronizar } = useOffline()
   const [enviando, setEnviando] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -185,6 +188,8 @@ export function ExpeditionDetailScreen() {
   const status = getStatus(data.data_inicio, data.data_fim)
   // Expedição encerrada não recebe novos registros (só evidências nos registros existentes)
   const isFinalizada = status === 'Finalizada'
+  // Expedicionário fora da equipe só visualiza (a API recusaria com 403)
+  const podeRegistrar = podeRegistrarNaExpedicao(user, data)
 
   return (
     <SafeAreaView style={styles.wrapper}>
@@ -232,6 +237,13 @@ export function ExpeditionDetailScreen() {
           </View>
         ) : (
           <Text style={styles.emptyTeamText}>Nenhum participante cadastrado.</Text>
+        )}
+
+        {!podeRegistrar && (
+          <View style={styles.avisoParticipantes} accessibilityRole="alert">
+            <Lock size={14} color={colors.bell} />
+            <Text style={styles.avisoParticipantesText}>{AVISO_SOMENTE_PARTICIPANTES}</Text>
+          </View>
         )}
 
         <View style={styles.divider} />
@@ -284,6 +296,7 @@ export function ExpeditionDetailScreen() {
                 key={registro.id}
                 registro={registro}
                 onAddEvidencia={handleAddEvidencia}
+                podeAdicionarEvidencia={podeRegistrar}
                 onOpenEvidencia={handleOpenEvidencia}
                 audioAtivoId={audioAtivoId}
                 onActivateAudio={setAudioAtivoId}
@@ -292,7 +305,7 @@ export function ExpeditionDetailScreen() {
             </View>
           ) : (
             <Text style={styles.emptyTeamText}>
-              {isFinalizada
+              {isFinalizada || !podeRegistrar
                 ? 'Nenhum registro nesta expedição.'
                 : 'Nenhum registro ainda. Use o botão + para adicionar uma coleta ou diário.'}
             </Text>
@@ -313,7 +326,9 @@ export function ExpeditionDetailScreen() {
             ))
           ) : (
             <Text style={styles.emptyTeamText}>
-              Nenhum lembrete criado nesta expedição. Use o botão + para criar um lembrete.
+              {podeRegistrar
+                ? 'Nenhum lembrete criado nesta expedição. Use o botão + para criar um lembrete.'
+                : 'Nenhum lembrete criado nesta expedição.'}
             </Text>
           )
         )}
@@ -334,7 +349,7 @@ export function ExpeditionDetailScreen() {
       {/* Expedição finalizada é só para visualizar: sem o botão de novos registros */}
       {!isFinalizada && (
         <>
-          {isMenuOpen && (
+          {isMenuOpen && podeRegistrar && (
             <View style={styles.floatingMenu}>
               <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('collection')}>
                 <Leaf color={colors.accent} size={20} />
@@ -351,8 +366,11 @@ export function ExpeditionDetailScreen() {
             </View>
           )}
           <TouchableOpacity
-            style={styles.floatingButton}
+            style={[styles.floatingButton, !podeRegistrar && styles.floatingButtonDisabled]}
             onPress={() => setIsMenuOpen(!isMenuOpen)}
+            disabled={!podeRegistrar}
+            accessibilityState={{ disabled: !podeRegistrar }}
+            accessibilityHint={podeRegistrar ? undefined : AVISO_SOMENTE_PARTICIPANTES}
           >
             <Text style={styles.floatingButtonText}><Plus color={colors.onAccent} size={32}/></Text>
           </TouchableOpacity>
@@ -460,6 +478,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  floatingButtonDisabled: { opacity: 0.4 },
+  avisoParticipantes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(242, 201, 76, 0.12)',
+  },
+  avisoParticipantesText: { color: colors.bell, fontSize: 12, flex: 1 },
   floatingButtonText: { color: colors.onAccent, fontSize: 28, lineHeight: 30 },
   floatingMenu: { position: 'absolute', bottom: 100, right: 24 },
   menuOption: {

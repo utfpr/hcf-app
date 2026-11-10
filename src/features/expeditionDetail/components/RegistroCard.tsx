@@ -26,9 +26,18 @@ interface RegistroCardProps {
   onAddEvidencia: (registro: RegistroExpedicao) => void
   audioAtivoId: number | null
   onActivateAudio: (evidenciaId: number) => void
+  // Falso para o expedicionário fora da equipe: o botão fica desabilitado
+  podeAdicionarEvidencia?: boolean
 }
 
-export function RegistroCard({ registro, onOpenEvidencia, onAddEvidencia, audioAtivoId, onActivateAudio }: RegistroCardProps) {
+export function RegistroCard({
+  registro,
+  onOpenEvidencia,
+  onAddEvidencia,
+  audioAtivoId,
+  onActivateAudio,
+  podeAdicionarEvidencia = true,
+}: RegistroCardProps) {
   const isColeta = registro.tipo === 'COLETA'
   const imagens = registro.evidencias.filter(e => tipoEvidencia(e) === 'imagem')
   const audios = registro.evidencias.filter(e => tipoEvidencia(e) === 'audio')
@@ -101,8 +110,9 @@ export function RegistroCard({ registro, onOpenEvidencia, onAddEvidencia, audioA
       ))}
 
       <TouchableOpacity
-        style={styles.addEvidencia}
+        style={[styles.addEvidencia, !podeAdicionarEvidencia && styles.addEvidenciaDisabled]}
         onPress={() => onAddEvidencia(registro)}
+        disabled={!podeAdicionarEvidencia}
         activeOpacity={0.8}
       >
         <Plus size={14} color={colors.accent} />
@@ -233,6 +243,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
   },
+  addEvidenciaDisabled: { opacity: 0.4 },
   addEvidenciaText: {
     color: colors.accent,
     fontSize: 12,
