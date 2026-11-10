@@ -1,3 +1,4 @@
+import { montarFormEvidencia } from '@/features/evento/formEvidencia'
 import type { CriarEvidenciaPayload } from '@/features/evento/types'
 import type { HttpClient } from '@/libraries/http/HttpClient'
 
@@ -21,16 +22,9 @@ export class LembreteService {
   }
 
   async enviarEvidencia(lembreteId: number, payload: CriarEvidenciaPayload): Promise<LembreteEvidencia> {
-    const form = new FormData()
-    form.append('nome', payload.nome)
-    form.append('data_captura', payload.data_captura)
-    if (payload.client_uuid) form.append('client_uuid', payload.client_uuid)
-    // O arquivo vai por último: o multer da API lê os campos de texto antes do arquivo.
-    form.append('arquivo', payload.arquivo as unknown as Blob)
-
     const response = await this.httpClient.postForm<LembreteEvidencia>(
       `/v1/lembretes/${lembreteId}/evidencias`,
-      form,
+      montarFormEvidencia(payload),
     )
     return response.data
   }

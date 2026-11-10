@@ -1,4 +1,4 @@
-import type { Evidencia, FichaColeta, RegistroExpedicao } from '@/features/evento/types'
+import type { Evidencia, FichaColeta, FichaComum, RegistroExpedicao } from '@/features/evento/types'
 import type { Lembrete } from '@/features/lembrete/types'
 import type { SyncStatus } from '@/features/sync/types'
 
@@ -10,10 +10,14 @@ import type {
   StatusPendencia,
 } from './types'
 
-const CAMPOS_FICHA: Array<keyof FichaColeta> = [
+const CAMPOS_FICHA: Array<keyof FichaComum> = [
   'familia', 'nome_popular', 'nome_cientifico', 'municipio', 'estado', 'referencia_local',
   'tipo_vegetacao', 'solo', 'relevo', 'substrato', 'tronco_com_casca', 'associacoes',
   'folhas', 'habito', 'frutos', 'flores', 'luminosidade',
+]
+
+const CAMPOS_FICHA_COLETA: Array<keyof FichaColeta> = [
+  ...CAMPOS_FICHA, 'altura', 'exsudado', 'flores_cor_calice', 'flores_cor_corola',
 ]
 
 const PESO: Record<SyncStatus, number> = { synced: 0, syncing: 1, pending: 2, error: 3 }
@@ -28,9 +32,12 @@ export function piorStatus(statuses: SyncStatus[]): SyncStatus {
   return statuses.reduce<SyncStatus>((pior, atual) => (PESO[atual] > PESO[pior] ? atual : pior), 'synced')
 }
 
-function fichaCompleta(parcial: Partial<FichaColeta> | undefined): FichaColeta | null {
+function fichaCompleta<T>(
+  parcial: Partial<Record<keyof T, string | null>> | undefined,
+  campos: Array<keyof T>,
+): T | null {
   if (!parcial) return null
-  return Object.fromEntries(CAMPOS_FICHA.map(campo => [campo, parcial[campo] ?? null])) as unknown as FichaColeta
+  return Object.fromEntries(campos.map(campo => [campo, parcial[campo] ?? null])) as T
 }
 
 function midiaParaEvidencia(midia: MidiaPendente, eventoId: number): Evidencia {
@@ -71,7 +78,7 @@ function eventoParaRegistro(evento: EventoPendente, midias: MidiaPendente[]): Re
     longitude: evento.payload.longitude ?? null,
     altitude: evento.payload.altitude ?? null,
     observacoes: evento.payload.observacoes ?? null,
-    coleta: evento.payload.tipo === 'COLETA' ? fichaCompleta(evento.payload.coleta) : null,
+    coleta: evento.payload.tipo === 'COLETA' ? fichaCompleta<FichaColeta>(evento.payload.coleta, CAMPOS_FICHA_COLETA) : null,
     numero_coleta: evento.payload.numero_coleta ?? null,
     created_at: evento.criado_em,
     updated_at: evento.criado_em,
@@ -177,6 +184,19 @@ export function existeColetaComNumero(registros: RegistroExpedicao[], numero: st
   return procurado !== '' && registros.some(registro => numeroDaColeta(registro) === procurado)
 }
 
+/**
+ * Número sugerido para a próxima coleta: a contagem é por expedição e segue o
+ * maior número já usado (na API ou só no aparelho). Números que não são
+ * inteiros (ex.: "12A") não entram na conta.
+ */
+export function proximoNumeroColeta(registros: RegistroExpedicao[]): string {
+  const maior = registros
+    .map(numeroDaColeta)
+    .filter((numero): numero is string => numero !== null && /^\d+$/.test(numero))
+    .reduce((atual, numero) => Math.max(atual, Number(numero)), 0)
+  return String(maior + 1)
+}
+
 /** Status do card da expedição: só conta o que ainda não subiu */
 export function statusDaExpedicao(pendencias: Pendencias, expedicaoId: number): SyncStatus {
   const eventos = pendencias.eventos.filter(evento => evento.expedicao_id === expedicaoId)
@@ -185,7 +205,7 @@ export function statusDaExpedicao(pendencias: Pendencias, expedicaoId: number): 
 }
 
 function lembretePendenteParaLembrete(lembrete: LembretePendente, midias: MidiaPendente[]): Lembrete {
-  const ficha = fichaCompleta(lembrete.payload) as FichaColeta
+  const ficha = fichaCompleta<FichaComum>(lembrete.payload, CAMPOS_FICHA) as FichaComum
   return {
     ...ficha,
     id: lembrete.remote_id ?? -lembrete.seq,

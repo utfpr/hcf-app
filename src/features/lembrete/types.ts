@@ -1,10 +1,10 @@
 // Espelha a entidade Lembrete do hcf-api (/v1/lembretes): a mesma ficha da
 // coleta, mais a data e o local para voltar a coletar numa expedição futura.
 
-import type { FichaColeta } from '@/features/evento/types'
+import type { FichaComum } from '@/features/evento/types'
 import type { Paginacao } from '@/features/expedition/types'
 
-export interface Lembrete extends FichaColeta {
+export interface Lembrete extends FichaComum {
   id: number
   data_coleta: string // YYYY-MM-DD
   local_coleta: string
@@ -43,7 +43,7 @@ export interface LembreteEvidencia {
   url: string
 }
 
-export interface CriarLembretePayload extends Partial<FichaColeta> {
+export interface CriarLembretePayload extends Partial<FichaComum> {
   data_coleta: string // YYYY-MM-DD
   local_coleta: string
   descricao?: string | null

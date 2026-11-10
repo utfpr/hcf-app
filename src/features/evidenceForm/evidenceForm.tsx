@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Modal, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { ArrowLeft, Check, ChevronDown, ChevronUp, Clock } from 'lucide-react-native'
 import { useNavigation } from '@react-navigation/native'
@@ -8,11 +8,15 @@ import { LocalizacaoChip } from '@/features/evento/components/LocalizacaoChip'
 import { Multimidia } from '@/features/evento/components/Multimidia'
 import { useFeedback } from '@/components/feedback/FeedbackContext'
 import {
+  aceitaVariasOpcoes,
   EMPTY_FICHA,
+  escolherOpcao,
+  FICHA_COLETA_FIELDS,
   FICHA_MULTIPLA_ESCOLHA,
-  FICHA_FIELDS,
+  fichaColetaParaPayload,
   fichaComObservacoesMultiplas,
-  fichaParaPayload,
+  locaisColetaDaExpedicao,
+  opcoesSelecionadas,
   ROTULO_OBSERVACAO_MULTIPLA,
   type CampoMultiplaEscolha,
   type FichaValues,
@@ -22,7 +26,8 @@ import { type EvidenciaPendente, useMultimidia } from '@/features/evento/hooks/u
 import { useRegistrosExpedicao } from '@/features/evento/hooks/useRegistrosExpedicao'
 import type { CriarEventoPayload } from '@/features/evento/types'
 import { useRegistrarEvento } from '@/features/evento/hooks/useRegistrarEvento'
-import { existeColetaComNumero } from '@/features/offline/mesclagem'
+import { useExpedition } from '@/features/expedition/hooks/useExpedition'
+import { existeColetaComNumero, proximoNumeroColeta } from '@/features/offline/mesclagem'
 import { RascunhoBanner } from '@/features/offline/RascunhoBanner'
 import { useRascunho } from '@/features/offline/useRascunho'
 import { FamiliaInput } from '@/features/taxonomia/components/FamiliaInput'
@@ -30,6 +35,7 @@ import { getUserFacingHttpError } from '@/libraries/http/httpError'
 import { useLocalizacao } from '@/libraries/location/useLocalizacao'
 import { EvidenceMode } from '@/navigation/types'
 import { colors } from '@/theme/colors'
+import { LocalColetaInput } from './LocalColetaInput'
 import { styles } from './styles'
 
 export interface FormularioProps {
@@ -67,7 +73,7 @@ interface Rascunho {
   midias: EvidenciaPendente[]
 }
 
-const CAMPOS_DETALHE = FICHA_FIELDS
+const CAMPOS_DETALHE = FICHA_COLETA_FIELDS
 
 function rascunhoVazio(rascunho: Rascunho): boolean {
   return !rascunho.numero && !rascunho.familia && !rascunho.observacoes
@@ -85,7 +91,8 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
   const [agora, setAgora] = useState(() => new Date())
   const dataHora = `${agora.toLocaleDateString('pt-BR')} ${agora.toLocaleTimeString('pt-BR')}`
 
-  const [collectionIdentifier, setCollectionIdentifier] = useState('')
+  // null = número automático (o próximo da expedição); texto = o que o usuário digitou
+  const [numeroDigitado, setNumeroDigitado] = useState<string | null>(null)
   const [family, setFamily] = useState('')
   const [ficha, setFicha] = useState<FichaValues>(EMPTY_FICHA)
   const [observacoesMultiplas, setObservacoesMultiplas] = useState<ObservacoesMultiplas>({})
@@ -96,11 +103,17 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
 
   const localizacao = useLocalizacao()
   const registros = useRegistrosExpedicao(isCollection ? expedicaoId : undefined)
+  const expedicao = useExpedition(isCollection ? expedicaoId : undefined)
+  const locaisColeta = useMemo(() => locaisColetaDaExpedicao(expedicao.data?.rotas), [expedicao.data])
   const multimidia = useMultimidia()
   const { pendentes, setPendentes } = multimidia
 
   const { trigger: registrar, loading: isSaving } = useRegistrarEvento(expedicaoId)
   const saveDisabled = !expedicaoId || isSaving || multimidia.busy
+
+  // A contagem é por expedição: 1 na primeira coleta, 2 na seguinte...
+  const numeroSugerido = registros.data ? proximoNumeroColeta(registros.data) : ''
+  const collectionIdentifier = numeroDigitado ?? numeroSugerido
 
   // Mesmo número de uma coleta que já existe = mesma coleta: a API junta as duas
   const numero = collectionIdentifier.trim()
@@ -118,7 +131,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
     if (!salvo || rascunhoVazio(salvo)) return
 
     setAgora(new Date(salvo.iniciado_em))
-    setCollectionIdentifier(salvo.numero)
+    setNumeroDigitado(salvo.numero || null)
     setFamily(salvo.familia)
     setFicha({ ...EMPTY_FICHA, ...salvo.ficha })
     setObservacoesMultiplas(salvo.observacoes_multiplas ?? {})
@@ -134,7 +147,8 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
     if (!restaurou.current) return
     const atual: Rascunho = {
       iniciado_em: agora.toISOString(),
-      numero: collectionIdentifier,
+      // Só o número digitado: o automático é recalculado ao reabrir
+      numero: numeroDigitado ?? '',
       familia: family,
       ficha,
       observacoes_multiplas: observacoesMultiplas,
@@ -142,12 +156,12 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
       midias: pendentes,
     }
     if (!rascunhoVazio(atual)) salvarRascunho(atual)
-  }, [agora, collectionIdentifier, family, ficha, observacoesMultiplas, notes, pendentes, salvarRascunho])
+  }, [agora, numeroDigitado, family, ficha, observacoesMultiplas, notes, pendentes, salvarRascunho])
 
   async function handleDescartarRascunho() {
     await rascunho.descartar()
     setAgora(new Date())
-    setCollectionIdentifier('')
+    setNumeroDigitado(null)
     setFamily('')
     setFicha(EMPTY_FICHA)
     setObservacoesMultiplas({})
@@ -161,21 +175,17 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
   }
 
   function alternarOpcao(campo: CampoMultiplaEscolha, opcao: string) {
-    const selecionadas = ficha[campo]
-      ? ficha[campo].split(', ').filter(Boolean)
-      : []
-    const proximo = selecionadas.includes(opcao)
-      ? selecionadas.filter(item => item !== opcao)
-      : [...selecionadas, opcao]
-
-    updateFicha(campo, proximo.join(', '))
+    updateFicha(campo, escolherOpcao(campo, ficha[campo], opcao))
+    // Escolha única: fecha o seletor assim que a opção é tocada
+    if (!aceitaVariasOpcoes(campo)) setCampoAberto(null)
   }
 
   const opcoesDoModal = campoAberto ? FICHA_MULTIPLA_ESCOLHA[campoAberto] : []
   const rotuloDoModal = campoAberto
-    ? FICHA_FIELDS.find(([campo]) => campo === campoAberto)?.[1] ?? ''
+    ? FICHA_COLETA_FIELDS.find(([campo]) => campo === campoAberto)?.[1] ?? ''
     : ''
-  const selecionadasNoModal = campoAberto ? ficha[campoAberto].split(', ').filter(Boolean) : []
+  const selecionadasNoModal = campoAberto ? opcoesSelecionadas(ficha[campoAberto]) : []
+  const modalMultiplo = campoAberto ? aceitaVariasOpcoes(campoAberto) : false
 
   async function handleSave() {
     if (saveDisabled) return
@@ -195,7 +205,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
           tipo: 'COLETA',
           numero_coleta: numero || null,
           coleta: {
-            ...fichaParaPayload(fichaComObservacoesMultiplas(ficha, observacoesMultiplas)),
+            ...fichaColetaParaPayload(fichaComObservacoesMultiplas(ficha, observacoesMultiplas)),
             familia: family.trim() || null,
           },
         }
@@ -248,7 +258,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
                 <TextInput
                   style={styles.input}
                   value={collectionIdentifier}
-                  onChangeText={value => setCollectionIdentifier(value.replace(/\D/g, ''))}
+                  onChangeText={value => setNumeroDigitado(value.replace(/\D/g, ''))}
                   keyboardType="number-pad"
                 />
                 {juntaComExistente ? (
@@ -261,13 +271,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
                 <FamiliaInput value={family} onChangeText={setFamily} disabled={isSaving} />
 
                 <Text style={styles.label}>Local da coleta</Text>
-                <TextInput
-                  style={styles.input}
-                  value={ficha.referencia_local}
-                  onChangeText={value => updateFicha('referencia_local', value)}
-                  placeholder="Ex.: Trilha da cachoeira"
-                  placeholderTextColor={colors.placeholder}
-                />
+                <LocalColetaInput ficha={ficha} locais={locaisColeta} onChange={setFicha} />
 
               </>
             ) : null}
@@ -305,7 +309,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
                   }
 
                   const campo = field as CampoMultiplaEscolha
-                  const selecionadas = ficha[campo].split(', ').filter(Boolean)
+                  const selecionadas = opcoesSelecionadas(ficha[campo])
                   const rotuloObservacao = ROTULO_OBSERVACAO_MULTIPLA[campo]
                   return (
                     <View key={field}>
@@ -317,7 +321,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
                         >
                           {selecionadas.length
                             ? selecionadas.join(', ')
-                            : 'Selecionar uma ou mais opções'}
+                            : aceitaVariasOpcoes(campo) ? 'Selecionar uma ou mais opções' : 'Selecionar uma opção'}
                         </Text>
                         <ChevronDown color={colors.textSecondary} size={18} />
                       </TouchableOpacity>
@@ -365,7 +369,9 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
                   <Text style={styles.modalClose}>Concluído</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.modalHint}>Selecione uma ou mais opções.</Text>
+              <Text style={styles.modalHint}>
+                {modalMultiplo ? 'Selecione uma ou mais opções.' : 'Selecione uma opção. Toque de novo para desmarcar.'}
+              </Text>
               <ScrollView contentContainerStyle={styles.modalOptions}>
                 {opcoesDoModal.map(opcao => {
                   const selecionada = selecionadasNoModal.includes(opcao)
@@ -375,7 +381,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
                       style={[styles.modalOption, selecionada && styles.modalOptionSelected]}
                       onPress={() => campoAberto && alternarOpcao(campoAberto, opcao)}
                     >
-                      <View style={[styles.checkbox, selecionada && styles.checkboxSelected]}>
+                      <View style={[styles.checkbox, !modalMultiplo && styles.radio, selecionada && styles.checkboxSelected]}>
                         {selecionada ? <Check size={14} color={colors.onAccent} /> : null}
                       </View>
                       <Text style={styles.modalOptionText}>{opcao}</Text>

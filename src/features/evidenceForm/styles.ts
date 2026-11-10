@@ -232,6 +232,14 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  radio: {
+    borderRadius: 10,
+  },
+  localOptionCidade: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginTop: 2,
+  },
   checkboxSelected: {
     backgroundColor: colors.accent,
     borderColor: colors.accent,

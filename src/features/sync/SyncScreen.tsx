@@ -1,11 +1,11 @@
 import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import {
-  AlertCircle, BookOpen, ChevronRight, CloudDownload, CloudUpload, RefreshCw, Wifi, WifiOff, X,
+  AlertCircle, BookOpen, Check, ChevronRight, CloudDownload, CloudUpload, RefreshCw, Wifi, WifiOff, X,
 } from 'lucide-react-native'
 import React, { useMemo, useState } from 'react'
 import {
-  ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View,
+  ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -66,15 +66,28 @@ export function SyncScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
-  const { active, future, loading, error } = useHomeExpeditions()
+  const { active, future, history, loading, error } = useHomeExpeditions()
   const { lastSyncFormatted, progressoTexto } = useSync()
   const { sincronizar, baixar, pendencias, pendentes } = useOffline()
   const taxonomia = useTaxonomia()
   const { wifi, online } = useConexao()
   const [busy, setBusy] = useState<Action | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
-  // Expedição ativa da semana: a que está em andamento (ou a próxima planejada)
-  const current = active[0] ?? future[0]
+  const secoes = useMemo(() => [
+    { titulo: 'Em andamento', itens: active },
+    { titulo: 'Planejadas', itens: future },
+    { titulo: 'Finalizadas', itens: history },
+  ].filter(secao => secao.itens.length > 0), [active, future, history])
+
+  // A expedição escolhida pelo usuário; sem escolha, a que está em andamento (ou a próxima planejada)
+  const current = useMemo(() => {
+    const escolhida = selectedId
+      ? [...active, ...future, ...history].find(item => item.id === selectedId)
+      : undefined
+    return escolhida ?? active[0] ?? future[0]
+  }, [selectedId, active, future, history])
   const erros = useMemo(() => itensComErro(pendencias), [pendencias])
 
   async function run(action: Action) {
@@ -109,8 +122,12 @@ export function SyncScreen() {
   }
 
   function handleChooseExpedition() {
-    // TODO: abrir a tela de escolha de outra expedição (por enquanto, a lista)
-    navigation.navigate('ExpeditionList')
+    setPickerOpen(true)
+  }
+
+  function handleSelectExpedition(id: string) {
+    setSelectedId(id)
+    setPickerOpen(false)
   }
 
   function currentTitle() {
@@ -171,8 +188,8 @@ export function SyncScreen() {
           </View>
         ) : null}
 
-        <Text style={styles.sectionLabel}>Expedição atual</Text>
-        <Pressable style={styles.currentCard} onPress={handleChooseExpedition}>
+        <Text style={styles.sectionLabel}>Expedição a sincronizar</Text>
+        <Pressable style={styles.currentCard} onPress={handleChooseExpedition} disabled={disabled}>
           <View style={styles.currentInfo}>
             <Text style={styles.currentName} numberOfLines={2}>{currentTitle()}</Text>
             {current ? (
@@ -257,6 +274,52 @@ export function SyncScreen() {
           <Text style={styles.primaryButtonText}>Sincronizar tudo</Text>
         </Pressable>
       </View>
+
+      <Modal
+        visible={pickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPickerOpen(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setPickerOpen(false)}>
+          <Pressable style={[styles.modalSheet, { paddingBottom: insets.bottom + 16 }]} onPress={() => {}}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Escolha a expedição</Text>
+              <Pressable onPress={() => setPickerOpen(false)} hitSlop={10}>
+                <X size={22} color={colors.textPrimary} />
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalContent}>
+              {secoes.length === 0 ? (
+                <Text style={styles.modalEmpty}>Nenhuma expedição no aparelho</Text>
+              ) : secoes.map(secao => (
+                <View key={secao.titulo} style={styles.modalSection}>
+                  <Text style={styles.sectionLabel}>{secao.titulo}</Text>
+                  {secao.itens.map(item => {
+                    const selecionada = item.id === current?.id
+                    return (
+                      <Pressable
+                        key={item.id}
+                        style={[styles.modalItem, selecionada && styles.modalItemSelected]}
+                        onPress={() => handleSelectExpedition(item.id)}
+                      >
+                        <View style={styles.currentInfo}>
+                          <Text style={styles.currentName} numberOfLines={2}>{item.name}</Text>
+                          <Text style={styles.currentMeta} numberOfLines={1}>
+                            {item.date} – {item.location}
+                          </Text>
+                        </View>
+                        {selecionada ? <Check size={20} color={colors.accent} /> : null}
+                      </Pressable>
+                    )
+                  })}
+                </View>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   )
 }
@@ -359,4 +422,39 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   footerButton: { marginBottom: 0 },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalSheet: {
+    maxHeight: '75%',
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '600' },
+  modalContent: { paddingHorizontal: 20, paddingTop: 16 },
+  modalEmpty: { color: colors.textSecondary, fontSize: 14, textAlign: 'center', paddingVertical: 24 },
+  modalSection: { marginBottom: 8 },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardBackground,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
+  },
+  modalItemSelected: { borderColor: colors.accent },
 })

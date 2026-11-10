@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { ArrowLeft, Bell, BookOpen, Clock, Leaf, Lock, Plus, Send, Users } from 'lucide-react-native'
+import { ArrowLeft, Bell, BookOpen, Clock, Leaf, Plus, RefreshCw, Users, Lock } from 'lucide-react-native'
 import { useMemo, useState } from 'react'
 import { useFeedback } from '@/components/feedback/FeedbackContext'
 import { useAuth } from '@/contexts/Auth/useAuth'
@@ -67,7 +67,7 @@ export function ExpeditionDetailScreen() {
   const { toast } = useFeedback()
   const { user } = useAuth()
   const { sincronizar } = useOffline()
-  const [enviando, setEnviando] = useState(false)
+  const [sincronizando, setSincronizando] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [evidenciaAberta, setEvidenciaAberta] = useState<Evidencia | null>(null)
   const [audioAtivoId, setAudioAtivoId] = useState<number | null>(null)
@@ -105,18 +105,18 @@ export function ExpeditionDetailScreen() {
     lembretes.refresh()
   }
 
-  // Manda só o que é desta expedição (registros, lembretes e mídia), sem baixar nada
-  async function handleEnviarExpedicao() {
-    if (enviando) return
-    setEnviando(true)
+  // Sincroniza só o que é desta expedição (registros, lembretes e mídia), igual à tela de sincronização
+  async function handleSincronizarExpedicao() {
+    if (sincronizando) return
+    setSincronizando(true)
     try {
-      const resultado = await sincronizar({ expedicaoId: Number(expeditionId), semBaixar: true })
+      const resultado = await sincronizar({ expedicaoId: Number(expeditionId) })
       toast(resultado.success
-        ? { tipo: 'sucesso', titulo: 'Envio', mensagem: 'A expedição foi enviada para o servidor.' }
-        : { tipo: 'erro', titulo: 'Envio', mensagem: resultado.message ?? 'Não foi possível concluir.' })
+        ? { tipo: 'sucesso', titulo: 'Sincronização', mensagem: 'A expedição foi sincronizada.' }
+        : { tipo: 'erro', titulo: 'Sincronização', mensagem: resultado.message ?? 'Não foi possível concluir.' })
       if (resultado.success) handleRefresh()
     } finally {
-      setEnviando(false)
+      setSincronizando(false)
     }
   }
 
@@ -248,6 +248,20 @@ export function ExpeditionDetailScreen() {
 
         <View style={styles.divider} />
 
+        {/* Fica disponível também com a expedição finalizada */}
+        <TouchableOpacity
+          style={[styles.syncButton, sincronizando && styles.syncButtonDisabled]}
+          onPress={handleSincronizarExpedicao}
+          disabled={sincronizando}
+        >
+          {sincronizando
+            ? <ActivityIndicator color={colors.onAccent} />
+            : <RefreshCw color={colors.onAccent} size={18} />}
+          <Text style={styles.syncButtonText}>
+            {sincronizando ? 'Sincronizando...' : 'Sincronizar expedição'}
+          </Text>
+        </TouchableOpacity>
+
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 'registros' && styles.tabButtonActive]}
@@ -333,18 +347,6 @@ export function ExpeditionDetailScreen() {
           )
         )}
       </ScrollView>
-
-      {/* Fica disponível também com a expedição finalizada */}
-      <TouchableOpacity
-        style={[styles.sendButton, enviando && styles.sendButtonDisabled]}
-        onPress={handleEnviarExpedicao}
-        disabled={enviando}
-      >
-        {enviando
-          ? <ActivityIndicator color={colors.onAccent} />
-          : <Send color={colors.onAccent} size={20} />}
-        <Text style={styles.sendButtonText}>{enviando ? 'Enviando...' : 'Enviar expedição'}</Text>
-      </TouchableOpacity>
 
       {/* Expedição finalizada é só para visualizar: sem o botão de novos registros */}
       {!isFinalizada && (
@@ -501,20 +503,19 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   menuOptionText: { color: colors.textPrimary, fontSize: 16 },
-  sendButton: {
-    position: 'absolute',
-    bottom: 28,
-    left: 24,
-    height: 56,
-    paddingHorizontal: 20,
-    borderRadius: 28,
+  syncButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     backgroundColor: colors.accent,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
-  sendButtonDisabled: { opacity: 0.6 },
-  sendButtonText: { color: colors.onAccent, fontSize: 15, fontWeight: '600' },
+  syncButtonDisabled: { opacity: 0.6 },
+  syncButtonText: { color: colors.onAccent, fontSize: 16, fontWeight: '600' },
   notFound: {
     flex: 1,
     justifyContent: 'center',

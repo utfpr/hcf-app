@@ -1,8 +1,16 @@
+import type { RotaExpedicao } from '@/features/expedition/types'
 import {
+  aceitaVariasOpcoes,
+  buscarLocaisColeta,
   EMPTY_FICHA,
+  escolherLocalColeta,
+  escolherOpcao,
   FICHA_MULTIPLA_ESCOLHA,
   fichaComObservacoesMultiplas,
+  FICHA_COLETA_FIELDS,
+  fichaColetaParaPayload,
   fichaParaPayload,
+  locaisColetaDaExpedicao,
 } from './fichaCampos'
 
 describe('fichaCampos', () => {
@@ -38,5 +46,96 @@ describe('fichaCampos', () => {
     expect(FICHA_MULTIPLA_ESCOLHA.substrato).toContain('Rupícola')
     expect(FICHA_MULTIPLA_ESCOLHA.tronco_com_casca).toContain('Lisa')
     expect(FICHA_MULTIPLA_ESCOLHA.luminosidade).toEqual(['Heliófita', 'Semi-ciófita', 'Ciófita'])
+  })
+
+  it('escreve as opções como na ficha impressa', () => {
+    expect(FICHA_MULTIPLA_ESCOLHA.associacoes).toContain('Micoheterotrófica')
+    expect(FICHA_MULTIPLA_ESCOLHA.associacoes).not.toContain('Micoteterotrófica')
+    expect(FICHA_MULTIPLA_ESCOLHA.habito).toContain('Cespitosa')
+    expect(FICHA_MULTIPLA_ESCOLHA.habito).not.toContain('Cespitosas')
+  })
+
+  it('a coleta tem altura e exsudado depois do hábito e as cores das flores antes da observação', () => {
+    const campos = FICHA_COLETA_FIELDS.map(([campo]) => campo)
+
+    expect(campos.slice(campos.indexOf('habito'), campos.indexOf('habito') + 3))
+      .toEqual(['habito', 'altura', 'exsudado'])
+    expect(campos.slice(campos.indexOf('flores_cor_calice'), campos.indexOf('flores_cor_calice') + 3))
+      .toEqual(['flores_cor_calice', 'flores_cor_corola', 'flores'])
+  })
+
+  it('envia altura, exsudado e as cores das flores na coleta', () => {
+    const payload = fichaColetaParaPayload({
+      ...EMPTY_FICHA,
+      altura: ' 8 m ',
+      exsudado: 'Látex branco',
+      flores_cor_calice: 'Verde',
+      flores_cor_corola: '',
+    })
+
+    expect(payload).toMatchObject({
+      altura: '8 m',
+      exsudado: 'Látex branco',
+      flores_cor_calice: 'Verde',
+      flores_cor_corola: null,
+    })
+  })
+
+  it('o lembrete não envia os campos que só a coleta tem', () => {
+    const payload = fichaParaPayload({ ...EMPTY_FICHA, altura: '8 m' })
+
+    expect(Object.keys(payload)).not.toEqual(expect.arrayContaining(['altura']))
+    expect(payload).not.toHaveProperty('exsudado')
+    expect(payload).not.toHaveProperty('flores_cor_calice')
+    expect(payload).not.toHaveProperty('flores_cor_corola')
+  })
+
+  it('só folhas, frutos e hábito aceitam mais de uma opção', () => {
+    const multiplos = (Object.keys(FICHA_MULTIPLA_ESCOLHA) as Array<keyof typeof FICHA_MULTIPLA_ESCOLHA>)
+      .filter(aceitaVariasOpcoes)
+    expect(multiplos.sort()).toEqual(['folhas', 'frutos', 'habito'])
+  })
+
+  it('nos campos de escolha única troca a opção, e desmarca ao tocar de novo', () => {
+    expect(escolherOpcao('substrato', 'Rupícola', 'Ripária')).toBe('Ripária')
+    expect(escolherOpcao('substrato', 'Ripária', 'Ripária')).toBe('')
+    expect(escolherOpcao('folhas', 'Cartáceas', 'Crassas')).toBe('Cartáceas, Crassas')
+    expect(escolherOpcao('folhas', 'Cartáceas, Crassas', 'Cartáceas')).toBe('Crassas')
+  })
+
+  it('lista os locais de coleta de todas as cidades da rota, na ordem da rota', () => {
+    const rotas: RotaExpedicao[] = [
+      { cidade_id: 2, ordem: 2, nome_cidade: 'Peabiru', estado: 1, estado_nome: 'Paraná', estado_sigla: 'PR',
+        locais_coleta: [{ id: 20, descricao: 'Bosque' }, { id: 21, descricao: '  ' }] },
+      { cidade_id: 1, ordem: 1, nome_cidade: 'Campo Mourão', estado: 1, estado_sigla: 'PR',
+        locais_coleta: [{ id: 10, descricao: 'Trilha da cachoeira' }, { id: 11, descricao: null }] },
+    ]
+
+    expect(locaisColetaDaExpedicao(rotas)).toEqual([
+      { id: 10, descricao: 'Trilha da cachoeira', municipio: 'Campo Mourão', estado: 'PR' },
+      { id: 20, descricao: 'Bosque', municipio: 'Peabiru', estado: 'Paraná' },
+    ])
+    expect(locaisColetaDaExpedicao(undefined)).toEqual([])
+  })
+
+  it('escolher um local sugerido preenche o local, a cidade e o estado', () => {
+    const local = { id: 10, descricao: 'Trilha da cachoeira', municipio: 'Campo Mourão', estado: 'Paraná' }
+    const escolhida = escolherLocalColeta({ ...EMPTY_FICHA, referencia_local: 'tri', municipio: 'Outra' }, local)
+
+    expect(escolhida).toMatchObject({ referencia_local: 'Trilha da cachoeira', municipio: 'Campo Mourão', estado: 'Paraná' })
+    expect(escolherLocalColeta(escolhida, local)).toEqual(escolhida)
+  })
+
+  it('busca os locais da expedição pelo nome ou pela cidade, sem diferenciar maiúsculas e acentos', () => {
+    const locais = [
+      { id: 10, descricao: 'Trilha da Cachoeira', municipio: 'Campo Mourão', estado: 'Paraná' },
+      { id: 20, descricao: 'Bosque', municipio: 'Peabiru', estado: 'Paraná' },
+    ]
+
+    expect(buscarLocaisColeta(locais, 'cachoe').map(local => local.id)).toEqual([10])
+    expect(buscarLocaisColeta(locais, 'mourao').map(local => local.id)).toEqual([10])
+    expect(buscarLocaisColeta(locais, '  BOSQUE ').map(local => local.id)).toEqual([20])
+    expect(buscarLocaisColeta(locais, 'Beira da estrada')).toEqual([])
+    expect(buscarLocaisColeta(locais, '')).toEqual(locais)
   })
 })
