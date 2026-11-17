@@ -3,7 +3,6 @@ import { ActivityIndicator, Animated, Image, StyleSheet, Text, TouchableOpacity,
 import { Camera, FileText, Mic, Pause, Play, Square, Upload, Video, X } from 'lucide-react-native'
 import VideoPlayer from 'react-native-video'
 
-import { SeloNaFila } from '@/features/sync/components/SeloNaFila'
 import { colors } from '@/theme/colors'
 
 import { descricaoAnexo, type MultimidiaState } from '../hooks/useMultimidia'
@@ -61,7 +60,7 @@ function BannerGravacao({ recordTime, onStop }: { recordTime: string; onStop: ()
 
 /**
  * Players ocultos que leem a duração dos vídeos escolhidos. Precisam ficar montados
- * mesmo com a lista de anexos fechada, senão o salvar fica bloqueado esperando.
+ * mesmo com a lista de anexos fora da tela, senão o salvar fica bloqueado esperando.
  */
 export function ValidadorVideos({ state }: Pick<PecaProps, 'state'>) {
   return (
@@ -132,7 +131,7 @@ export function BotoesMidia({ state, disabled = false, apenasFotos = false, comp
   )
 }
 
-/** Anexos ainda no aparelho, cada um com o selo de que sobe no próximo "Sincronizar" */
+/** Anexos ainda no aparelho, que sobem no próximo "Sincronizar" */
 export function ListaAnexos({ state, disabled = false }: PecaProps) {
   const { pendentes, isRecording, playingId } = state
 
@@ -164,10 +163,7 @@ export function ListaAnexos({ state, disabled = false }: PecaProps) {
             {item.validandoDuracao ? (
               <Text style={styles.previewMeta}>Verificando duração do vídeo...</Text>
             ) : (
-              <>
-                <Text style={styles.previewMeta}>{descricaoAnexo(item)}</Text>
-                <SeloNaFila style={styles.selo} />
-              </>
+              <Text style={styles.previewMeta}>{descricaoAnexo(item)}</Text>
             )}
           </View>
           <TouchableOpacity onPress={() => state.remover(item.id)} disabled={disabled} hitSlop={HIT_SLOP}>
@@ -306,5 +302,4 @@ const styles = StyleSheet.create({
   previewInfo: { flex: 1 },
   previewName: { color: colors.textPrimary, fontSize: 12 },
   previewMeta: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
-  selo: { marginTop: 4 },
 })

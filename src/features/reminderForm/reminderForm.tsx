@@ -25,6 +25,7 @@ import { styles } from '../evidenceForm/styles';
 import { reminderStyles } from './styles';
 import { RodapeAcoes } from '@/features/evento/components/RodapeAcoes';
 import { CardFicha } from '@/features/evidenceForm/CardFicha';
+import { CardMidiasAssociadas } from '@/features/evidenceForm/CardMidiasAssociadas';
 import { type EvidenciaPendente, useMultimidia } from '@/features/evento/hooks/useMultimidia';
 
 export interface LembreteFormProps {
@@ -341,6 +342,8 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
               </View>
             ))}
           </CardFicha>
+
+          <CardMidiasAssociadas multimidia={multimidia} apenasFotos disabled={isSaving} />
         </ScrollView>
 
         <RodapeAcoes

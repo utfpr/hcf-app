@@ -51,18 +51,18 @@ function textos(pendentes: EvidenciaPendente[]) {
 }
 
 describe('ListaAnexos', () => {
-  it('mostra tipo, duração e o selo de fila', () => {
+  it('mostra tipo e duração, sem o selo de fila (tudo ali está na fila)', () => {
     const lista = textos([pendente({ tipo: 'audio', detalhe: '00:42' })])
 
     expect(lista).toContain('Áudio · 00:42')
-    expect(lista).toContain('Na fila · enviado ao sincronizar')
+    expect(lista.some(texto => texto.includes('Na fila'))).toBe(false)
   })
 
-  it('vídeo em verificação não mostra selo', () => {
+  it('vídeo em verificação avisa no lugar da duração', () => {
     const lista = textos([pendente({ tipo: 'video', detalhe: '3 MB', validandoDuracao: true })])
 
     expect(lista).toContain('Verificando duração do vídeo...')
-    expect(lista).not.toContain('Na fila · enviado ao sincronizar')
+    expect(lista).not.toContain('Vídeo · 3 MB')
   })
 })
 

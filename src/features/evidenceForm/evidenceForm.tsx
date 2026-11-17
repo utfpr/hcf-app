@@ -39,6 +39,7 @@ import { useLocalizacao } from '@/libraries/location/useLocalizacao'
 import { EvidenceMode } from '@/navigation/types'
 import { colors } from '@/theme/colors'
 import { CardFicha } from './CardFicha'
+import { CardMidiasAssociadas } from './CardMidiasAssociadas'
 import { LocalColetaInput } from './LocalColetaInput'
 import { OpcoesChips } from './OpcoesChips'
 import { styles } from './styles'
@@ -347,6 +348,8 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
               numberOfLines={isCollection ? 5 : 10}
             />
           </CardFicha>
+
+          <CardMidiasAssociadas multimidia={multimidia} disabled={isSaving} />
         </ScrollView>
 
         <RodapeAcoes

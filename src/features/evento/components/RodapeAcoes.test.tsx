@@ -77,18 +77,33 @@ function textos(renderer: ReactTestRenderer.ReactTestRenderer) {
 }
 
 describe('RodapeAcoes', () => {
-  it('sem anexos não mostra a faixa', () => {
-    const renderer = render(estado())
+  it('com anexos, não mostra a faixa da fila nem a lista (ficam no card do formulário)', () => {
+    const lista = textos(render(estado({ pendentes: [pendente(1), pendente(2)] })))
 
-    expect(textos(renderer).some(texto => texto.includes('na fila'))).toBe(false)
-    expect(textos(renderer)).toContain('Salvar Coleta')
+    expect(lista.some(texto => texto.includes('na fila'))).toBe(false)
+    expect(lista).not.toContain('foto-1.jpg')
+    expect(lista).toContain('Salvar Coleta')
   })
 
-  it('mostra a contagem da fila', () => {
-    expect(textos(render(estado({ pendentes: [pendente(1), pendente(2)] }))))
-      .toContain('2 anexos na fila · enviados ao sincronizar')
-    expect(textos(render(estado({ pendentes: [pendente(1)] }))))
-      .toContain('1 anexo na fila · enviados ao sincronizar')
+  it('enquanto verifica um vídeo, o salvar explica por que está travado', () => {
+    const video = { ...pendente(1), tipo: 'video' as const, validandoDuracao: true }
+    const lista = textos(render(estado({ pendentes: [video] })))
+
+    expect(lista).toContain('Verificando vídeo...')
+    expect(lista).not.toContain('Salvar Coleta')
+  })
+
+  it('salvando tem prioridade sobre a verificação de vídeo', () => {
+    let renderer!: ReactTestRenderer.ReactTestRenderer
+    const video = { ...pendente(1), tipo: 'video' as const, validandoDuracao: true }
+    ReactTestRenderer.act(() => {
+      renderer = ReactTestRenderer.create(
+        <RodapeAcoes multimidia={estado({ pendentes: [video] })} saveLabel="Salvar Coleta" salvando saveDisabled onSalvar={jest.fn()} />,
+      )
+    })
+    montados.push(renderer)
+
+    expect(textos(renderer)).toContain('Salvando...')
   })
 
   it('some com o teclado aberto', () => {
@@ -110,22 +125,6 @@ describe('RodapeAcoes', () => {
 
     expect(textos(renderer)).toContain('Salvar Coleta')
     expect(textos(renderer)).toContain('00:12')
-  })
-
-  it('lista os anexos direto no rodapé, sem precisar abrir nada', () => {
-    const renderer = render(estado({ pendentes: [pendente(1), pendente(2)] }))
-
-    expect(textos(renderer)).toContain('foto-1.jpg')
-    expect(textos(renderer)).toContain('foto-2.jpg')
-  })
-
-  it('gravando com o teclado aberto esconde a lista, mas mantém a contagem', () => {
-    const renderer = render(estado({ isRecording: true, pendentes: [pendente(1)] }))
-
-    ReactTestRenderer.act(() => ouvintes.keyboardDidShow())
-
-    expect(textos(renderer)).toContain('1 anexo na fila · enviados ao sincronizar')
-    expect(textos(renderer)).not.toContain('foto-1.jpg')
   })
 
   describe('posição sobre o teclado durante a gravação', () => {
