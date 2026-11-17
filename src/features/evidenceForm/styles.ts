@@ -88,8 +88,10 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.inputBackground,
+    // Fundo escuro: o texto claro da opção precisa se destacar (no fundo claro dos
+    // inputs ele sumia)
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
   },
   chipSelecionado: {
     backgroundColor: colors.accent,
