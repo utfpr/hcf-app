@@ -1,5 +1,6 @@
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { Camera, FileText, Mic, Pause, Play, Upload, Video, X } from 'lucide-react-native'
+import { useEffect, useRef } from 'react'
+import { ActivityIndicator, Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Camera, FileText, Mic, Pause, Play, Square, Upload, Video, X } from 'lucide-react-native'
 import VideoPlayer from 'react-native-video'
 
 import { SeloNaFila } from '@/features/sync/components/SeloNaFila'
@@ -21,6 +22,36 @@ interface BotoesMidiaProps extends PecaProps {
 }
 
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 }
+
+/** Indicador visual pulsando enquanto o microfone está gravando */
+function BannerGravacao({ recordTime, onStop }: { recordTime: string; onStop: () => void }) {
+  const pulso = useRef(new Animated.Value(1)).current
+
+  useEffect(() => {
+    const animacao = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulso, { toValue: 0.25, duration: 550, useNativeDriver: true }),
+        Animated.timing(pulso, { toValue: 1, duration: 550, useNativeDriver: true }),
+      ]),
+    )
+    animacao.start()
+    return () => animacao.stop()
+  }, [pulso])
+
+  return (
+    <View style={styles.recordingBanner}>
+      <Animated.View style={[styles.recordingDot, { opacity: pulso }]} />
+      <View style={styles.recordingInfo}>
+        <Text style={styles.recordingTitle}>Gravando áudio...</Text>
+        <Text style={styles.recordingTimer}>{recordTime}</Text>
+      </View>
+      <TouchableOpacity style={styles.stopButton} onPress={onStop} hitSlop={HIT_SLOP}>
+        <Square size={12} color="#FFFFFF" fill="#FFFFFF" />
+        <Text style={styles.stopButtonText}>Parar</Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
 
 /**
  * Players ocultos que leem a duração dos vídeos escolhidos. Precisam ficar montados
@@ -49,40 +80,48 @@ export function BotoesMidia({ state, disabled = false, apenasFotos = false, comp
   const texto = [styles.mediaButtonText, compacto && styles.mediaButtonTextCompacto]
 
   return (
-    <View style={[styles.mediaRow, compacto && styles.mediaRowCompacta]}>
-      <TouchableOpacity style={botao} onPress={state.capturarFoto} disabled={disabled || state.busy}>
-        {isCapturing
-          ? <ActivityIndicator size="small" color={colors.onAccent} />
-          : <Camera size={16} color={colors.onAccent} />}
-        <Text style={texto} numberOfLines={1} adjustsFontSizeToFit>Foto</Text>
-      </TouchableOpacity>
+    <View>
+      {!apenasFotos && isRecording ? (
+        <BannerGravacao recordTime={recordTime} onStop={state.alternarGravacao} />
+      ) : null}
 
-      {apenasFotos ? null : (
-        <TouchableOpacity style={botao} onPress={state.capturarVideo} disabled={disabled || state.busy}>
-          <Video size={16} color={colors.onAccent} />
-          <Text style={texto} numberOfLines={1} adjustsFontSizeToFit>Vídeo</Text>
+      <View style={[styles.mediaRow, compacto && styles.mediaRowCompacta]}>
+        <TouchableOpacity style={botao} onPress={state.capturarFoto} disabled={disabled || state.busy}>
+          {isCapturing
+            ? <ActivityIndicator size="small" color={colors.onAccent} />
+            : <Camera size={16} color={colors.onAccent} />}
+          <Text style={texto} numberOfLines={1} adjustsFontSizeToFit>Foto</Text>
         </TouchableOpacity>
-      )}
 
-      {apenasFotos ? null : (
-        <TouchableOpacity
-          style={[...botao, isRecording && styles.mediaButtonRecording]}
-          onPress={state.alternarGravacao}
-          disabled={disabled || isCapturing}
-        >
-          <Mic size={16} color={isRecording ? colors.danger : colors.onAccent} />
-          <Text style={[...texto, isRecording && styles.mediaButtonTextRecording]} numberOfLines={1} adjustsFontSizeToFit>
-            {isRecording ? recordTime : 'Áudio'}
+        {apenasFotos ? null : (
+          <TouchableOpacity style={botao} onPress={state.capturarVideo} disabled={disabled || state.busy}>
+            <Video size={16} color={colors.onAccent} />
+            <Text style={texto} numberOfLines={1} adjustsFontSizeToFit>Vídeo</Text>
+          </TouchableOpacity>
+        )}
+
+        {apenasFotos ? null : (
+          <TouchableOpacity
+            style={[...botao, isRecording && styles.mediaButtonRecording]}
+            onPress={state.alternarGravacao}
+            disabled={disabled || isCapturing}
+          >
+            {isRecording
+              ? <Square size={14} color={colors.danger} fill={colors.danger} />
+              : <Mic size={16} color={colors.onAccent} />}
+            <Text style={[...texto, isRecording && styles.mediaButtonTextRecording]} numberOfLines={1} adjustsFontSizeToFit>
+              {isRecording ? `Parar (${recordTime})` : 'Áudio'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity style={botao} onPress={state.upload} disabled={disabled || state.busy}>
+          <Upload size={16} color={colors.onAccent} />
+          <Text style={texto} numberOfLines={1} adjustsFontSizeToFit>
+            {apenasFotos ? 'Galeria' : 'Arquivo'}
           </Text>
         </TouchableOpacity>
-      )}
-
-      <TouchableOpacity style={botao} onPress={state.upload} disabled={disabled || state.busy}>
-        <Upload size={16} color={colors.onAccent} />
-        <Text style={texto} numberOfLines={1} adjustsFontSizeToFit>
-          {apenasFotos ? 'Galeria' : 'Arquivo'}
-        </Text>
-      </TouchableOpacity>
+      </View>
     </View>
   )
 }
@@ -147,6 +186,56 @@ export function Multimidia({ state, disabled = false, apenasFotos = false }: Omi
 }
 
 const styles = StyleSheet.create({
+  recordingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(239, 68, 68, 0.16)',
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+  },
+  recordingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.danger,
+  },
+  recordingInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 8,
+  },
+  recordingTitle: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  recordingTimer: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  stopButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.danger,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  stopButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   mediaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -177,10 +266,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 2,
   },
-  mediaButtonRecording: { borderColor: colors.danger },
+  mediaButtonRecording: {
+    borderColor: colors.danger,
+    backgroundColor: 'rgba(239, 68, 68, 0.16)',
+  },
   mediaButtonText: { color: colors.onAccent, fontSize: 13 },
   mediaButtonTextCompacto: { fontSize: 12 },
-  mediaButtonTextRecording: { color: colors.danger },
+  mediaButtonTextRecording: { color: colors.danger, fontWeight: '700' },
   error: {
     color: colors.danger,
     fontSize: 12,

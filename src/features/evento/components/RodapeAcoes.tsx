@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Animated, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { Check, ChevronUp, Paperclip } from 'lucide-react-native'
+import { useEffect, useRef } from 'react'
+import { ActivityIndicator, Animated, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Check, Paperclip } from 'lucide-react-native'
 
 import { useTeclado } from '@/hooks/useTeclado'
 import { colors } from '@/theme/colors'
@@ -25,15 +25,14 @@ function textoFila(quantidade: number): string {
 }
 
 /**
- * Rodapé fixo dos formulários: a fila de anexos, os botões de mídia e o salvar
- * ficam sempre à mão, sem rolar até o começo do formulário. Some com o teclado
- * aberto, a não ser durante uma gravação (o tempo continua à vista).
+ * Rodapé fixo dos formulários: a fila de anexos sempre visível, os botões de
+ * mídia e o salvar ficam sempre à mão, sem rolar até o começo do formulário.
+ * Some com o teclado aberto, a não ser durante uma gravação (o tempo continua à vista).
  */
 export function RodapeAcoes({
   multimidia, apenasFotos = false, saveLabel, salvando, saveDisabled, onSalvar, erro,
 }: RodapeAcoesProps) {
   const teclado = useTeclado()
-  const [gavetaAberta, setGavetaAberta] = useState(false)
   const quantidade = multimidia.pendentes.length
 
   // A faixa pisca uma vez quando entra um anexo, para o olho achar onde ele foi parar
@@ -46,7 +45,6 @@ export function RodapeAcoes({
         Animated.timing(destaque, { toValue: 0, duration: 450, useNativeDriver: false }),
       ]).start()
     }
-    if (quantidade === 0) setGavetaAberta(false)
     anterior.current = quantidade
   }, [quantidade, destaque])
 
@@ -68,17 +66,16 @@ export function RodapeAcoes({
       {visivel ? (
         <View testID="rodape-acoes" style={[styles.rodape, acimaDoTeclado]}>
           {quantidade > 0 ? (
-            <TouchableOpacity
-              onPress={() => setGavetaAberta(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Ver anexos na fila"
-            >
+            <View style={styles.filaContainer}>
               <Animated.View style={[styles.faixa, { backgroundColor: fundoFaixa }]}>
                 <Paperclip size={14} color={colors.bell} />
                 <Text style={styles.faixaTexto} numberOfLines={1}>{textoFila(quantidade)}</Text>
-                <ChevronUp size={16} color={colors.bell} />
               </Animated.View>
-            </TouchableOpacity>
+
+              <ScrollView style={styles.listaAnexos} nestedScrollEnabled>
+                <ListaAnexos state={multimidia} disabled={salvando} />
+              </ScrollView>
+            </View>
           ) : null}
 
           {mensagemErro ? <Text style={styles.erro}>{mensagemErro}</Text> : null}
@@ -95,22 +92,6 @@ export function RodapeAcoes({
           </TouchableOpacity>
         </View>
       ) : null}
-
-      <Modal visible={gavetaAberta} transparent animationType="slide" onRequestClose={() => setGavetaAberta(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.gaveta}>
-            <View style={styles.gavetaHeader}>
-              <Text style={styles.gavetaTitulo}>{textoFila(quantidade)}</Text>
-              <TouchableOpacity onPress={() => setGavetaAberta(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Text style={styles.gavetaFechar}>Fechar</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView>
-              <ListaAnexos state={multimidia} disabled={salvando} />
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </>
   )
 }
@@ -124,6 +105,9 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 14,
   },
+  filaContainer: {
+    marginBottom: 8,
+  },
   faixa: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -134,6 +118,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   faixaTexto: { flex: 1, color: colors.bell, fontSize: 13, fontWeight: '600' },
+  listaAnexos: {
+    maxHeight: 165,
+  },
   erro: { color: colors.danger, fontSize: 12, marginBottom: 8, textAlign: 'center' },
   salvar: {
     backgroundColor: colors.accent,
@@ -146,21 +133,4 @@ const styles = StyleSheet.create({
   },
   salvarDesabilitado: { opacity: 0.6 },
   salvarTexto: { color: colors.onAccent, fontSize: 15, fontWeight: '500' },
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
-  gaveta: {
-    maxHeight: '70%',
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 16,
-  },
-  gavetaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 12,
-  },
-  gavetaTitulo: { flex: 1, color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
-  gavetaFechar: { color: colors.accent, fontSize: 14, fontWeight: '600' },
 })
