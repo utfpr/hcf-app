@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { ArrowLeft, Bell, BookOpen, Clock, Leaf, Plus, RefreshCw, Users, Lock } from 'lucide-react-native'
@@ -74,6 +74,9 @@ export function ExpeditionDetailScreen() {
   // à revalidação das queries, ele piscava a cada gravação durante a sincronização
   const [puxando, setPuxando] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  // O SafeAreaView reserva espaço com padding, mas posição absoluta ignora padding:
+  // sem somar o inset, os botões de navegação do Android cobrem o "+"
+  const insets = useSafeAreaInsets()
   const [evidenciaAberta, setEvidenciaAberta] = useState<Evidencia | null>(null)
   const [audioAtivoId, setAudioAtivoId] = useState<number | null>(null)
   const [registroParaEvidencia, setRegistroParaEvidencia] = useState<RegistroExpedicao | null>(null)
@@ -361,7 +364,7 @@ export function ExpeditionDetailScreen() {
       {!isFinalizada && (
         <>
           {isMenuOpen && podeRegistrar && (
-            <View style={styles.floatingMenu}>
+            <View style={[styles.floatingMenu, { bottom: 100 + insets.bottom }]}>
               <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('collection')}>
                 <Leaf color={colors.accent} size={20} />
                 <Text style={styles.menuOptionText}>Coleta</Text>
@@ -377,7 +380,7 @@ export function ExpeditionDetailScreen() {
             </View>
           )}
           <TouchableOpacity
-            style={[styles.floatingButton, !podeRegistrar && styles.floatingButtonDisabled]}
+            style={[styles.floatingButton, { bottom: 24 + insets.bottom }, !podeRegistrar && styles.floatingButtonDisabled]}
             onPress={() => setIsMenuOpen(!isMenuOpen)}
             disabled={!podeRegistrar}
             accessibilityState={{ disabled: !podeRegistrar }}

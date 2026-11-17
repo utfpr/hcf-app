@@ -82,7 +82,8 @@ export function UserProfileScreen() {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      {/* O fim da rolagem (botão de sair) não pode ficar sob os botões de navegação */}
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}>
         {/* AVATAR E NOME */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
