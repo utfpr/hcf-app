@@ -3,6 +3,7 @@ import type { FichaColeta, FichaComum } from './types'
 
 // Campos de texto da ficha, com rótulo e exemplo. Família fica de fora: tem campo
 // próprio com busca (FamiliaInput). Usado no lembrete; a coleta usa FICHA_COLETA_FIELDS.
+// A ordem é a dos cards da coleta (SECOES_COLETA), para as duas telas baterem.
 export const FICHA_FIELDS = [
   ['nome_popular', 'Nome popular', 'Ex.: Palmito-juçara'],
   ['nome_cientifico', 'Nome científico', 'Ex.: Euterpe edulis'],
@@ -11,14 +12,14 @@ export const FICHA_FIELDS = [
   ['tipo_vegetacao', 'Tipo de vegetação', 'Ex.: Floresta estacional'],
   ['solo', 'Solo', 'Ex.: Argiloso'],
   ['relevo', 'Relevo', 'Ex.: Plano'],
-  ['substrato', 'Substrato', 'Ex.: Solo úmido'],
-  ['tronco_com_casca', 'Tronco com casca', 'Descreva o tronco'],
-  ['associacoes', 'Associações', 'Espécies associadas'],
-  ['folhas', 'Folhas', 'Descreva as folhas'],
   ['habito', 'Hábito', 'Ex.: Arbóreo'],
-  ['frutos', 'Frutos', 'Descreva os frutos'],
-  ['flores', 'Flores', 'Observações sobre as flores'],
   ['luminosidade', 'Luminosidade', 'Ex.: Meia-sombra'],
+  ['substrato', 'Substrato', 'Ex.: Solo úmido'],
+  ['associacoes', 'Associações', 'Espécies associadas'],
+  ['flores', 'Flores', 'Observações sobre as flores'],
+  ['frutos', 'Frutos', 'Descreva os frutos'],
+  ['folhas', 'Folhas', 'Descreva as folhas'],
+  ['tronco_com_casca', 'Tronco com casca', 'Descreva o tronco'],
 ] as const satisfies ReadonlyArray<readonly [keyof FichaComum, string, string]>
 
 export type FichaFieldName = (typeof FICHA_FIELDS)[number][0]
@@ -34,13 +35,16 @@ const CAMPOS_DEPOIS_DE: Partial<Record<FichaFieldName, readonly DefinicaoCampo[]
     ['altura', 'Altura', 'Ex.: 8 m'],
     ['exsudado', 'Exsudado (presença/cor)', 'Ex.: Látex branco'],
   ],
-  frutos: [
+}
+const CAMPOS_ANTES_DE: Partial<Record<FichaFieldName, readonly DefinicaoCampo[]>> = {
+  flores: [
     ['flores_cor_calice', 'Cor do cálice', 'Ex.: Verde'],
     ['flores_cor_corola', 'Cor da corola', 'Ex.: Lilás'],
   ],
 }
 
 export const FICHA_COLETA_FIELDS: readonly DefinicaoCampo[] = FICHA_FIELDS.flatMap(campo => [
+  ...(CAMPOS_ANTES_DE[campo[0]] ?? []),
   campo,
   ...(CAMPOS_DEPOIS_DE[campo[0]] ?? []),
 ])
@@ -77,6 +81,10 @@ const CAMPOS_MULTIPLA_SELECAO: ReadonlySet<CampoMultiplaEscolha> = new Set(['fol
 
 export function aceitaVariasOpcoes(campo: CampoMultiplaEscolha): boolean {
   return CAMPOS_MULTIPLA_SELECAO.has(campo)
+}
+
+export function dicaDeEscolha(campo: CampoMultiplaEscolha): 'Uma ou mais' | 'Escolha uma' {
+  return aceitaVariasOpcoes(campo) ? 'Uma ou mais' : 'Escolha uma'
 }
 
 export function opcoesSelecionadas(valor: string): string[] {
@@ -130,9 +138,90 @@ export function buscarLocaisColeta(locais: OpcaoLocalColeta[], termo: string): O
   return locais.filter(local => semAcento(`${local.descricao} ${local.municipio}`).includes(procurado))
 }
 
+/** Local da expedição com exatamente este nome (sem diferenciar maiúsculas e acentos) */
+export function localDaExpedicao(locais: OpcaoLocalColeta[], texto: string): OpcaoLocalColeta | undefined {
+  const procurado = semAcento(texto.trim())
+  if (!procurado) return undefined
+  return locais.find(local => semAcento(local.descricao) === procurado)
+}
+
+/**
+ * Município e Estado só aparecem para um local digitado à mão: um local da lista
+ * já os preenche por trás, e mostrá-los de novo seria repetir a informação.
+ */
+export function precisaCidadeEstado(ficha: FichaValues, locais: OpcaoLocalColeta[]): boolean {
+  return ficha.referencia_local.trim().length > 0 && !localDaExpedicao(locais, ficha.referencia_local)
+}
+
+export interface CidadeEstado {
+  municipio: string
+  estado: string
+}
+
+/** A cidade da rota, quando a expedição passa por uma só; senão null */
+export function cidadeUnicaDaExpedicao(rotas: readonly RotaExpedicao[] | undefined): CidadeEstado | null {
+  if (!rotas?.length) return null
+  const cidades = new Map(rotas.map(rota => [rota.nome_cidade, rota]))
+  if (cidades.size !== 1) return null
+  const [rota] = cidades.values()
+  return { municipio: rota.nome_cidade, estado: rota.estado_nome ?? rota.estado_sigla ?? '' }
+}
+
+/**
+ * Texto digitado no local. Igual a um local da lista (sem tocar na sugestão): leva
+ * a cidade dele, como se tivesse escolhido, já que os campos ficam ocultos. Fora da
+ * lista: sugere a cidade única da rota, sem apagar o que já foi preenchido.
+ */
+export function digitarLocal(
+  ficha: FichaValues,
+  texto: string,
+  locais: OpcaoLocalColeta[],
+  cidadeUnica: CidadeEstado | null,
+): FichaValues {
+  const atualizada = { ...ficha, referencia_local: texto }
+  const daLista = localDaExpedicao(locais, texto)
+  // Mantém o texto como foi digitado: trocar pelo nome cadastrado atrapalharia a digitação
+  if (daLista) return { ...atualizada, municipio: daLista.municipio, estado: daLista.estado }
+
+  const foraDaLista = precisaCidadeEstado(atualizada, locais)
+  if (foraDaLista && cidadeUnica && !ficha.municipio && !ficha.estado) {
+    return { ...atualizada, municipio: cidadeUnica.municipio, estado: cidadeUnica.estado }
+  }
+  return atualizada
+}
+
 /** Escolher um local sugerido preenche também a cidade e o estado */
 export function escolherLocalColeta(ficha: FichaValues, local: OpcaoLocalColeta): FichaValues {
   return { ...ficha, referencia_local: local.descricao, municipio: local.municipio, estado: local.estado }
+}
+
+// Cards da coleta, na ordem pedida pelos coletores. `opcoes` vira os chips do
+// card; `campos` são os textos que vêm depois, na ordem. Identificação e Local
+// abrem a tela (CAMPOS_IDENTIFICACAO, CAMPOS_LOCAL); Município e Estado ficam no
+// LocalColetaInput, só para local digitado.
+export interface SecaoFicha {
+  titulo: string
+  opcoes?: CampoMultiplaEscolha
+  campos: readonly FichaColetaFieldName[]
+}
+
+export const CAMPOS_IDENTIFICACAO = ['nome_cientifico', 'nome_popular'] as const satisfies readonly FichaColetaFieldName[]
+export const CAMPOS_LOCAL = ['tipo_vegetacao', 'solo', 'relevo'] as const satisfies readonly FichaColetaFieldName[]
+
+export const SECOES_COLETA: readonly SecaoFicha[] = [
+  { titulo: 'Hábito', opcoes: 'habito', campos: ['altura', 'exsudado'] },
+  { titulo: 'Luminosidade', opcoes: 'luminosidade', campos: [] },
+  { titulo: 'Substrato', opcoes: 'substrato', campos: [] },
+  { titulo: 'Associações', opcoes: 'associacoes', campos: [] },
+  { titulo: 'Flores', campos: ['flores_cor_calice', 'flores_cor_corola', 'flores'] },
+  { titulo: 'Frutos', opcoes: 'frutos', campos: [] },
+  { titulo: 'Folhas', opcoes: 'folhas', campos: [] },
+  { titulo: 'Tronco com casca', opcoes: 'tronco_com_casca', campos: [] },
+]
+
+// Dentro do card "Flores", o texto livre não precisa repetir o nome do card
+export const ROTULO_NO_CARD: Partial<Record<FichaColetaFieldName, string>> = {
+  flores: 'Observações',
 }
 
 // A ficha física prevê uma anotação complementar nestes campos. O texto é

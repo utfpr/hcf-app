@@ -38,18 +38,4 @@ export const reminderStyles = StyleSheet.create({
     fontSize: 11,
     marginTop: 6,
   },
-  detalhesToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 20,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderAlt,
-  },
-  detalhesToggleText: {
-    color: colors.accent,
-    fontSize: 14,
-    fontWeight: '600',
-  },
 });
