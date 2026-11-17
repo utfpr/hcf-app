@@ -7,12 +7,16 @@ import { arquivoUrl, tipoEvidencia } from '@/features/evento/utils'
 import { colors } from '@/theme/colors'
 
 import { AudioPlayer } from './AudioPlayer'
+import { SeloNaFila } from '@/features/sync/components/SeloNaFila'
 import { SyncStatusIndicator } from '@/features/sync/components/SyncStatusIndicator'
 
 function formatDateTime(iso: string): string {
   const date = new Date(iso)
   return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
 }
+
+// Ainda no aparelho: sobe no próximo "Sincronizar"
+const naFila = (evidencia: Evidencia) => evidencia.syncStatus === 'pending'
 
 function EvidenciaIcon({ evidencia }: { evidencia: Evidencia }) {
   const tipo = tipoEvidencia(evidencia)
@@ -80,31 +84,35 @@ export function RegistroCard({
       {imagens.length > 0 ? (
         <View style={styles.imagens}>
           {imagens.map(imagem => (
-            <TouchableOpacity key={imagem.id} onPress={() => onOpenEvidencia(imagem)} activeOpacity={0.8}>
+            <TouchableOpacity key={imagem.client_uuid ?? imagem.id} onPress={() => onOpenEvidencia(imagem)} activeOpacity={0.8}>
               <Image source={{ uri: arquivoUrl(imagem) }} style={styles.imagem} />
+              {naFila(imagem) ? <SeloNaFila compacto style={styles.seloImagem} /> : null}
             </TouchableOpacity>
           ))}
         </View>
       ) : null}
 
       {audios.map(audio => (
-        <AudioPlayer
-          key={audio.id}
-          evidencia={audio}
-          ativo={audioAtivoId === audio.id}
-          onActivate={() => onActivateAudio(audio.id)}
-        />
+        <View key={audio.client_uuid ?? audio.id}>
+          <AudioPlayer
+            evidencia={audio}
+            ativo={audioAtivoId === audio.id}
+            onActivate={() => onActivateAudio(audio.id)}
+          />
+          {naFila(audio) ? <SeloNaFila compacto style={styles.seloAudio} /> : null}
+        </View>
       ))}
 
       {outros.map(evidencia => (
         <TouchableOpacity
-          key={evidencia.id}
+          key={evidencia.client_uuid ?? evidencia.id}
           style={styles.arquivo}
           onPress={() => onOpenEvidencia(evidencia)}
           activeOpacity={0.8}
         >
           <EvidenciaIcon evidencia={evidencia} />
           <Text style={styles.arquivoNome} numberOfLines={1}>{evidencia.nome}</Text>
+          {naFila(evidencia) ? <SeloNaFila compacto /> : null}
           <Play size={14} color={colors.accent} />
         </TouchableOpacity>
       ))}
@@ -212,6 +220,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  seloImagem: { position: 'absolute', bottom: 4, left: 4 },
+  seloAudio: { marginTop: -4, marginBottom: 8 },
   imagem: {
     width: 72,
     height: 72,
