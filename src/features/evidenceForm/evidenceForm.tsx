@@ -31,6 +31,7 @@ import { useRegistrarEvento } from '@/features/evento/hooks/useRegistrarEvento'
 import { useExpedition } from '@/features/expedition/hooks/useExpedition'
 import { existeColetaComNumero, proximoNumeroColeta } from '@/features/offline/mesclagem'
 import { RascunhoBanner } from '@/features/offline/RascunhoBanner'
+import { useConfirmarSaida } from '@/features/offline/useConfirmarSaida'
 import { useRascunho } from '@/features/offline/useRascunho'
 import { FamiliaInput } from '@/features/taxonomia/components/FamiliaInput'
 import { getUserFacingHttpError } from '@/libraries/http/httpError'
@@ -124,6 +125,19 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
   const juntaComExistente = isCollection && !!registros.data && existeColetaComNumero(registros.data, numero)
 
   const rascunho = useRascunho<Rascunho>(expedicaoId ? `${isCollection ? 'coleta' : 'diario'}-${expedicaoId}` : null)
+
+  // Voltar com algo não salvo pergunta antes: os anexos ficam no rascunho, mas só
+  // entram na fila de envio com o "Salvar"
+  const naoSalvo = multimidia.isRecording || !rascunhoVazio({
+    iniciado_em: '',
+    numero: numeroDigitado ?? '',
+    familia: family,
+    ficha,
+    observacoes_multiplas: observacoesMultiplas,
+    observacoes: notes,
+    midias: pendentes,
+  })
+  const { sair } = useConfirmarSaida({ pendente: naoSalvo, anexos: pendentes.length })
   const [recuperado, setRecuperado] = useState(false)
   const restaurou = useRef(false)
 
@@ -227,7 +241,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
         titulo: isCollection ? 'Coleta salva' : 'Diário salvo',
         mensagem: 'Salvo no aparelho. Será enviado no próximo "Sincronizar".',
       })
-      navigation.goBack()
+      sair(() => navigation.goBack())
     } catch (error) {
       setSaveError(getUserFacingHttpError(error, 'Erro ao salvar o registro no aparelho.'))
     }

@@ -13,6 +13,7 @@ import { useCriarLembrete } from '@/features/lembrete/hooks/useCriarLembrete';
 import { useFeedback } from '@/components/feedback/FeedbackContext';
 import { RascunhoBanner } from '@/features/offline/RascunhoBanner';
 import { useRascunho } from '@/features/offline/useRascunho';
+import { useConfirmarSaida } from '@/features/offline/useConfirmarSaida';
 import { FamiliaInput } from '@/features/taxonomia/components/FamiliaInput';
 import type { CriarLembretePayload } from '@/features/lembrete/types';
 import { dataBrParaIso, hojeIso } from '@/features/lembrete/utils';
@@ -79,6 +80,13 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
   const isSaveDisabled = isSaving || multimidia.busy;
 
   const rascunho = useRascunho<Rascunho>('lembrete');
+
+  // Voltar com algo não salvo pergunta antes: as fotos ficam no rascunho, mas só
+  // entram na fila de envio com o "Salvar"
+  const naoSalvo = !rascunhoVazio({
+    familia: family, local: localColeta, data: dataColeta, ficha, midias: pendentes,
+  }) || !!descricao.trim();
+  const { sair } = useConfirmarSaida({ pendente: naoSalvo, anexos: pendentes.length });
   const [recuperado, setRecuperado] = useState(false);
   const restaurou = useRef(false);
 
@@ -190,9 +198,9 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
       mensagem: `Vamos lembrar de voltar em ${dataColeta}. Ele fica no aparelho até o próximo "Sincronizar".`,
     });
     if (expedicaoId) {
-      navigation.popTo('ExpeditionDetail', { expeditionId: String(expedicaoId) });
+      sair(() => navigation.popTo('ExpeditionDetail', { expeditionId: String(expedicaoId) }));
     } else {
-      navigation.goBack();
+      sair(() => navigation.goBack());
     }
   }
 
