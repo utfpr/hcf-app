@@ -27,7 +27,8 @@ function textoFila(quantidade: number): string {
 /**
  * Rodapé fixo dos formulários: a fila de anexos sempre visível, os botões de
  * mídia e o salvar ficam sempre à mão, sem rolar até o começo do formulário.
- * Some com o teclado aberto, a não ser durante uma gravação (o tempo continua à vista).
+ * Some com o teclado aberto, a não ser durante uma gravação (o tempo continua à vista);
+ * nesse caso a lista de anexos fica escondida e só a contagem aparece.
  */
 export function RodapeAcoes({
   multimidia, apenasFotos = false, saveLabel, salvando, saveDisabled, onSalvar, erro,
@@ -72,9 +73,12 @@ export function RodapeAcoes({
                 <Text style={styles.faixaTexto} numberOfLines={1}>{textoFila(quantidade)}</Text>
               </Animated.View>
 
-              <ScrollView style={styles.listaAnexos} nestedScrollEnabled>
-                <ListaAnexos state={multimidia} disabled={salvando} />
-              </ScrollView>
+              {/* Com o teclado aberto (só acontece gravando) a lista cobriria o campo digitado */}
+              {teclado.visivel ? null : (
+                <ScrollView style={styles.listaAnexos} nestedScrollEnabled>
+                  <ListaAnexos state={multimidia} disabled={salvando} />
+                </ScrollView>
+              )}
             </View>
           ) : null}
 

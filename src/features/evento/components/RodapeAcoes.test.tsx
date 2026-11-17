@@ -1,5 +1,5 @@
 import React from 'react'
-import { Keyboard, Modal, Platform, StyleSheet, Text, TouchableOpacity } from 'react-native'
+import { Keyboard, Platform, StyleSheet, Text } from 'react-native'
 import ReactTestRenderer from 'react-test-renderer'
 
 import type { EvidenciaPendente, MultimidiaState } from '../hooks/useMultimidia'
@@ -44,6 +44,8 @@ function estado(parcial: Partial<MultimidiaState> = {}): MultimidiaState {
 }
 
 const ouvintes: Record<string, (evento?: unknown) => void> = {}
+// Desmontar para a animação do aviso de gravação parar e o Jest encerrar
+const montados: ReactTestRenderer.ReactTestRenderer[] = []
 const plataformaOriginal = Platform.OS
 
 beforeEach(() => {
@@ -54,6 +56,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  ReactTestRenderer.act(() => montados.splice(0).forEach(renderer => renderer.unmount()))
   jest.restoreAllMocks()
   Platform.OS = plataformaOriginal
 })
@@ -65,6 +68,7 @@ function render(multimidia: MultimidiaState) {
       <RodapeAcoes multimidia={multimidia} saveLabel="Salvar Coleta" salvando={false} saveDisabled={false} onSalvar={jest.fn()} />,
     )
   })
+  montados.push(renderer)
   return renderer
 }
 
@@ -108,16 +112,20 @@ describe('RodapeAcoes', () => {
     expect(textos(renderer)).toContain('00:12')
   })
 
-  it('tocar na faixa abre a gaveta', () => {
-    const renderer = render(estado({ pendentes: [pendente(1)] }))
-    const faixa = renderer.root.findAllByType(TouchableOpacity)
-      .find(botao => botao.props.accessibilityLabel === 'Ver anexos na fila')
+  it('lista os anexos direto no rodapé, sem precisar abrir nada', () => {
+    const renderer = render(estado({ pendentes: [pendente(1), pendente(2)] }))
 
-    ReactTestRenderer.act(() => faixa!.props.onPress())
-
-    const gaveta = renderer.root.findByType(Modal)
-    expect(gaveta.props.visible).toBe(true)
     expect(textos(renderer)).toContain('foto-1.jpg')
+    expect(textos(renderer)).toContain('foto-2.jpg')
+  })
+
+  it('gravando com o teclado aberto esconde a lista, mas mantém a contagem', () => {
+    const renderer = render(estado({ isRecording: true, pendentes: [pendente(1)] }))
+
+    ReactTestRenderer.act(() => ouvintes.keyboardDidShow())
+
+    expect(textos(renderer)).toContain('1 anexo na fila · enviados ao sincronizar')
+    expect(textos(renderer)).not.toContain('foto-1.jpg')
   })
 
   describe('posição sobre o teclado durante a gravação', () => {

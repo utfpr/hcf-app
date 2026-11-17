@@ -45,7 +45,13 @@ function BannerGravacao({ recordTime, onStop }: { recordTime: string; onStop: ()
         <Text style={styles.recordingTitle}>Gravando áudio...</Text>
         <Text style={styles.recordingTimer}>{recordTime}</Text>
       </View>
-      <TouchableOpacity style={styles.stopButton} onPress={onStop} hitSlop={HIT_SLOP}>
+      <TouchableOpacity
+        style={styles.stopButton}
+        onPress={onStop}
+        hitSlop={HIT_SLOP}
+        accessibilityRole="button"
+        accessibilityLabel="Parar gravação de áudio"
+      >
         <Square size={12} color="#FFFFFF" fill="#FFFFFF" />
         <Text style={styles.stopButtonText}>Parar</Text>
       </TouchableOpacity>
@@ -110,7 +116,7 @@ export function BotoesMidia({ state, disabled = false, apenasFotos = false, comp
               ? <Square size={14} color={colors.danger} fill={colors.danger} />
               : <Mic size={16} color={colors.onAccent} />}
             <Text style={[...texto, isRecording && styles.mediaButtonTextRecording]} numberOfLines={1} adjustsFontSizeToFit>
-              {isRecording ? `Parar (${recordTime})` : 'Áudio'}
+              {isRecording ? 'Parar' : 'Áudio'}
             </Text>
           </TouchableOpacity>
         )}
