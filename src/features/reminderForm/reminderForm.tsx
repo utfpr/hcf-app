@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { ArrowLeft, Bell, Calendar, Check, ChevronDown, ChevronUp, Crosshair, MapPin } from 'lucide-react-native';
+import { ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ArrowLeft, Bell, Calendar, ChevronDown, Crosshair, MapPin } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +13,7 @@ import { useCriarLembrete } from '@/features/lembrete/hooks/useCriarLembrete';
 import { useFeedback } from '@/components/feedback/FeedbackContext';
 import { RascunhoBanner } from '@/features/offline/RascunhoBanner';
 import { useRascunho } from '@/features/offline/useRascunho';
+import { useConfirmarSaida } from '@/features/offline/useConfirmarSaida';
 import { FamiliaInput } from '@/features/taxonomia/components/FamiliaInput';
 import type { CriarLembretePayload } from '@/features/lembrete/types';
 import { dataBrParaIso, hojeIso } from '@/features/lembrete/utils';
@@ -22,7 +23,9 @@ import { RootStackParamList } from '@/navigation/types';
 import { colors } from '../../theme/colors';
 import { styles } from '../evidenceForm/styles';
 import { reminderStyles } from './styles';
-import { Multimidia } from '@/features/evento/components/Multimidia';
+import { RodapeAcoes } from '@/features/evento/components/RodapeAcoes';
+import { CardFicha } from '@/features/evidenceForm/CardFicha';
+import { CardMidiasAssociadas } from '@/features/evidenceForm/CardMidiasAssociadas';
 import { type EvidenciaPendente, useMultimidia } from '@/features/evento/hooks/useMultimidia';
 
 export interface LembreteFormProps {
@@ -31,7 +34,7 @@ export interface LembreteFormProps {
   expedicaoId?: number;
 }
 
-// Nome científico tem campo próprio no topo; o resto da ficha fica em "Mais detalhes"
+// Nome científico tem campo próprio no topo; o resto da ficha fica no card "Detalhes da planta"
 const CAMPOS_DETALHE = FICHA_FIELDS.filter(([campo]) => campo !== 'nome_cientifico');
 
 interface Rascunho {
@@ -63,7 +66,6 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
   const [descricao, setDescricao] = useState('');
   const [posicao, setPosicao] = useState<{ latitude: number; longitude: number } | null>(null);
   const [dataColeta, setDataColeta] = useState('');
-  const [detalhesAbertos, setDetalhesAbertos] = useState(false);
   const multimidia = useMultimidia({ apenasFotos: true });
   const { pendentes, setPendentes } = multimidia;
   const localizacao = useLocalizacao();
@@ -79,6 +81,13 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
   const isSaveDisabled = isSaving || multimidia.busy;
 
   const rascunho = useRascunho<Rascunho>('lembrete');
+
+  // Voltar com algo não salvo pergunta antes: as fotos ficam no rascunho, mas só
+  // entram na fila de envio com o "Salvar"
+  const naoSalvo = !rascunhoVazio({
+    familia: family, local: localColeta, data: dataColeta, ficha, midias: pendentes,
+  }) || !!descricao.trim();
+  const { sair } = useConfirmarSaida({ pendente: naoSalvo, anexos: pendentes.length });
   const [recuperado, setRecuperado] = useState(false);
   const restaurou = useRef(false);
 
@@ -190,9 +199,9 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
       mensagem: `Vamos lembrar de voltar em ${dataColeta}. Ele fica no aparelho até o próximo "Sincronizar".`,
     });
     if (expedicaoId) {
-      navigation.popTo('ExpeditionDetail', { expeditionId: String(expedicaoId) });
+      sair(() => navigation.popTo('ExpeditionDetail', { expeditionId: String(expedicaoId) }));
     } else {
-      navigation.goBack();
+      sair(() => navigation.goBack());
     }
   }
 
@@ -221,7 +230,7 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
 
         {recuperado ? <RascunhoBanner onDescartar={handleDescartarRascunho} /> : null}
 
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={[styles.content, styles.cards]} keyboardShouldPersistTaps="handled">
           <View style={styles.formCard}>
             <Text style={styles.labelFirst}>Família</Text>
             <FamiliaInput value={family} onChangeText={setFamily} disabled={isSaving} />
@@ -317,22 +326,12 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
               Quando a planta deve estar pronta para coletar (floração, frutificação...).
             </Text>
 
-            <Text style={styles.label}>Fotos</Text>
-            <Multimidia state={multimidia} disabled={isSaving} apenasFotos />
+          </View>
 
-            <TouchableOpacity
-              style={reminderStyles.detalhesToggle}
-              onPress={() => setDetalhesAbertos(aberto => !aberto)}
-            >
-              <Text style={reminderStyles.detalhesToggleText}>Mais detalhes da planta</Text>
-              {detalhesAbertos
-                ? <ChevronUp size={18} color={colors.accent} />
-                : <ChevronDown size={18} color={colors.accent} />}
-            </TouchableOpacity>
-
-            {detalhesAbertos ? CAMPOS_DETALHE.map(([field, label, placeholder]) => (
+          <CardFicha titulo="Detalhes da planta">
+            {CAMPOS_DETALHE.map(([field, label, placeholder], indice) => (
               <View key={field}>
-                <Text style={styles.label}>{label}</Text>
+                <Text style={indice === 0 ? styles.labelFirst : styles.label}>{label}</Text>
                 <TextInput
                   style={styles.input}
                   value={ficha[field]}
@@ -341,24 +340,21 @@ export function LembreteForm({ expedicaoId }: LembreteFormProps) {
                   placeholderTextColor={colors.placeholder}
                 />
               </View>
-            )) : null}
-          </View>
+            ))}
+          </CardFicha>
+
+          <CardMidiasAssociadas multimidia={multimidia} apenasFotos disabled={isSaving} />
         </ScrollView>
 
-        {saveError ? <Text style={styles.saveError}>{saveError}</Text> : null}
-
-        <TouchableOpacity
-          style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={isSaveDisabled}
-        >
-          {isSaving ? (
-            <ActivityIndicator color={colors.onAccent} />
-          ) : (
-            <Check size={18} color={colors.onAccent} />
-          )}
-          <Text style={styles.saveButtonText}>{isSaving ? 'Salvando...' : 'Salvar Lembrete'}</Text>
-        </TouchableOpacity>
+        <RodapeAcoes
+          multimidia={multimidia}
+          apenasFotos
+          saveLabel="Salvar Lembrete"
+          salvando={isSaving}
+          saveDisabled={isSaveDisabled}
+          onSalvar={handleSave}
+          erro={saveError}
+        />
       </View>
     </SafeAreaView>
   );

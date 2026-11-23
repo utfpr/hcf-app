@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Text, TextInput, TouchableOpacity } from 'react-native'
 import ReactTestRenderer from 'react-test-renderer'
 
-import { EMPTY_FICHA, type FichaValues, type OpcaoLocalColeta } from '@/features/evento/fichaCampos'
+import { type CidadeEstado, EMPTY_FICHA, type FichaValues, type OpcaoLocalColeta } from '@/features/evento/fichaCampos'
 
 import { LocalColetaInput } from './LocalColetaInput'
 
@@ -11,13 +11,16 @@ const LOCAIS: OpcaoLocalColeta[] = [
   { id: 9, descricao: 'Margem do rio', municipio: 'Peabiru', estado: 'Paraná' },
 ]
 
-function render(locais: OpcaoLocalColeta[]) {
-  let ficha: FichaValues = EMPTY_FICHA
+function render(
+  locais: OpcaoLocalColeta[],
+  { inicial = EMPTY_FICHA, cidadeUnica = null }: { inicial?: FichaValues; cidadeUnica?: CidadeEstado | null } = {},
+) {
+  let ficha: FichaValues = inicial
 
   function Formulario() {
-    const [valor, setValor] = useState<FichaValues>(EMPTY_FICHA)
+    const [valor, setValor] = useState<FichaValues>(inicial)
     ficha = valor
-    return <LocalColetaInput ficha={valor} locais={locais} onChange={setValor} />
+    return <LocalColetaInput ficha={valor} locais={locais} onChange={setValor} cidadeUnica={cidadeUnica} />
   }
 
   let renderer!: ReactTestRenderer.ReactTestRenderer
@@ -29,7 +32,7 @@ function render(locais: OpcaoLocalColeta[]) {
 
 function digitar(renderer: ReactTestRenderer.ReactTestRenderer, texto: string) {
   ReactTestRenderer.act(() => {
-    renderer.root.findByType(TextInput).props.onChangeText(texto)
+    renderer.root.findAllByType(TextInput)[0].props.onChangeText(texto)
   })
 }
 
@@ -76,9 +79,55 @@ describe('LocalColetaInput', () => {
     const { renderer } = render(LOCAIS)
 
     ReactTestRenderer.act(() => {
-      renderer.root.findByType(TextInput).props.onFocus()
+      renderer.root.findAllByType(TextInput)[0].props.onFocus()
     })
 
     expect(textos(renderer)).toEqual(expect.arrayContaining(['Trilha da cachoeira', 'Margem do rio']))
+  })
+
+  it('local digitado mostra Município e Estado', () => {
+    const { renderer } = render(LOCAIS)
+
+    digitar(renderer, 'Beira da estrada, km 12')
+
+    expect(renderer.root.findAllByType(TextInput)).toHaveLength(3)
+    expect(textos(renderer)).toEqual(expect.arrayContaining(['Município', 'Estado']))
+  })
+
+  it('local escolhido na lista não mostra Município e Estado', () => {
+    const { renderer } = render(LOCAIS)
+
+    digitar(renderer, 'rio')
+    ReactTestRenderer.act(() => {
+      renderer.root.findAllByType(TouchableOpacity)[0].props.onPress()
+    })
+
+    expect(renderer.root.findAllByType(TextInput)).toHaveLength(1)
+  })
+
+  it('pré-preenche com a cidade única', () => {
+    const { renderer, ficha } = render(LOCAIS, { cidadeUnica: { municipio: 'Campo Mourão', estado: 'Paraná' } })
+
+    digitar(renderer, 'Beira da estrada, km 12')
+
+    expect(ficha()).toMatchObject({ municipio: 'Campo Mourão', estado: 'Paraná' })
+  })
+
+  it('rascunho com local da lista abre sem os campos', () => {
+    const { renderer } = render(LOCAIS, {
+      inicial: { ...EMPTY_FICHA, referencia_local: 'Trilha da cachoeira', municipio: 'Campo Mourão', estado: 'Paraná' },
+    })
+
+    expect(renderer.root.findAllByType(TextInput)).toHaveLength(1)
+  })
+
+  it('rascunho com local digitado abre com os campos preenchidos', () => {
+    const { renderer } = render(LOCAIS, {
+      inicial: { ...EMPTY_FICHA, referencia_local: 'Beira da estrada', municipio: 'Peabiru', estado: 'PR' },
+    })
+
+    const [, municipio, estado] = renderer.root.findAllByType(TextInput)
+    expect(municipio.props.value).toBe('Peabiru')
+    expect(estado.props.value).toBe('PR')
   })
 })

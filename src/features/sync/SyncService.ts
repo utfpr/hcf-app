@@ -191,6 +191,9 @@ export class SyncService {
     return resultado
   }
 
+  // marcar() e ligarFilhos() gravam em silêncio: quem chama o envio avisa as
+  // telas uma vez no fim (executarSincronizacao), senão a tela pisca a cada item
+
   /**
    * Erro de rede ou sessão vencida interrompem tudo (o item fica pendente);
    * recusa da API marca só aquele item como erro e o envio segue.
@@ -226,7 +229,7 @@ export class SyncService {
       [lista]: (atual[lista] as Array<{ local_id: string }>).map(item => (
         item.local_id === localId ? { ...item, ...parcial } : item
       )),
-    }) as Pendencias)
+    }) as Pendencias, SILENCIOSO)
   }
 
   /** O pai ganhou id na API: a mídia dele passa a apontar para esse id */
@@ -242,7 +245,7 @@ export class SyncService {
         }
         return midia
       }),
-    }))
+    }), SILENCIOSO)
   }
 
   // ---------- API → App ----------

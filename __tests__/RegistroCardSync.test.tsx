@@ -1,4 +1,5 @@
 import React from 'react'
+import { Text } from 'react-native'
 import ReactTestRenderer from 'react-test-renderer'
 import { RegistroCard } from '../src/features/expeditionDetail/components/RegistroCard'
 import { SyncStatusIndicator } from '../src/features/sync/components/SyncStatusIndicator'
@@ -141,5 +142,44 @@ describe('RegistroCard Sync Status', () => {
     const indicator = root.findByType(SyncStatusIndicator)
     expect(indicator.props.status).toBe('error')
     expect(indicator.props.testID).toBe('registro-sync-99')
+  })
+
+  it('marca "Na fila" só nas evidências pendentes', () => {
+    const evidencia = (id: number, mime: string, syncStatus: 'pending' | 'synced') => ({
+      id,
+      evento_id: 42,
+      nome: `arquivo-${id}`,
+      arquivo: `arquivo-${id}`,
+      mime_type: mime,
+      tamanho: 0,
+      data_captura: '2026-10-13T10:00:00.000Z',
+      created_at: '2026-10-13T10:00:00.000Z',
+      updated_at: '2026-10-13T10:00:00.000Z',
+      created_by: null,
+      updated_by: null,
+      client_uuid: `uuid-${id}`,
+      url: `file:///arquivo-${id}`,
+      syncStatus,
+    })
+    const registro: RegistroExpedicao = {
+      ...baseRegistro,
+      evidencias: [evidencia(-1, 'image/jpeg', 'pending'), evidencia(7, 'application/pdf', 'synced')],
+    }
+
+    let renderer: ReactTestRenderer.ReactTestRenderer | undefined
+    ReactTestRenderer.act(() => {
+      renderer = ReactTestRenderer.create(
+        <RegistroCard
+          registro={registro}
+          onOpenEvidencia={noop}
+          onAddEvidencia={noop}
+          audioAtivoId={null}
+          onActivateAudio={noop}
+        />
+      )
+    })
+
+    const textos = renderer!.root.findAllByType(Text).map(node => [node.props.children].flat().join(''))
+    expect(textos.filter(texto => texto === 'Na fila')).toHaveLength(1)
   })
 })

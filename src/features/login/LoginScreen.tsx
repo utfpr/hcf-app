@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/forms/Button'
 import { Form, FormField, useFormSubmit } from '@/components/forms/Form'
@@ -20,6 +21,8 @@ import { LoginFormValues, useLoginScreen } from './hooks/useLoginScreen'
 
 export function LoginScreen() {
   const login = useLoginScreen()
+  // A tela desenha atrás das barras do sistema (Android 15+): o conteúdo começa e termina fora delas
+  const insets = useSafeAreaInsets()
 
   return (
     <KeyboardAvoidingView
@@ -27,7 +30,7 @@ export function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingTop: 48 + insets.top, paddingBottom: 48 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         <View style={styles.logoContainer}>

@@ -57,7 +57,7 @@ function criarStore(inicial: Pendencias) {
   return {
     usuarioId: 14,
     pendencias: jest.fn(async () => clonar(atual)),
-    atualizarPendencias: jest.fn(async (alterar: (value: Pendencias) => Pendencias) => {
+    atualizarPendencias: jest.fn(async (alterar: (value: Pendencias) => Pendencias, _opcoes?: { silencioso?: boolean }) => {
       atual = alterar(atual)
       return atual
     }),
@@ -83,6 +83,22 @@ function criarHttpClient() {
 }
 
 describe('SyncService.enviar', () => {
+  it('envia 5 eventos sem avisar as telas a cada gravação', async () => {
+    const store = criarStore(pendenciasComColeta({
+      eventos: [1, 2, 3, 4, 5].map(seq => ({ ...evento(`evt-${seq}`, 4, seq), status: 'pending' as const })),
+      midias: [],
+    }))
+    const httpClient = criarHttpClient()
+    const sync = new SyncService(httpClient as any, store as any)
+
+    await sync.enviar()
+
+    expect(store.atualizarPendencias.mock.calls.length).toBeGreaterThanOrEqual(5)
+    store.atualizarPendencias.mock.calls.forEach(([, opcoes]) => {
+      expect(opcoes).toEqual({ silencioso: true })
+    })
+  })
+
   it('sobe o evento e depois a mídia com o id que a API devolveu', async () => {
     const store = criarStore(pendenciasComColeta())
     const httpClient = criarHttpClient()

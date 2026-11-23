@@ -3,9 +3,12 @@ import { Text, TextInput, TouchableOpacity, View } from 'react-native'
 
 import {
   buscarLocaisColeta,
+  type CidadeEstado,
+  digitarLocal,
   escolherLocalColeta,
   type FichaValues,
   type OpcaoLocalColeta,
+  precisaCidadeEstado,
 } from '@/features/evento/fichaCampos'
 import { colors } from '@/theme/colors'
 
@@ -16,19 +19,22 @@ interface LocalColetaInputProps {
   // Locais das rotas da expedição
   locais: OpcaoLocalColeta[]
   onChange: (ficha: FichaValues) => void
+  // Cidade da rota quando a expedição passa por uma só: sugerida para local digitado
+  cidadeUnica?: CidadeEstado | null
 }
 
 /**
  * Local da coleta com sugestões dos locais da expedição, como o campo de família.
  * O valor é sempre o texto do campo: um local fora da expedição é salvo como foi
- * digitado. Escolher uma sugestão também preenche a cidade e o estado.
+ * digitado. Escolher uma sugestão também preenche a cidade e o estado, por trás;
+ * só um local digitado à mão mostra os campos Município e Estado.
  */
-export function LocalColetaInput({ ficha, locais, onChange }: LocalColetaInputProps) {
+export function LocalColetaInput({ ficha, locais, onChange, cidadeUnica = null }: LocalColetaInputProps) {
   const [aberto, setAberto] = useState(false)
   const sugestoes = buscarLocaisColeta(locais, ficha.referencia_local)
 
   function handleChangeText(text: string) {
-    onChange({ ...ficha, referencia_local: text })
+    onChange(digitarLocal(ficha, text, locais, cidadeUnica))
     setAberto(true)
   }
 
@@ -78,6 +84,27 @@ export function LocalColetaInput({ ficha, locais, onChange }: LocalColetaInputPr
         autoCorrect={false}
       />
       {mostrarLista ? <View style={styles.optionsList}>{renderSugestoes()}</View> : null}
+
+      {precisaCidadeEstado(ficha, locais) ? (
+        <>
+          <Text style={styles.label}>Município</Text>
+          <TextInput
+            style={styles.input}
+            value={ficha.municipio}
+            onChangeText={municipio => onChange({ ...ficha, municipio })}
+            placeholder="Ex.: Campo Mourão"
+            placeholderTextColor={colors.placeholder}
+          />
+          <Text style={styles.label}>Estado</Text>
+          <TextInput
+            style={styles.input}
+            value={ficha.estado}
+            onChangeText={estado => onChange({ ...ficha, estado })}
+            placeholder="Ex.: Paraná"
+            placeholderTextColor={colors.placeholder}
+          />
+        </>
+      ) : null}
     </>
   )
 }

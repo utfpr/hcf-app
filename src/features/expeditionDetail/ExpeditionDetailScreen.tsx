@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { ArrowLeft, Bell, BookOpen, Clock, Leaf, Plus, RefreshCw, Users, Lock } from 'lucide-react-native'
@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react'
 import { useFeedback } from '@/components/feedback/FeedbackContext'
 import { useAuth } from '@/contexts/Auth/useAuth'
 import { useOffline } from '@/features/offline/OfflineContext'
+import { useSync } from '@/features/sync/hooks/useSync'
 import { CampoBusca } from '@/components/CampoBusca'
 import { FiltroChips, type OpcaoFiltro } from '@/components/FiltroChips'
 import { OfflineBanner } from '@/components/OfflineBanner'
@@ -67,8 +68,15 @@ export function ExpeditionDetailScreen() {
   const { toast } = useFeedback()
   const { user } = useAuth()
   const { sincronizar } = useOffline()
+  const { progressoTexto } = useSync()
   const [sincronizando, setSincronizando] = useState(false)
+  // O indicador do RefreshControl só aparece quando o usuário puxa a tela: ligado
+  // à revalidação das queries, ele piscava a cada gravação durante a sincronização
+  const [puxando, setPuxando] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  // O SafeAreaView reserva espaço com padding, mas posição absoluta ignora padding:
+  // sem somar o inset, os botões de navegação do Android cobrem o "+"
+  const insets = useSafeAreaInsets()
   const [evidenciaAberta, setEvidenciaAberta] = useState<Evidencia | null>(null)
   const [audioAtivoId, setAudioAtivoId] = useState<number | null>(null)
   const [registroParaEvidencia, setRegistroParaEvidencia] = useState<RegistroExpedicao | null>(null)
@@ -99,10 +107,13 @@ export function ExpeditionDetailScreen() {
   // como os registros: a aba não pagina
   const lembretes = useLembretes({ expedicao_id: Number(expeditionId), limite: 100 })
 
-  function handleRefresh() {
-    refresh()
-    registros.refresh()
-    lembretes.refresh()
+  async function handleRefresh() {
+    setPuxando(true)
+    try {
+      await Promise.all([refresh(), registros.refresh(), lembretes.refresh()])
+    } finally {
+      setPuxando(false)
+    }
   }
 
   // Sincroniza só o que é desta expedição (registros, lembretes e mídia), igual à tela de sincronização
@@ -114,7 +125,7 @@ export function ExpeditionDetailScreen() {
       toast(resultado.success
         ? { tipo: 'sucesso', titulo: 'Sincronização', mensagem: 'A expedição foi sincronizada.' }
         : { tipo: 'erro', titulo: 'Sincronização', mensagem: resultado.message ?? 'Não foi possível concluir.' })
-      if (resultado.success) handleRefresh()
+      // Sem refresh aqui: a sincronização já avisa as telas, uma vez, ao terminar
     } finally {
       setSincronizando(false)
     }
@@ -201,7 +212,7 @@ export function ExpeditionDetailScreen() {
         contentContainerStyle={styles.container}
         refreshControl={(
           <RefreshControl
-            refreshing={registros.validating && !registros.loading}
+            refreshing={puxando}
             onRefresh={handleRefresh}
             colors={[colors.accent]}
             tintColor={colors.accent}
@@ -258,7 +269,7 @@ export function ExpeditionDetailScreen() {
             ? <ActivityIndicator color={colors.onAccent} />
             : <RefreshCw color={colors.onAccent} size={18} />}
           <Text style={styles.syncButtonText}>
-            {sincronizando ? 'Sincronizando...' : 'Sincronizar expedição'}
+            {sincronizando ? (progressoTexto ?? 'Sincronizando...') : 'Sincronizar expedição'}
           </Text>
         </TouchableOpacity>
 
@@ -307,7 +318,8 @@ export function ExpeditionDetailScreen() {
               ) : null}
               {registrosFiltrados.map(registro => (
               <RegistroCard
-                key={registro.id}
+                // client_uuid não muda quando o id provisório (-seq) vira o id da API
+                key={registro.client_uuid ?? registro.id}
                 registro={registro}
                 onAddEvidencia={handleAddEvidencia}
                 podeAdicionarEvidencia={podeRegistrar}
@@ -352,7 +364,7 @@ export function ExpeditionDetailScreen() {
       {!isFinalizada && (
         <>
           {isMenuOpen && podeRegistrar && (
-            <View style={styles.floatingMenu}>
+            <View style={[styles.floatingMenu, { bottom: 100 + insets.bottom }]}>
               <TouchableOpacity style={[styles.menuOption, styles.iconRow]} onPress={() => handleOpenForm('collection')}>
                 <Leaf color={colors.accent} size={20} />
                 <Text style={styles.menuOptionText}>Coleta</Text>
@@ -368,7 +380,7 @@ export function ExpeditionDetailScreen() {
             </View>
           )}
           <TouchableOpacity
-            style={[styles.floatingButton, !podeRegistrar && styles.floatingButtonDisabled]}
+            style={[styles.floatingButton, { bottom: 24 + insets.bottom }, !podeRegistrar && styles.floatingButtonDisabled]}
             onPress={() => setIsMenuOpen(!isMenuOpen)}
             disabled={!podeRegistrar}
             accessibilityState={{ disabled: !podeRegistrar }}

@@ -22,6 +22,7 @@ import { estaNoWifi, temInternet } from '@/libraries/network/conexao'
 
 import { contarPendentes, OfflineStore } from './OfflineStore'
 import { ReautenticarModal } from './ReautenticarModal'
+import { executarSincronizacao, type FiltroSincronizacao } from './sincronizacao'
 import type { MetaOffline, Pendencias } from './types'
 
 export interface OfflineContextValue {
@@ -46,12 +47,7 @@ export interface OfflineContextValue {
   baixar(opcoes?: { taxonomia?: boolean }): Promise<SyncResult>
 }
 
-export interface FiltroSincronizacao {
-  // Só o que é dessa expedição
-  expedicaoId?: number
-  // Só envia; não baixa nada da API
-  semBaixar?: boolean
-}
+export type { FiltroSincronizacao }
 
 const OfflineContext = createContext<OfflineContextValue | undefined>(undefined)
 
@@ -154,16 +150,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     ocupado.current = true
     setSincronizando(true)
     try {
-      const envio = await sync.enviar({ expedicaoId: filtro.expedicaoId }, setProgresso)
-      // Sem baixar, o que subiu fica marcado como enviado (✓) até a próxima baixa
-      if (!filtro.semBaixar) {
-        await baixarCache()
-        // "Sincronizar tudo": manda tudo e puxa tudo, inclusive a taxonomia
-        if (filtro.expedicaoId === undefined) await importarTaxonomia()
-      }
-
-      const agora = new Date().toISOString()
-      await store.atualizarMeta({ ultima_sincronizacao: agora })
+      const { envio, agora } = await executarSincronizacao({ sync, store, importarTaxonomia }, filtro, setProgresso)
 
       if (envio.erros > 0) {
         return {
@@ -185,9 +172,8 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     } finally {
       ocupado.current = false
       setSincronizando(false)
-      setProgresso(null)
     }
-  }, [store, sync, sessaoExpirada, importarTaxonomia, baixarCache])
+  }, [store, sync, sessaoExpirada, importarTaxonomia])
 
   // Senha aceita: quando a sessão nova chegar, retoma a sincronização interrompida
   useEffect(() => {

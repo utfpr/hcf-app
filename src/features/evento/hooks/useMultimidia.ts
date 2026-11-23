@@ -25,6 +25,33 @@ export interface EvidenciaPendente {
   validandoDuracao?: boolean
 }
 
+export const ROTULO_TIPO: Record<TipoPendente, string> = {
+  imagem: 'Foto',
+  audio: 'Áudio',
+  video: 'Vídeo',
+  outro: 'Arquivo',
+}
+
+/** "Áudio · 00:42", "Foto · 1.2 MB": o que aparece abaixo do nome do anexo */
+export function descricaoAnexo(item: Pick<EvidenciaPendente, 'tipo' | 'detalhe'>): string {
+  return `${ROTULO_TIPO[item.tipo]} · ${item.detalhe}`
+}
+
+const ADICIONADO_A_FILA: Record<TipoPendente, string> = {
+  imagem: 'Foto adicionada à fila',
+  audio: 'Áudio adicionado à fila',
+  video: 'Vídeo adicionado à fila',
+  outro: 'Arquivo adicionado à fila',
+}
+
+/** Toast de quando um ou mais anexos entram na fila; null se nada entrou */
+export function mensagemAnexosNaFila(itens: Array<Pick<EvidenciaPendente, 'tipo' | 'detalhe'>>): string | null {
+  if (itens.length === 0) return null
+  if (itens.length > 1) return `${itens.length} anexos adicionados à fila`
+  const [item] = itens
+  return item.tipo === 'audio' ? `Áudio (${item.detalhe}) adicionado à fila` : ADICIONADO_A_FILA[item.tipo]
+}
+
 function tipoPorMime(mime: string): TipoPendente {
   if (mime.startsWith('image/')) return 'imagem'
   if (mime.startsWith('audio/')) return 'audio'
@@ -53,7 +80,7 @@ async function requestPermissions(permissions: Permission[]) {
 // Usado no formulário de coleta/diário e no modal de adicionar evidência do RegistroCard.
 // Com `apenasFotos` (lembrete), o upload só abre imagens e rejeita qualquer outro tipo.
 export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean } = {}) {
-  const { dialogo } = useFeedback()
+  const { dialogo, toast } = useFeedback()
   const [pendentes, setPendentes] = useState<EvidenciaPendente[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
@@ -61,6 +88,7 @@ export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean }
   const [isCapturing, setIsCapturing] = useState(false)
   const [playingId, setPlayingId] = useState<string | null>(null)
   const isRecordingRef = useRef(false)
+  const gravadorOcupadoRef = useRef(false)
   const playingIdRef = useRef<string | null>(null)
 
   // Sair da tela no meio de uma gravação/reprodução encerra o gravador e o player
@@ -72,6 +100,13 @@ export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean }
       if (playingIdRef.current) audioRecorderPlayer.stopPlayer().catch(() => {})
     }
   }, [])
+
+  // Deixa claro que o anexo foi guardado e sobe no "Sincronizar". Vídeo só avisa
+  // depois de passar na verificação de duração (validarDuracaoVideo).
+  function avisarFila(itens: Array<Pick<EvidenciaPendente, 'tipo' | 'detalhe'>>) {
+    const titulo = mensagemAnexosNaFila(itens)
+    if (titulo) toast({ tipo: 'info', titulo })
+  }
 
   function adicionar(tipo: TipoPendente, payload: CriarEvidenciaPayload, detalhe: string) {
     setPendentes(prev => [...prev, {
@@ -106,6 +141,7 @@ export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean }
     setPendentes(prev => prev.map(item => item.id === id
       ? { ...item, validandoDuracao: false }
       : item))
+    avisarFila([{ tipo: 'video', detalhe: '' }])
   }
 
   function rejeitarVideoSemDuracao(id: string) {
@@ -145,11 +181,13 @@ export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean }
       }
       const nome = asset.fileName ?? `${isPhoto ? 'foto' : 'video'}_${Date.now()}.${isPhoto ? 'jpg' : 'mp4'}`
       const type = asset.type ?? (isPhoto ? 'image/jpeg' : 'video/mp4')
+      const detalhe = formatFileSize(asset.fileSize)
       adicionar(isPhoto ? 'imagem' : 'video', {
         arquivo: { uri: asset.uri, name: nome, type },
         nome,
         data_captura: new Date().toISOString(),
-      }, formatFileSize(asset.fileSize))
+      }, detalhe)
+      if (isPhoto) avisarFila([{ tipo: 'imagem', detalhe }])
     } finally {
       setIsCapturing(false)
     }
@@ -186,6 +224,7 @@ export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean }
         type: apenasFotos ? [types.images] : [types.images, types.video, types.audio],
       })
       const agora = new Date().toISOString()
+      const adicionados: Array<Pick<EvidenciaPendente, 'tipo' | 'detalhe'>> = []
       for (const file of results) {
         const nome = file.name ?? file.uri.split('/').pop() ?? `upload_${Date.now()}`
         const type = file.type ?? 'application/octet-stream'
@@ -202,38 +241,66 @@ export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean }
           setError(`Não foi possível ler o arquivo ${nome}.`)
           continue
         }
-        adicionar(tipoPorMime(type), {
+        const tipo = tipoPorMime(type)
+        const detalhe = formatFileSize(file.size)
+        adicionar(tipo, {
           arquivo: { uri: copia.localUri, name: nome, type },
           nome,
           data_captura: agora,
-        }, formatFileSize(file.size))
+        }, detalhe)
+        if (tipo !== 'video') adicionados.push({ tipo, detalhe })
       }
+      // Um aviso só para o lote inteiro (um toast novo substitui o anterior)
+      avisarFila(adicionados)
     } catch (err: any) {
       if (err?.code === 'OPERATION_CANCELED' || String(err).toLowerCase().includes('cancel')) return
       setError('Não foi possível fazer o upload. Tente novamente.')
     }
   }
 
+  // Um segundo toque enquanto o gravador ainda liga ou para é ignorado. Sem isso,
+  // o segundo stopRecorder devolve a string 'Already stopped' e ela viraria um anexo.
   async function alternarGravacao() {
+    if (gravadorOcupadoRef.current) return
+    gravadorOcupadoRef.current = true
     setError(null)
+    try {
+      if (isRecordingRef.current) await pararGravacao()
+      else await iniciarGravacao()
+    } finally {
+      gravadorOcupadoRef.current = false
+    }
+  }
 
-    if (isRecording) {
-      const uri = await audioRecorderPlayer.stopRecorder()
-      audioRecorderPlayer.removeRecordBackListener()
-      isRecordingRef.current = false
-      setIsRecording(false)
+  async function pararGravacao() {
+    let uri: string | null = null
+    try {
+      uri = await audioRecorderPlayer.stopRecorder()
+    } catch {
+      // Android rejeita quando para logo depois de começar (nada gravado)
+    }
+    audioRecorderPlayer.removeRecordBackListener()
+    isRecordingRef.current = false
+    setIsRecording(false)
 
-      // O gravador salva AAC em container MP4 (.mp4 no Android, .m4a no iOS)
-      const extensao = uri.endsWith('.m4a') ? 'm4a' : 'mp4'
-      const nome = `audio_${Date.now()}.${extensao}`
-      adicionar('audio', {
-        arquivo: { uri, name: nome, type: 'audio/mp4' },
-        nome,
-        data_captura: new Date().toISOString(),
-      }, recordTime)
+    // A biblioteca devolve mensagens como 'Already stopped' em vez de lançar erro
+    if (!uri || !/^(file:\/\/|\/)/.test(uri)) {
+      setError('Não foi possível salvar a gravação. Tente novamente.')
       return
     }
 
+    // O gravador salva AAC em container MP4 (.mp4 no Android, .m4a no iOS)
+    const extensao = uri.endsWith('.m4a') ? 'm4a' : 'mp4'
+    const nome = `audio_${Date.now()}.${extensao}`
+    adicionar('audio', {
+      arquivo: { uri, name: nome, type: 'audio/mp4' },
+      nome,
+      data_captura: new Date().toISOString(),
+    }, recordTime)
+    avisarFila([{ tipo: 'audio', detalhe: recordTime }])
+  }
+
+  async function iniciarGravacao() {
     const allowed = await requestPermissions([PermissionsAndroid.PERMISSIONS.RECORD_AUDIO])
     if (!allowed) {
       setError('Permissão de microfone negada. Habilite o acesso ao microfone para gravar áudio.')
@@ -244,7 +311,16 @@ export function useMultimidia({ apenasFotos = false }: { apenasFotos?: boolean }
     isRecordingRef.current = true
     setIsRecording(true)
     setRecordTime('00:00')
-    await audioRecorderPlayer.startRecorder()
+    try {
+      await audioRecorderPlayer.startRecorder()
+    } catch {
+      // Zera o estado interno da biblioteca, senão ela responde 'Already recording' para sempre
+      await audioRecorderPlayer.stopRecorder().catch(() => {})
+      isRecordingRef.current = false
+      setIsRecording(false)
+      setError('Não foi possível iniciar a gravação. Verifique o microfone e tente novamente.')
+      return
+    }
     audioRecorderPlayer.addRecordBackListener(e => {
       setRecordTime(audioRecorderPlayer.mmssss(Math.floor(e.currentPosition)).substring(0, 5))
     })

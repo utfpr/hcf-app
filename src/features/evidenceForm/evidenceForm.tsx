@@ -1,24 +1,26 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, Modal, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Clock } from 'lucide-react-native'
+import { ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { ArrowLeft, Clock } from 'lucide-react-native'
 import { useNavigation } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { LocalizacaoChip } from '@/features/evento/components/LocalizacaoChip'
-import { Multimidia } from '@/features/evento/components/Multimidia'
+import { RodapeAcoes } from '@/features/evento/components/RodapeAcoes'
 import { useFeedback } from '@/components/feedback/FeedbackContext'
 import {
-  aceitaVariasOpcoes,
+  CAMPOS_IDENTIFICACAO,
+  CAMPOS_LOCAL,
+  cidadeUnicaDaExpedicao,
+  dicaDeEscolha,
   EMPTY_FICHA,
-  escolherOpcao,
   FICHA_COLETA_FIELDS,
-  FICHA_MULTIPLA_ESCOLHA,
   fichaColetaParaPayload,
   fichaComObservacoesMultiplas,
   locaisColetaDaExpedicao,
-  opcoesSelecionadas,
+  ROTULO_NO_CARD,
   ROTULO_OBSERVACAO_MULTIPLA,
-  type CampoMultiplaEscolha,
+  SECOES_COLETA,
+  type FichaColetaFieldName,
   type FichaValues,
   type ObservacoesMultiplas,
 } from '@/features/evento/fichaCampos'
@@ -29,13 +31,17 @@ import { useRegistrarEvento } from '@/features/evento/hooks/useRegistrarEvento'
 import { useExpedition } from '@/features/expedition/hooks/useExpedition'
 import { existeColetaComNumero, proximoNumeroColeta } from '@/features/offline/mesclagem'
 import { RascunhoBanner } from '@/features/offline/RascunhoBanner'
+import { useConfirmarSaida } from '@/features/offline/useConfirmarSaida'
 import { useRascunho } from '@/features/offline/useRascunho'
 import { FamiliaInput } from '@/features/taxonomia/components/FamiliaInput'
 import { getUserFacingHttpError } from '@/libraries/http/httpError'
 import { useLocalizacao } from '@/libraries/location/useLocalizacao'
 import { EvidenceMode } from '@/navigation/types'
 import { colors } from '@/theme/colors'
+import { CardFicha } from './CardFicha'
+import { CardMidiasAssociadas } from './CardMidiasAssociadas'
 import { LocalColetaInput } from './LocalColetaInput'
+import { OpcoesChips } from './OpcoesChips'
 import { styles } from './styles'
 
 export interface FormularioProps {
@@ -73,7 +79,8 @@ interface Rascunho {
   midias: EvidenciaPendente[]
 }
 
-const CAMPOS_DETALHE = FICHA_COLETA_FIELDS
+// Rótulo e exemplo de cada campo de texto da ficha
+const DEFINICAO_CAMPO = new Map(FICHA_COLETA_FIELDS.map(([campo, rotulo, exemplo]) => [campo, { rotulo, exemplo }]))
 
 function rascunhoVazio(rascunho: Rascunho): boolean {
   return !rascunho.numero && !rascunho.familia && !rascunho.observacoes
@@ -96,8 +103,6 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
   const [family, setFamily] = useState('')
   const [ficha, setFicha] = useState<FichaValues>(EMPTY_FICHA)
   const [observacoesMultiplas, setObservacoesMultiplas] = useState<ObservacoesMultiplas>({})
-  const [detalhesAbertos, setDetalhesAbertos] = useState(false)
-  const [campoAberto, setCampoAberto] = useState<CampoMultiplaEscolha | null>(null)
   const [notes, setNotes] = useState('')
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -105,6 +110,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
   const registros = useRegistrosExpedicao(isCollection ? expedicaoId : undefined)
   const expedicao = useExpedition(isCollection ? expedicaoId : undefined)
   const locaisColeta = useMemo(() => locaisColetaDaExpedicao(expedicao.data?.rotas), [expedicao.data])
+  const cidadeUnica = useMemo(() => cidadeUnicaDaExpedicao(expedicao.data?.rotas), [expedicao.data])
   const multimidia = useMultimidia()
   const { pendentes, setPendentes } = multimidia
 
@@ -120,6 +126,19 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
   const juntaComExistente = isCollection && !!registros.data && existeColetaComNumero(registros.data, numero)
 
   const rascunho = useRascunho<Rascunho>(expedicaoId ? `${isCollection ? 'coleta' : 'diario'}-${expedicaoId}` : null)
+
+  // Voltar com algo não salvo pergunta antes: os anexos ficam no rascunho, mas só
+  // entram na fila de envio com o "Salvar"
+  const naoSalvo = multimidia.isRecording || !rascunhoVazio({
+    iniciado_em: '',
+    numero: numeroDigitado ?? '',
+    familia: family,
+    ficha,
+    observacoes_multiplas: observacoesMultiplas,
+    observacoes: notes,
+    midias: pendentes,
+  })
+  const { sair } = useConfirmarSaida({ pendente: naoSalvo, anexos: pendentes.length })
   const [recuperado, setRecuperado] = useState(false)
   const restaurou = useRef(false)
 
@@ -174,18 +193,22 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
     setFicha(current => ({ ...current, [field]: value }))
   }
 
-  function alternarOpcao(campo: CampoMultiplaEscolha, opcao: string) {
-    updateFicha(campo, escolherOpcao(campo, ficha[campo], opcao))
-    // Escolha única: fecha o seletor assim que a opção é tocada
-    if (!aceitaVariasOpcoes(campo)) setCampoAberto(null)
+  // `primeiro`: campo que abre o card, sem o espaço acima do rótulo
+  function renderCampoTexto(campo: FichaColetaFieldName, primeiro = false) {
+    const definicao = DEFINICAO_CAMPO.get(campo)
+    return (
+      <View key={campo}>
+        <Text style={primeiro ? styles.labelFirst : styles.label}>{ROTULO_NO_CARD[campo] ?? definicao?.rotulo}</Text>
+        <TextInput
+          style={styles.input}
+          value={ficha[campo]}
+          onChangeText={value => updateFicha(campo, value)}
+          placeholder={definicao?.exemplo}
+          placeholderTextColor={colors.placeholder}
+        />
+      </View>
+    )
   }
-
-  const opcoesDoModal = campoAberto ? FICHA_MULTIPLA_ESCOLHA[campoAberto] : []
-  const rotuloDoModal = campoAberto
-    ? FICHA_COLETA_FIELDS.find(([campo]) => campo === campoAberto)?.[1] ?? ''
-    : ''
-  const selecionadasNoModal = campoAberto ? opcoesSelecionadas(ficha[campoAberto]) : []
-  const modalMultiplo = campoAberto ? aceitaVariasOpcoes(campoAberto) : false
 
   async function handleSave() {
     if (saveDisabled) return
@@ -219,7 +242,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
         titulo: isCollection ? 'Coleta salva' : 'Diário salvo',
         mensagem: 'Salvo no aparelho. Será enviado no próximo "Sincronizar".',
       })
-      navigation.goBack()
+      sair(() => navigation.goBack())
     } catch (error) {
       setSaveError(getUserFacingHttpError(error, 'Erro ao salvar o registro no aparelho.'))
     }
@@ -250,10 +273,10 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
 
         {recuperado ? <RascunhoBanner onDescartar={handleDescartarRascunho} /> : null}
 
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={styles.formCard}>
-            {isCollection ? (
-              <>
+        <ScrollView contentContainerStyle={[styles.content, styles.cards]} keyboardShouldPersistTaps="handled">
+          {isCollection ? (
+            <>
+              <CardFicha titulo="Identificação">
                 <Text style={styles.labelFirst}>Nº da coleta</Text>
                 <TextInput
                   style={styles.input}
@@ -270,77 +293,51 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
                 <Text style={styles.label}>Família</Text>
                 <FamiliaInput value={family} onChangeText={setFamily} disabled={isSaving} />
 
-                <Text style={styles.label}>Local da coleta</Text>
-                <LocalColetaInput ficha={ficha} locais={locaisColeta} onChange={setFicha} />
+                {CAMPOS_IDENTIFICACAO.map(campo => renderCampoTexto(campo))}
+              </CardFicha>
 
-              </>
-            ) : null}
+              <CardFicha titulo="Local">
+                <Text style={styles.labelFirst}>Local da coleta</Text>
+                <LocalColetaInput ficha={ficha} locais={locaisColeta} onChange={setFicha} cidadeUnica={cidadeUnica} />
+                {CAMPOS_LOCAL.map(campo => renderCampoTexto(campo))}
+              </CardFicha>
 
-            <Text style={isCollection ? styles.label : styles.labelFirst}>Multimídia</Text>
-            <Multimidia state={multimidia} disabled={isSaving} />
-
-            {isCollection ? (
-              <>
-                <TouchableOpacity
-                  style={styles.detalhesToggle}
-                  onPress={() => setDetalhesAbertos(aberto => !aberto)}
-                >
-                  <Text style={styles.detalhesToggleText}>Mais detalhes da coleta</Text>
-                  {detalhesAbertos
-                    ? <ChevronUp size={18} color={colors.accent} />
-                    : <ChevronDown size={18} color={colors.accent} />}
-                </TouchableOpacity>
-
-                {detalhesAbertos ? CAMPOS_DETALHE.map(([field, label, placeholder]) => {
-                  const opcoes = FICHA_MULTIPLA_ESCOLHA[field as CampoMultiplaEscolha]
-                  if (!opcoes) {
-                    return (
-                      <View key={field}>
-                        <Text style={styles.label}>{label}</Text>
+              {SECOES_COLETA.map(secao => {
+                const campoOpcoes = secao.opcoes
+                const rotuloObservacao = campoOpcoes ? ROTULO_OBSERVACAO_MULTIPLA[campoOpcoes] : undefined
+                return (
+                  <CardFicha
+                    key={secao.titulo}
+                    titulo={secao.titulo}
+                    dica={campoOpcoes ? dicaDeEscolha(campoOpcoes) : undefined}
+                  >
+                    {campoOpcoes ? (
+                      <OpcoesChips
+                        campo={campoOpcoes}
+                        valor={ficha[campoOpcoes]}
+                        onChange={valor => updateFicha(campoOpcoes, valor)}
+                        disabled={isSaving}
+                      />
+                    ) : null}
+                    {secao.campos.map((campo, indice) => renderCampoTexto(campo, !campoOpcoes && indice === 0))}
+                    {campoOpcoes && rotuloObservacao ? (
+                      <>
+                        <Text style={styles.label}>{rotuloObservacao}</Text>
                         <TextInput
                           style={styles.input}
-                          value={ficha[field]}
-                          onChangeText={value => updateFicha(field, value)}
-                          placeholder={placeholder}
+                          value={observacoesMultiplas[campoOpcoes] ?? ''}
+                          onChangeText={value => setObservacoesMultiplas(atual => ({ ...atual, [campoOpcoes]: value }))}
                           placeholderTextColor={colors.placeholder}
                         />
-                      </View>
-                    )
-                  }
+                      </>
+                    ) : null}
+                  </CardFicha>
+                )
+              })}
+            </>
+          ) : null}
 
-                  const campo = field as CampoMultiplaEscolha
-                  const selecionadas = opcoesSelecionadas(ficha[campo])
-                  const rotuloObservacao = ROTULO_OBSERVACAO_MULTIPLA[campo]
-                  return (
-                    <View key={field}>
-                      <Text style={styles.label}>{label}</Text>
-                      <TouchableOpacity style={styles.selectInput} onPress={() => setCampoAberto(campo)}>
-                        <Text
-                          style={selecionadas.length ? styles.selectValue : styles.selectPlaceholder}
-                          numberOfLines={1}
-                        >
-                          {selecionadas.length
-                            ? selecionadas.join(', ')
-                            : aceitaVariasOpcoes(campo) ? 'Selecionar uma ou mais opções' : 'Selecionar uma opção'}
-                        </Text>
-                        <ChevronDown color={colors.textSecondary} size={18} />
-                      </TouchableOpacity>
-                      {rotuloObservacao ? (
-                        <TextInput
-                          style={[styles.input, styles.conditionalInput]}
-                          value={observacoesMultiplas[campo] ?? ''}
-                          onChangeText={value => setObservacoesMultiplas(atual => ({ ...atual, [campo]: value }))}
-                          placeholder={rotuloObservacao}
-                          placeholderTextColor={colors.placeholder}
-                        />
-                      ) : null}
-                    </View>
-                  )
-                }) : null}
-              </>
-            ) : null}
-
-            <Text style={styles.label}>{isCollection ? 'Observações' : 'Descrição'}</Text>
+          <CardFicha titulo={isCollection ? 'Observações' : 'Descrição'}>
             <TextInput
               style={[styles.textArea, !isCollection && styles.diaryTextArea]}
               value={notes}
@@ -350,53 +347,19 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
               multiline
               numberOfLines={isCollection ? 5 : 10}
             />
+          </CardFicha>
 
-            {saveError ? <Text style={styles.mediaError}>{saveError}</Text> : null}
-          </View>
+          <CardMidiasAssociadas multimidia={multimidia} disabled={isSaving} />
         </ScrollView>
 
-        <Modal
-          visible={!!campoAberto}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setCampoAberto(null)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.optionModal}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{rotuloDoModal}</Text>
-                <TouchableOpacity onPress={() => setCampoAberto(null)}>
-                  <Text style={styles.modalClose}>Concluído</Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.modalHint}>
-                {modalMultiplo ? 'Selecione uma ou mais opções.' : 'Selecione uma opção. Toque de novo para desmarcar.'}
-              </Text>
-              <ScrollView contentContainerStyle={styles.modalOptions}>
-                {opcoesDoModal.map(opcao => {
-                  const selecionada = selecionadasNoModal.includes(opcao)
-                  return (
-                    <TouchableOpacity
-                      key={opcao}
-                      style={[styles.modalOption, selecionada && styles.modalOptionSelected]}
-                      onPress={() => campoAberto && alternarOpcao(campoAberto, opcao)}
-                    >
-                      <View style={[styles.checkbox, !modalMultiplo && styles.radio, selecionada && styles.checkboxSelected]}>
-                        {selecionada ? <Check size={14} color={colors.onAccent} /> : null}
-                      </View>
-                      <Text style={styles.modalOptionText}>{opcao}</Text>
-                    </TouchableOpacity>
-                  )
-                })}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-
-        <TouchableOpacity style={[styles.saveButton, saveDisabled && { opacity: 0.7 }]} onPress={handleSave} disabled={saveDisabled}>
-          {isSaving ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Check size={18} color="#FFFFFF" />}
-          <Text style={styles.saveButtonText}>{isSaving ? 'Salvando...' : config.saveLabel}</Text>
-        </TouchableOpacity>
+        <RodapeAcoes
+          multimidia={multimidia}
+          saveLabel={config.saveLabel}
+          salvando={isSaving}
+          saveDisabled={saveDisabled}
+          onSalvar={handleSave}
+          erro={saveError}
+        />
       </View>
     </SafeAreaView>
   )
