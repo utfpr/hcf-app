@@ -8,16 +8,28 @@ import type { SyncStatus } from '@/features/sync/types'
 import { useQuery } from '@/hooks/query/useQuery'
 import { contemTermo } from '@/libraries/text/normalizar'
 
+/** Quantidade de expedições exibidas a cada "página" do scroll infinito */
 const LIMITE = 10
 
+/** Filtros aplicados na lista de expedições */
 export interface FiltroExpedicoes {
   // Trecho do nome ou da cidade
   busca?: string
   status?: ExpeditionStatus | null
 }
 
-// Todas as expedições salvas no aparelho, mais recentes primeiro. A lista já está
-// toda em memória: o "scroll infinito" só vai mostrando de LIMITE em LIMITE.
+/**
+ * Lista de expedições com busca, filtro por status e scroll infinito.
+ *
+ * Lê todas as expedições salvas no aparelho (armazenamento offline), mais
+ * recentes primeiro. A lista já está toda em memória: o "scroll infinito" só
+ * vai mostrando de LIMITE em LIMITE.
+ *
+ * @param filtro busca (trecho do nome ou da cidade) e status desejado
+ * @returns itens visíveis, total filtrado, estados de loading/erro e as funções
+ *          loadMore (mostra mais), refresh (baixa do servidor e relê) e
+ *          syncStatusDe (situação de sincronização de uma expedição)
+ */
 export function useExpeditionsInfinite(filtro: FiltroExpedicoes = {}) {
   const { store, baixar } = useOffline()
   const [visiveis, setVisiveis] = useState(LIMITE)
@@ -48,10 +60,12 @@ export function useExpeditionsInfinite(filtro: FiltroExpedicoes = {}) {
   const itens = useMemo(() => todas.slice(0, visiveis), [todas, visiveis])
   const hasMore = visiveis < todas.length
 
+  /** Mostra mais LIMITE itens, se ainda houver itens escondidos */
   const loadMore = useCallback(() => {
     if (hasMore) setVisiveis(atual => atual + LIMITE)
   }, [hasMore])
 
+  /** Diz se a expedição tem alterações locais ainda não enviadas ao servidor */
   const syncStatusDe = useCallback(
     (expedicaoId: number): SyncStatus => (
       query.data ? statusDaExpedicao(query.data.pendencias, expedicaoId) : 'synced'
@@ -60,6 +74,7 @@ export function useExpeditionsInfinite(filtro: FiltroExpedicoes = {}) {
   )
 
   const { refresh: reler } = query
+  /** Baixa os dados mais recentes do servidor, volta ao início da lista e relê o cache */
   const refresh = useCallback(async () => {
     await baixar()
     setVisiveis(LIMITE)

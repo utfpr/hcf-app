@@ -1,8 +1,10 @@
 
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 
+/** Modo do formulário de evidências: registro de coleta ou de diário */
 export type EvidenceMode = 'collection' | 'diary'
 
+/** Todas as rotas do app e os parâmetros que cada uma recebe */
 export type RootStackParamList = {
   Login: undefined
   Home: undefined
@@ -21,4 +23,5 @@ export type RootStackParamList = {
   } | undefined
 }
 
+/** Tipo do objeto navigation para usar com useNavigation em qualquer tela */
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>

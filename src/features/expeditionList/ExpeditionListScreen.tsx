@@ -30,8 +30,10 @@ type ExpeditionListNavigationProp = NativeStackNavigationProp<RootStackParamList
 // paddingVertical (12 + 12) + ícone do menu (24)
 const HEADER_HEIGHT = 48
 
+/** Valor do filtro de status: 'todas' desliga o filtro */
 type FiltroStatus = 'todas' | ExpeditionStatus
 
+/** Chips de filtro mostrados abaixo do campo de busca */
 const OPCOES_STATUS: ReadonlyArray<OpcaoFiltro<FiltroStatus>> = [
   { valor: 'todas', rotulo: 'Todas' },
   { valor: 'Em andamento', rotulo: 'Em andamento' },
@@ -39,6 +41,14 @@ const OPCOES_STATUS: ReadonlyArray<OpcaoFiltro<FiltroStatus>> = [
   { valor: 'Finalizada', rotulo: 'Finalizadas' },
 ]
 
+/**
+ * Tela de listagem de expedições (rota 'ExpeditionList').
+ *
+ * Mostra as expedições salvas no aparelho em uma grade de 2 colunas, com busca
+ * por nome/cidade, filtro por status, scroll infinito (10 em 10) e "puxar para
+ * atualizar". Tocar em um card abre a tela de detalhe da expedição.
+ * O botão de menu no cabeçalho abre o NavigationMenu.
+ */
 export function ExpeditionListScreen() {
   const navigation = useNavigation<ExpeditionListNavigationProp>()
   const { user } = useAuth()
@@ -53,7 +63,13 @@ export function ExpeditionListScreen() {
   })
   const today = toApiDate(new Date())
 
-  // Componentes de Loading e Erro
+  /**
+   * Decide o conteúdo do meio da tela conforme o estado dos dados:
+   * - carregando sem itens: spinner;
+   * - erro sem itens: mensagem + botão "Tentar Novamente" (chama refresh);
+   * - lista vazia: mensagem (diferente quando há busca/filtro ativo);
+   * - caso contrário: a FlatList com os cards e o rodapé do scroll infinito.
+   */
   function renderContent() {
     if (loading && itens.length === 0) {
       return (

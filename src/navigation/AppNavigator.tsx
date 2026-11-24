@@ -15,6 +15,10 @@ import { RootStackParamList } from './types'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 
+/**
+ * Adaptador da rota 'Formulario': lê expeditionId e mode dos parâmetros e
+ * repassa ao formulário de evidências (id como número; modo padrão 'collection').
+ */
 function FormularioScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Formulario'>>()
   const { expeditionId, mode } = route.params
@@ -26,6 +30,10 @@ function FormularioScreen() {
   )
 }
 
+/**
+ * Adaptador da rota 'Reminders': repassa ao formulário de lembrete o id da
+ * expedição de onde ele foi aberto (opcional), convertido para número.
+ */
 function RemindersScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Reminders'>>()
   const { expeditionId } = route.params ?? {}
@@ -34,6 +42,10 @@ function RemindersScreen() {
   )
 }
 
+/**
+ * Pilha de telas do usuário logado. Nenhuma usa o cabeçalho padrão:
+ * cada tela desenha o próprio cabeçalho e usa o NavigationMenu.
+ */
 export function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>

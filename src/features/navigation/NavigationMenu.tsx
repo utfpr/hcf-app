@@ -15,6 +15,7 @@ import { useOfflineOpcional } from '@/features/offline/OfflineContext'
 import { RootNavigationProp, RootStackParamList } from '@/navigation/types'
 import { colors } from '@/theme/colors'
 
+/** Rotas que podem aparecer no menu de navegação */
 type MenuRoute = Extract<
   keyof RootStackParamList,
   'Home' | 'ExpeditionList' | 'Synchronization' | 'LembreteList' | 'UserProfile'
@@ -26,6 +27,7 @@ interface MenuItem {
   icon: ReactNode
 }
 
+/** Itens do menu, na ordem em que aparecem */
 const ITEMS: MenuItem[] = [
   { route: 'Home', label: 'Início', icon: <House size={24} color={colors.accent} /> },
   { route: 'ExpeditionList', label: 'Expedições', icon: <Compass size={24} color={colors.accent} /> },
@@ -43,11 +45,19 @@ interface NavigationMenuProps {
   headerHeight: number
 }
 
+/**
+ * Menu de navegação aberto pelo botão de menu do cabeçalho das telas.
+ *
+ * Abre como um Modal logo abaixo do cabeçalho, destaca a tela atual e mostra,
+ * no item "Sincronização", quantas alterações ainda estão pendentes de envio.
+ * Tocar fora do menu (ou no botão voltar do Android) fecha o menu.
+ */
 export function NavigationMenu({ visible, onClose, current, headerHeight }: NavigationMenuProps) {
   const navigation = useNavigation<RootNavigationProp>()
   const insets = useSafeAreaInsets()
   const pendentes = useOfflineOpcional()?.pendentes ?? 0
 
+  /** Fecha o menu e navega para a rota escolhida (se não for a tela atual) */
   function handlePress(route: MenuRoute) {
     onClose()
     if (route !== current) {

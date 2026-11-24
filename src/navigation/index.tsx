@@ -8,6 +8,12 @@ import { OfflineProvider } from '@/features/offline/OfflineContext'
 import { AppNavigator } from './AppNavigator'
 import { AuthNavigator } from './AuthNavigator'
 
+/**
+ * Raiz da navegação do app.
+ * Enquanto a sessão salva é lida (ready = false), mostra um carregamento.
+ * Depois, mostra o AppNavigator (dentro do OfflineProvider) se o usuário estiver
+ * logado, ou o AuthNavigator caso contrário. Logar/deslogar troca a pilha sozinho.
+ */
 export function Navigation() {
   const { loggedIn, ready } = useAuth()
 
