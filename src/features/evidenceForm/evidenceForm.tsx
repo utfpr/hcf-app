@@ -68,7 +68,11 @@ const MODE_CONFIG: Record<EvidenceMode, ModeConfig> = {
   },
 }
 
-// O que o rascunho guarda para devolver o formulário como estava
+/**
+ * Dados persistidos enquanto o registro ainda não foi salvo.
+ * `iniciado_em` preserva a data/hora original e `midias` guarda os anexos
+ * que serão restaurados quando o usuário voltar ao formulário.
+ */
 interface Rascunho {
   iniciado_em: string
   numero: string
@@ -79,9 +83,10 @@ interface Rascunho {
   midias: EvidenciaPendente[]
 }
 
-// Rótulo e exemplo de cada campo de texto da ficha
+/** Rótulo e exemplo usados ao montar dinamicamente os campos de texto da ficha. */
 const DEFINICAO_CAMPO = new Map(FICHA_COLETA_FIELDS.map(([campo, rotulo, exemplo]) => [campo, { rotulo, exemplo }]))
 
+/** Verifica se não há informação local a preservar antes de sair da tela. */
 function rascunhoVazio(rascunho: Rascunho): boolean {
   return !rascunho.numero && !rascunho.familia && !rascunho.observacoes
     && rascunho.midias.length === 0
@@ -89,12 +94,19 @@ function rascunhoVazio(rascunho: Rascunho): boolean {
     && Object.values(rascunho.observacoes_multiplas ?? {}).every(valor => !valor)
 }
 
+/**
+ * Tela de criação de evidências de uma expedição.
+ * Em `collection`, mostra a ficha de coleta; em `diary`, exibe somente a
+ * descrição. Nos dois modos permite anexar mídias e salvar o registro offline.
+ */
 export function Formulario({ expedicaoId, mode }: FormularioProps) {
   const navigation = useNavigation()
   const { toast } = useFeedback()
+  // Cada modo altera título, campos exibidos e o formato do payload salvo.
   const config = MODE_CONFIG[mode]
   const isCollection = mode === 'collection'
 
+  // A hora é capturada ao abrir a tela e não muda durante o preenchimento.
   const [agora, setAgora] = useState(() => new Date())
   const dataHora = `${agora.toLocaleDateString('pt-BR')} ${agora.toLocaleTimeString('pt-BR')}`
 
@@ -106,6 +118,8 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
   const [notes, setNotes] = useState('')
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  // Estes hooks completam os dados da evidência. No diário, não é preciso
+  // consultar os registros e detalhes de uma coleta da expedição.
   const localizacao = useLocalizacao()
   const registros = useRegistrosExpedicao(isCollection ? expedicaoId : undefined)
   const expedicao = useExpedition(isCollection ? expedicaoId : undefined)
@@ -117,11 +131,13 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
   const { trigger: registrar, loading: isSaving } = useRegistrarEvento(expedicaoId)
   const saveDisabled = !expedicaoId || isSaving || multimidia.busy
 
-  // A contagem é por expedição: 1 na primeira coleta, 2 na seguinte...
+  // A contagem é por expedição: 1 na primeira coleta, 2 na seguinte.
+  // O valor só passa a ser manual depois que o usuário digita no campo.
   const numeroSugerido = registros.data ? proximoNumeroColeta(registros.data) : ''
   const collectionIdentifier = numeroDigitado ?? numeroSugerido
 
   // Mesmo número de uma coleta que já existe = mesma coleta: a API junta as duas
+  // para concentrar ficha e evidências do mesmo exemplar.
   const numero = collectionIdentifier.trim()
   const juntaComExistente = isCollection && !!registros.data && existeColetaComNumero(registros.data, numero)
 
@@ -142,7 +158,8 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
   const [recuperado, setRecuperado] = useState(false)
   const restaurou = useRef(false)
 
-  // Abriu com um rascunho salvo: devolve o formulário como estava
+  // Abriu com um rascunho salvo: devolve o formulário como estava. A ref evita
+  // restaurá-lo novamente a cada alteração de estado da tela.
   useEffect(() => {
     if (restaurou.current || !rascunho.pronto) return
     restaurou.current = true
@@ -162,6 +179,8 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
   }, [rascunho.pronto, rascunho.restaurado, setPendentes])
 
   const { salvar: salvarRascunho } = rascunho
+  // Depois da primeira restauração, cada alteração relevante atualiza o rascunho.
+  // O número automático não é gravado: ele é recalculado ao reabrir.
   useEffect(() => {
     if (!restaurou.current) return
     const atual: Rascunho = {
@@ -177,6 +196,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
     if (!rascunhoVazio(atual)) salvarRascunho(atual)
   }, [agora, numeroDigitado, family, ficha, observacoesMultiplas, notes, pendentes, salvarRascunho])
 
+  /** Descarta o rascunho persistido e volta todos os campos ao estado inicial. */
   async function handleDescartarRascunho() {
     await rascunho.descartar()
     setAgora(new Date())
@@ -189,11 +209,12 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
     setRecuperado(false)
   }
 
+  /** Atualiza somente o campo informado, preservando os demais valores da ficha. */
   function updateFicha(field: keyof FichaValues, value: string) {
     setFicha(current => ({ ...current, [field]: value }))
   }
 
-  // `primeiro`: campo que abre o card, sem o espaço acima do rótulo
+  /** Renderiza um campo textual; o primeiro campo não recebe margem superior. */
   function renderCampoTexto(campo: FichaColetaFieldName, primeiro = false) {
     const definicao = DEFINICAO_CAMPO.get(campo)
     return (
@@ -210,10 +231,16 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
     )
   }
 
+  /**
+   * Monta o payload conforme o modo, registra o evento e remove o rascunho
+   * somente após o sucesso. O registro fica no aparelho até sincronizar.
+   */
   async function handleSave() {
     if (saveDisabled) return
     setSaveError(null)
 
+    // Dados comuns aos dois modos. Sem localização, o registro ainda pode ser
+    // salvo offline, por isso as coordenadas são enviadas como null.
     const base = {
       data_captura: agora.toISOString(),
       latitude: localizacao.coords?.latitude ?? null,
@@ -222,6 +249,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
       observacoes: notes.trim() || null,
     }
 
+    // Coleta inclui a ficha estruturada; diário usa somente os dados comuns.
     const eventoPayload: CriarEventoPayload = isCollection
       ? {
           ...base,
@@ -235,6 +263,7 @@ export function Formulario({ expedicaoId, mode }: FormularioProps) {
       : { ...base, tipo: 'DIARIO' }
 
     try {
+      // Os anexos seguem junto ao evento para a fila de sincronização.
       await registrar(eventoPayload, pendentes.map(item => item.payload))
       await rascunho.descartar()
       toast({
